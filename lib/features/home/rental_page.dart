@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/services/rental_service.dart';
@@ -10,8 +12,16 @@ class RentalPage extends StatefulWidget {
   /// Jika [wisataId] diisi, hanya tampilkan rental dekat wisata tersebut.
   final String? wisataId;
   final String? namaWisata;
+  final double? wisataLat;
+  final double? wisataLng;
 
-  const RentalPage({super.key, this.wisataId, this.namaWisata});
+  const RentalPage({
+    super.key,
+    this.wisataId,
+    this.namaWisata,
+    this.wisataLat,
+    this.wisataLng,
+  });
 
   @override
   State<RentalPage> createState() => _RentalPageState();
@@ -20,14 +30,17 @@ class RentalPage extends StatefulWidget {
 class _RentalPageState extends State<RentalPage> {
   final _rentalService = RentalService();
 
-  List<RentalProfile> _semuaRental = [];
   List<RentalProfile> _rentalFiltered = [];
   bool _isLoading = true;
   String? _error;
+  bool _lokasiSaya = false;
+  Position? _userPos;
 
-  // Filter kategori (nanti bisa dari equipment_categories)
+  // Filter kategori alat
   int _selectedFilter = 0;
-  final List<String> _filters = ['Semua', 'Tenda', 'Carrier', 'Sleeping Bag', 'Lainnya'];
+  final List<String> _filters = [
+    'Semua', 'Tenda', 'Carrier', 'Sleeping Bag', 'Matras', 'Kompor'
+  ];
 
   @override
   void initState() {
@@ -35,29 +48,77 @@ class _RentalPageState extends State<RentalPage> {
     _muatRental();
   }
 
+  // ──────────────────────────────────────────────────────────
+
   Future<void> _muatRental() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() { _isLoading = true; _error = null; });
     try {
-      final data = widget.wisataId != null
+      final data = (widget.wisataId != null && !_lokasiSaya)
           ? await _rentalService.ambilRentalDekatWisata(widget.wisataId!)
           : await _rentalService.ambilRentalAktif();
       if (!mounted) return;
       setState(() {
-        _semuaRental = data;
         _rentalFiltered = data;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Gagal memuat data rental. Tarik untuk muat ulang.';
-        _isLoading = false;
-      });
+      setState(() { _error = 'Gagal memuat data rental.'; _isLoading = false; });
     }
   }
+
+  Future<void> _switchLokasiSaya() async {
+    try {
+      bool svcEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!svcEnabled) { _snack('Aktifkan GPS terlebih dahulu.'); return; }
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        _snack('Izin lokasi ditolak.');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      setState(() { _userPos = pos; _lokasiSaya = true; });
+      _muatRental();
+    } catch (_) {
+      _snack('Gagal mendapatkan lokasi.');
+    }
+  }
+
+  void _switchDestinasi() {
+    setState(() => _lokasiSaya = false);
+    _muatRental();
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: AppColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    ));
+  }
+
+  /// Hitung jarak km dari wisata ke rental (jika koordinat tersedia)
+  double? _hitungJarak(RentalProfile r) {
+    final lat = _lokasiSaya ? _userPos?.latitude : widget.wisataLat;
+    final lng = _lokasiSaya ? _userPos?.longitude : widget.wisataLng;
+    if (lat == null || lng == null || r.lat == null || r.lng == null) {
+      return null;
+    }
+    return const Distance().as(
+      LengthUnit.Kilometer,
+      LatLng(lat, lng),
+      LatLng(r.lat!, r.lng!),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -75,16 +136,12 @@ class _RentalPageState extends State<RentalPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // ── App Bar
               SliverToBoxAdapter(child: _buildAppBar()),
-
-              // ── Filter chips
+              if (widget.wisataId != null)
+                SliverToBoxAdapter(child: _buildLokasiBar()),
+              SliverToBoxAdapter(child: _buildToggle()),
               SliverToBoxAdapter(child: _buildFilterChips()),
-
-              // ── Section header
               SliverToBoxAdapter(child: _buildSectionHeader()),
-
-              // ── Content
               if (_isLoading)
                 const SliverFillRemaining(
                   child: Center(
@@ -98,13 +155,21 @@ class _RentalPageState extends State<RentalPage> {
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) =>
-                        _RentalCard(rental: _rentalFiltered[index]),
+                    (_, i) => _RentalCard(
+                      rental: _rentalFiltered[i],
+                      jarak: _hitungJarak(_rentalFiltered[i]),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              EquipmentListPage(rental: _rentalFiltered[i]),
+                        ),
+                      ),
+                    ),
                     childCount: _rentalFiltered.length,
                   ),
                 ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
           ),
         ),
@@ -112,60 +177,40 @@ class _RentalPageState extends State<RentalPage> {
     );
   }
 
+  // ──────────────────────────────────────────────────────────
+  //  WIDGETS
+  // ──────────────────────────────────────────────────────────
+
   Widget _buildAppBar() {
-    final isFiltered = widget.wisataId != null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Row(
         children: [
-          // Tombol back jika dibuka dari wisata card
-          if (isFiltered) ...[
+          if (widget.wisataId != null) ...[
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Container(
-                width: 36, height: 36,
+                width: 38, height: 38,
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.textPrimary, size: 16),
+                    size: 16, color: AppColors.textPrimary),
               ),
             ),
             const SizedBox(width: 10),
           ],
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isFiltered)
-                  Text(
-                    widget.namaWisata ?? 'Destinasi',
-                    style: AppTextStyles.headlineLarge
-                        .copyWith(color: AppColors.textPrimary, fontSize: 17),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  )
-                else
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined,
-                          color: AppColors.primary, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Rental di sekitarmu',
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-              ],
+            child: Text(
+              'Pilih Tempat Rental',
+              style: AppTextStyles.headlineLarge
+                  .copyWith(color: AppColors.textPrimary, fontSize: 20),
             ),
           ),
           Container(
-            width: 36,
-            height: 36,
+            width: 38, height: 38,
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(10),
@@ -179,22 +224,93 @@ class _RentalPageState extends State<RentalPage> {
     );
   }
 
+  Widget _buildLokasiBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on_outlined,
+              color: AppColors.primary, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: AppColors.textSecondary),
+                children: [
+                  const TextSpan(text: 'Menampilkan rental di sekitar '),
+                  TextSpan(
+                    text: widget.namaWisata ?? 'Destinasi',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Text(
+              'UBAH',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggle() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: _ToggleTab(
+              label: 'Lokasi Saya',
+              isActive: _lokasiSaya,
+              onTap: _switchLokasiSaya,
+            )),
+            Expanded(child: _ToggleTab(
+              label: 'Dekat Destinasi',
+              isActive: !_lokasiSaya,
+              onTap: _switchDestinasi,
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterChips() {
     return SizedBox(
       height: 52,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemCount: _filters.length,
-        itemBuilder: (context, i) {
+        itemBuilder: (_, i) {
           final isSelected = i == _selectedFilter;
           return GestureDetector(
             onTap: () => setState(() => _selectedFilter = i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
@@ -205,9 +321,8 @@ class _RentalPageState extends State<RentalPage> {
               child: Text(
                 _filters[i],
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: isSelected ? AppColors.white : AppColors.textSecondary,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
             ),
@@ -218,24 +333,21 @@ class _RentalPageState extends State<RentalPage> {
   }
 
   Widget _buildSectionHeader() {
-    final isFiltered = widget.wisataId != null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text('Rental Terdekat',
+                  style: AppTextStyles.headlineLarge
+                      .copyWith(color: AppColors.textPrimary)),
               Text(
-                isFiltered ? 'Rental di Area Ini' : 'Rental Terdekat',
-                style: AppTextStyles.headlineLarge
-                    .copyWith(color: AppColors.textPrimary),
-              ),
-              Text(
-                isFiltered
-                    ? '${_semuaRental.length} rental tersedia'
-                    : 'Kurasi terbaik di sekitarmu',
+                _isLoading
+                    ? 'Memuat...'
+                    : '${_rentalFiltered.length} rental tersedia',
                 style: AppTextStyles.bodySmall
                     .copyWith(color: AppColors.textSecondary),
               ),
@@ -251,7 +363,7 @@ class _RentalPageState extends State<RentalPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.store_outlined, size: 52, color: AppColors.textHint),
+          const Icon(Icons.store_outlined, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
           Text('Belum ada rental',
               style: AppTextStyles.headlineMedium
@@ -272,12 +384,11 @@ class _RentalPageState extends State<RentalPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 52, color: AppColors.textHint),
+          const Icon(Icons.wifi_off_rounded, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
           Text(_error!,
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textHint)),
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
           const SizedBox(height: 16),
           TextButton.icon(
             onPressed: _muatRental,
@@ -293,17 +404,61 @@ class _RentalPageState extends State<RentalPage> {
 }
 
 // ──────────────────────────────────────────────────────────
+//  TOGGLE TAB
+// ──────────────────────────────────────────────────────────
+class _ToggleTab extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  const _ToggleTab(
+      {required this.label, required this.isActive, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primaryDark : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: isActive ? Colors.white : AppColors.textSecondary,
+            fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────
 //  RENTAL CARD
 // ──────────────────────────────────────────────────────────
-
 class _RentalCard extends StatelessWidget {
   final RentalProfile rental;
-  const _RentalCard({required this.rental});
+  final double? jarak;
+  final VoidCallback onTap;
+
+  const _RentalCard({
+    required this.rental,
+    required this.jarak,
+    required this.onTap,
+  });
+
+  String get _jarakStr {
+    if (jarak == null) return rental.alamat?.split(',').first ?? '—';
+    return '${jarak!.toStringAsFixed(1)} km';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -312,100 +467,112 @@ class _RentalCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 8, offset: const Offset(0, 2),
             ),
           ],
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EquipmentListPage(rental: rental),
-              ),
-            );
-          },
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // ── Foto Banner (dari foto_banner di DB)
+                // ── Foto rental
                 NrImage(
-                  imageUrl: rental.fotoBanner, // null → placeholder
-                  width: 80,
-                  height: 80,
+                  imageUrl: rental.fotoBanner,
+                  width: 80, height: 80,
                   borderRadius: BorderRadius.circular(12),
                   placeholderColor: AppColors.primaryDark,
                   placeholderIcon: Icons.storefront_rounded,
                 ),
-
-                const SizedBox(width: 14),
-
+                const SizedBox(width: 12),
                 // ── Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nama rental
                       Text(
                         rental.namaRental,
                         style: AppTextStyles.headlineMedium.copyWith(
-                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-
-                      const SizedBox(height: 4),
-
-                      // Jarak & jam operasional
+                      const SizedBox(height: 5),
                       Row(
                         children: [
                           const Icon(Icons.near_me_rounded,
                               size: 13, color: AppColors.textHint),
-                          const SizedBox(width: 4),
-                          Text(
-                            rental.alamat ?? '—',
-                            style: AppTextStyles.bodySmall
-                                .copyWith(color: AppColors.textHint),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          const SizedBox(width: 3),
+                          Text(_jarakStr,
+                              style: AppTextStyles.bodySmall
+                                  .copyWith(color: AppColors.textHint)),
+                          if (rental.noWa != null) ...[
+                            const SizedBox(width: 10),
+                            const Icon(Icons.access_time_rounded,
+                                size: 13, color: AppColors.textHint),
+                            const SizedBox(width: 3),
+                            Text('Buka 08:00',
+                                style: AppTextStyles.bodySmall
+                                    .copyWith(color: AppColors.textHint)),
+                          ],
                         ],
                       ),
-
-                      const SizedBox(height: 8),
-
+                      const SizedBox(height: 7),
                       // Badge status
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          rental.isActive ? 'Aktif' : 'Tutup',
-                          style: AppTextStyles.caption.copyWith(
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          _Badge(
+                            label: rental.isActive ? 'AKTIF' : 'TUTUP',
                             color: rental.isActive
                                 ? AppColors.primary
                                 : AppColors.error,
-                            fontWeight: FontWeight.w700,
                           ),
-                        ),
+                          if (rental.deskripsi != null)
+                            _Badge(
+                              label: 'OUTDOOR',
+                              color: AppColors.primaryDark,
+                            ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-
                 const Icon(Icons.chevron_right_rounded,
                     color: AppColors.textHint, size: 20),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Badge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 9,
+          letterSpacing: 0.5,
         ),
       ),
     );
