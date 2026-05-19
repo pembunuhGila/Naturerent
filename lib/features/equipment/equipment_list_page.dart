@@ -294,7 +294,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemCount: _kategori.length + 1, // +1 untuk "Semua"
         itemBuilder: (context, i) {
           final isAll = i == 0;

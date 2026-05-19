@@ -402,7 +402,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                                   controller: scrollCtrl,
                                   padding: const EdgeInsets.fromLTRB(
                                       16, 8, 16, 24),
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const SizedBox(height: 8),
                                   itemCount: _rentals.length,
                                   itemBuilder: (_, i) =>

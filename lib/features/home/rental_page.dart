@@ -302,7 +302,7 @@ class _RentalPageState extends State<RentalPage> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemCount: _filters.length,
         itemBuilder: (_, i) {
           final isSelected = i == _selectedFilter;

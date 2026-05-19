@@ -37,7 +37,7 @@ class NrImage extends StatelessWidget {
               if (progress == null) return child;
               return _buildLoading();
             },
-            errorBuilder: (_, __, ___) => _buildPlaceholder(isError: true),
+            errorBuilder: (_, _, _) => _buildPlaceholder(isError: true),
           );
 
     if (borderRadius != null) {

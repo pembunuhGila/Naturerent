@@ -245,7 +245,7 @@ class _BerandaPageState extends State<BerandaPage> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemCount: _filters.length,
         itemBuilder: (context, i) {
           final isSelected = i == _selectedFilter;
