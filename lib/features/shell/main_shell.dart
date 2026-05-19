@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../home/beranda_page.dart';
 import '../home/rental_page.dart';
+import '../profil/profil_page.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -17,7 +18,7 @@ class _MainShellState extends State<MainShell> {
     BerandaPage(),
     RentalPage(),
     _PlaceholderPage(label: 'Aktivitas'),
-    _PlaceholderPage(label: 'Profil'),
+    ProfilPage(),
   ];
 
   @override
@@ -46,10 +47,10 @@ class _NrBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(icon: Icons.home_rounded, label: 'BERANDA'),
+      _NavItem(icon: Icons.home_rounded, label: 'HOME'),
       _NavItem(icon: Icons.storefront_rounded, label: 'RENTAL'),
-      _NavItem(icon: Icons.explore_rounded, label: 'AKTIVITAS'),
-      _NavItem(icon: Icons.person_rounded, label: 'PROFIL'),
+      _NavItem(icon: Icons.explore_rounded, label: 'AKTIFITAS'),
+      _NavItem(icon: Icons.person_rounded, label: 'PROFILE'),
     ];
 
     return Container(
