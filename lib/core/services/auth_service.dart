@@ -78,8 +78,8 @@ class AuthService {
 
     try {
       await client.from('users').update({
-        if (noWa != null) 'no_wa': noWa,
-        if (role != null) 'role': role,
+        'no_wa': noWa,
+        'role': role,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', user.id);
     } catch (_) {
