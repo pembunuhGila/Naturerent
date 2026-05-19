@@ -11,12 +11,12 @@ import 'onboarding_page.dart';
 class RegisterPage extends StatefulWidget {
   final UserRole role;
   const RegisterPage({super.key, required this.role});
-
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderStateMixin {
+class _RegisterPageState extends State<RegisterPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _namaController = TextEditingController();
   final _emailController = TextEditingController();
@@ -32,14 +32,13 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
+        vsync: this, duration: const Duration(milliseconds: 500));
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _fadeAnimation =
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
   }
 
@@ -53,14 +52,19 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
     super.dispose();
   }
 
-  void _handleRegister() async {
+  // ── Password rules helper
+  static bool _hasUpper(String v) => v.contains(RegExp(r'[A-Z]'));
+  static bool _hasDigit(String v) => v.contains(RegExp(r'[0-9]'));
+  static bool _hasSymbol(String v) =>
+      v.contains(RegExp(r'[!@#\$%\^&\*()\-_=\+\[\]{}|;:,.<>?/\\`~"]'));
+
+  Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreedToTerms) {
       _showError('Harap setujui Ketentuan Layanan terlebih dahulu.');
       return;
     }
     setState(() => _isLoading = true);
-
     try {
       final response = await AuthService().daftar(
         email: _emailController.text.trim(),
@@ -69,17 +73,13 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
         noWa: _phoneController.text.trim(),
         role: widget.role,
       );
-
       if (!mounted) return;
-
       if (response.session != null) {
-        // Email konfirmasi OFF → langsung masuk ke MainShell
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const MainShell()),
           (route) => false,
         );
       } else if (response.user != null) {
-        // Email konfirmasi ON → minta user cek inbox
         _showSuccessDialog();
       } else {
         _showError('Pendaftaran gagal. Silakan coba lagi.');
@@ -98,42 +98,42 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
     }
   }
 
+  Future<void> _handleGoogleRegister() async {
+    try {
+      await AuthService.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.naturerent://login-callback/',
+      );
+    } catch (e) {
+      if (mounted) _showError('Google gagal: ${e.toString()}');
+    }
+  }
+
   String _mapAuthError(String message) {
     final msg = message.toLowerCase();
     if (msg.contains('user already registered') ||
-        msg.contains('email already in use') ||
-        msg.contains('already been registered') ||
-        msg.contains('already registered')) {
+        msg.contains('already registered') ||
+        msg.contains('email already in use')) {
       return 'Email ini sudah terdaftar. Silakan masuk.';
     }
-    if (msg.contains('password should be at least') ||
-        msg.contains('password is too short') ||
-        msg.contains('weak password')) {
-      return 'Kata sandi terlalu lemah. Minimal 8 karakter dengan simbol.';
+    if (msg.contains('weak password') || msg.contains('password should be')) {
+      return 'Kata sandi terlalu lemah.';
     }
-    if (msg.contains('invalid email') || msg.contains('unable to validate email')) {
-      return 'Format email tidak valid.';
+    if (msg.contains('invalid email')) return 'Format email tidak valid.';
+    if (msg.contains('too many requests')) {
+      return 'Terlalu banyak percobaan. Tunggu beberapa menit.';
     }
-    if (msg.contains('email rate limit') || msg.contains('too many requests')) {
-      return 'Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.';
-    }
-    if (msg.contains('network') || msg.contains('socket') || msg.contains('connection')) {
-      return 'Gagal terhubung ke server. Periksa koneksi internetmu.';
-    }
-    // Tampilkan pesan asli dari Supabase agar mudah di-debug
     return 'Pendaftaran gagal: $message';
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    ));
   }
 
   void _showSuccessDialog() {
@@ -145,29 +145,22 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
         backgroundColor: AppColors.surface,
         icon: const Icon(Icons.mark_email_read_outlined,
             color: AppColors.primary, size: 48),
-        title: const Text(
-          'Konfirmasi Email',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
+        title: const Text('Konfirmasi Email',
+            style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
         content: Text(
           'Kami telah mengirim link konfirmasi ke\n${_emailController.text.trim()}.\n\nSilakan cek inbox kamu, lalu masuk.',
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'Inter',
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
+              fontFamily: 'Inter', color: AppColors.textSecondary, height: 1.5),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              // Kembali ke Onboarding / Login
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
             style: TextButton.styleFrom(
@@ -177,14 +170,11 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
               padding:
                   const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
             ),
-            child: const Text(
-              'Oke, Masuk Sekarang',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: const Text('Oke, Masuk Sekarang',
+                style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -195,245 +185,220 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
     ));
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // ── Hero Header
-          _buildHeader(context),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Back
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 38, height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded,
+                            size: 16, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
 
-          // ── Form
-          Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    // ── Logo + title
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryDark,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.park_rounded,
+                            color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('NatureRent',
+                            style: AppTextStyles.headlineLarge.copyWith(
+                                color: AppColors.primaryDark, fontSize: 22)),
+                        Text('Daftar & mulai berpetualang',
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.textSecondary)),
+                      ]),
+                    ]),
+                    const SizedBox(height: 32),
+
+                    Text('Buat Akun', style: AppTextStyles.displayMedium
+                        .copyWith(fontSize: 26, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    Text('Bergabunglah dengan komunitas pecinta alam.',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.textSecondary)),
+                    const SizedBox(height: 28),
+
+                    // ── Nama
+                    NrTextField(
+                      label: 'Nama Lengkap',
+                      hint: 'Nama lengkap kamu',
+                      controller: _namaController,
+                      keyboardType: TextInputType.name,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Nama wajib diisi';
+                        if (v.length < 3) return 'Nama terlalu pendek';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+
+                    // ── Email (@gmail.com)
+                    NrTextField(
+                      label: 'Alamat Email',
+                      hint: 'nama@gmail.com',
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Email wajib diisi';
+                        if (!v.toLowerCase().endsWith('@gmail.com')) {
+                          return 'Email harus menggunakan @gmail.com';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+
+                    // ── No HP
+                    NrTextField(
+                      label: 'Nomor HP',
+                      hint: '+62 812 3456 7890',
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Nomor HP wajib diisi';
+                        if (v.length < 9) return 'Nomor HP tidak valid';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+
+                    // ── Password
+                    NrTextField(
+                      label: 'Kata Sandi',
+                      hint: '••••••••',
+                      controller: _passwordController,
+                      isPassword: true,
+                      helperText:
+                          'Min 8 karakter · Huruf kapital · Angka · Simbol',
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Kata sandi wajib diisi';
+                        if (v.length < 8) return 'Minimal 8 karakter';
+                        if (!_hasUpper(v)) return 'Harus ada huruf kapital (A-Z)';
+                        if (!_hasDigit(v)) return 'Harus ada angka (0-9)';
+                        if (!_hasSymbol(v)) return 'Harus ada simbol (!@#\$%^&*)';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ── Password strength indicator
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _passwordController,
+                      builder: (_, val, child) =>
+                          _PwStrength(pw: val.text),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Terms
+                    _buildTermsCheckbox(),
+                    const SizedBox(height: 28),
+
+                    // ── Register button
+                    NrButton(
+                      text: 'Selesaikan Pendaftaran',
+                      isLoading: _isLoading,
+                      onPressed: _handleRegister,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Login redirect
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ── Title
-                        Text('Daftar Akun', style: AppTextStyles.displayMedium),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Bergabunglah dengan komunitas pecinta alam\nkami dan dapatkan akses ke peralatan teknis terbaik.',
-                          style: AppTextStyles.bodyMedium,
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // ── Nama Lengkap
-                        NrTextField(
-                          label: 'Nama Lengkap',
-                          hint: 'Rachmad Zaki Setyawan',
-                          controller: _namaController,
-                          keyboardType: TextInputType.name,
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Nama lengkap wajib diisi';
-                            if (v.length < 3) return 'Nama terlalu pendek';
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ── Email
-                        NrTextField(
-                          label: 'Alamat Email',
-                          hint: 'zakiganteng507@gmail.com',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Email wajib diisi';
-                            if (!v.contains('@')) return 'Format email tidak valid';
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ── Nomor HP
-                        NrTextField(
-                          label: 'Nomor HP',
-                          hint: '+62 821 9442 1152',
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Nomor HP wajib diisi';
-                            if (v.length < 9) return 'Nomor HP tidak valid';
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ── Password
-                        NrTextField(
-                          label: 'Kata Sandi',
-                          hint: '••••••••',
-                          controller: _passwordController,
-                          isPassword: true,
-                          helperText: 'Minimal 8 karakter dengan satu simbol spesial.',
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Kata sandi wajib diisi';
-                            if (v.length < 8) return 'Minimal 8 karakter';
-                            final hasSymbol = RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(v);
-                            if (!hasSymbol) return 'Harus mengandung simbol spesial';
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ── Terms checkbox
-                        _buildTermsCheckbox(),
-
-                        const SizedBox(height: 28),
-
-                        // ── Register button
-                        NrButton(
-                          text: 'Selesaikan Pendaftaran',
-                          isLoading: _isLoading,
-                          onPressed: _handleRegister,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ── Already have account
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Sudah punya akun? ', style: AppTextStyles.bodyMedium),
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Text(
-                                'Masuk',
-                                style: AppTextStyles.bodyMedium.copyWith(
+                        Text('Sudah punya akun? ',
+                            style: AppTextStyles.bodyMedium),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Text('Masuk',
+                              style: AppTextStyles.bodyMedium.copyWith(
                                   color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
+                                  fontWeight: FontWeight.w700)),
                         ),
-
-                        const SizedBox(height: 24),
-
-                        // ── Divider
-                        _buildDivider(),
-
-                        const SizedBox(height: 20),
-
-                        // ── Social buttons
-                        _buildSocialButtons(),
-
-                        const SizedBox(height: 16),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 24),
+
+                    // ── Divider
+                    Row(children: [
+                      const Expanded(
+                          child: Divider(color: AppColors.border, thickness: 1)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('ATAU DAFTAR DENGAN',
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.textHint,
+                                    letterSpacing: 0.5)),
+                      ),
+                      const Expanded(
+                          child: Divider(color: AppColors.border, thickness: 1)),
+                    ]),
+                    const SizedBox(height: 20),
+
+                    // ── Google button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: _handleGoogleRegister,
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: AppColors.surface,
+                          side: const BorderSide(
+                              color: AppColors.border, width: 1.2),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _GoogleLogo(),
+                            const SizedBox(width: 12),
+                            Text('Daftar dengan Google',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Stack(
-      children: [
-        // ── Image placeholder
-        Container(
-          width: double.infinity,
-          height: 200,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryDark,
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.image_outlined, size: 40, color: Colors.white38),
-                SizedBox(height: 6),
-                Text(
-                  'Tambahkan gambar di sini',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Gradient bottom
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 60,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  AppColors.background.withValues(alpha: 0.9),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ── Close / Back button
-        Positioned(
-          top: 40,
-          right: 16,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.close, color: Colors.white, size: 18),
-            ),
-          ),
-        ),
-
-        // ── Logo
-        Positioned(
-          top: 44,
-          left: 0,
-          right: 0,
-          child: const Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.park_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'NatureRent',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -442,13 +407,13 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 22,
-          height: 22,
+          width: 22, height: 22,
           child: Checkbox(
             value: _agreedToTerms,
             onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
             activeColor: AppColors.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             side: const BorderSide(color: AppColors.border, width: 1.5),
           ),
         ),
@@ -456,27 +421,26 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
               children: [
                 const TextSpan(text: 'Saya menyetujui '),
                 TextSpan(
                   text: 'Ketentuan Layanan',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                    decorationColor: AppColors.primary,
-                  ),
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.primary),
                 ),
                 const TextSpan(text: ' dan '),
                 TextSpan(
                   text: 'Kebijakan Privasi',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                    decorationColor: AppColors.primary,
-                  ),
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.primary),
                 ),
                 const TextSpan(text: '.'),
               ],
@@ -486,66 +450,79 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
       ],
     );
   }
+}
 
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('ATAU DAFTAR DENGAN', style: AppTextStyles.caption),
-        ),
-        const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
-      ],
+// ── Google colorful logo
+class _GoogleLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: const TextSpan(
+        style: TextStyle(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, fontSize: 18),
+        children: [
+          TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
+          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
+          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
+          TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
+          TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
+          TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildSocialButtons() {
-    return Row(
+// ── Password strength widget
+class _PwStrength extends StatelessWidget {
+  final String pw;
+  const _PwStrength({required this.pw});
+
+  bool get _hasLen => pw.length >= 8;
+  bool get _hasCap => pw.contains(RegExp(r'[A-Z]'));
+  bool get _hasNum => pw.contains(RegExp(r'[0-9]'));
+  bool get _hasSym =>
+      pw.contains(RegExp(r'[!@#\$%\^&\*()\-_=\+\[\]{}|;:,.<>?/\\`~"]'));
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _SocialButton(
-            label: 'Google',
-            icon: Icons.g_mobiledata_rounded,
-            onPressed: () {},
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _SocialButton(
-            label: 'Apple',
-            icon: Icons.apple_rounded,
-            onPressed: () {},
-          ),
-        ),
+        _Req(ok: _hasLen, label: 'Minimal 8 karakter'),
+        const SizedBox(height: 3),
+        _Req(ok: _hasCap, label: 'Mengandung huruf kapital (A-Z)'),
+        const SizedBox(height: 3),
+        _Req(ok: _hasNum, label: 'Mengandung angka (0-9)'),
+        const SizedBox(height: 3),
+        _Req(ok: _hasSym, label: 'Mengandung simbol (!@#\$%^&*)'),
       ],
     );
   }
 }
 
-class _SocialButton extends StatelessWidget {
+class _Req extends StatelessWidget {
+  final bool ok;
   final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  const _SocialButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
+  const _Req({required this.ok, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 20, color: AppColors.textPrimary),
-      label: Text(label, style: AppTextStyles.labelMedium),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        side: const BorderSide(color: AppColors.border),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: AppColors.surface,
-      ),
+    return Row(
+      children: [
+        Icon(
+          ok
+              ? Icons.check_circle_rounded
+              : Icons.radio_button_unchecked_rounded,
+          size: 13,
+          color: ok ? AppColors.primary : AppColors.textHint,
+        ),
+        const SizedBox(width: 6),
+        Text(label,
+            style: AppTextStyles.caption.copyWith(
+                color: ok ? AppColors.primary : AppColors.textHint,
+                fontSize: 11)),
+      ],
     );
   }
 }

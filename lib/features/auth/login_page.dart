@@ -2,417 +2,420 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/nr_button.dart';
-import '../../core/widgets/nr_text_field.dart';
 import '../../core/services/auth_service.dart';
-import '../home/beranda_page.dart';
+import '../shell/main_shell.dart';
 import 'onboarding_page.dart';
 import 'register_page.dart';
 
-
-class LoginPage extends StatefulWidget {
+class LoginPage extends StatefulWidget { 
   final UserRole role;
   const LoginPage({super.key, required this.role});
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  late AnimationController _animController;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _fadeAnimation;
+  final _emailCtrl = TextEditingController();
+  final _pwCtrl = TextEditingController();
+  bool _loading = false;
+  bool _googleLoading = false;
+  bool _obscure = true;
+  late AnimationController _anim;
+  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _animController.forward();
+    _anim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 450));
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _anim.forward();
   }
 
   @override
   void dispose() {
-    _animController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
+    _anim.dispose();
+    _emailCtrl.dispose();
+    _pwCtrl.dispose();
     super.dispose();
   }
 
-  String get _roleLabel =>
-      widget.role == UserRole.penyewa ? 'Penyewa' : 'Pemilik Rental';
-
-  void _handleLogin() async {
+  // ── Email + Password Login
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
+    setState(() => _loading = true);
     try {
       await AuthService().masuk(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        email: _emailCtrl.text.trim(),
+        password: _pwCtrl.text,
       );
-
       if (!mounted) return;
-
-      // Navigasi ke Beranda, hapus semua riwayat stack
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const BerandaPage()),
-        (route) => false,
+        MaterialPageRoute(builder: (_) => const MainShell()),
+        (r) => false,
       );
     } on AuthException catch (e) {
-      if (!mounted) return;
-      _showError(_mapAuthError(e.message));
-    } catch (e) {
-      if (!mounted) return;
-      _showError('Terjadi kesalahan. Silakan coba lagi.');
+      _err(_mapErr(e.message));
+    } catch (_) {
+      _err('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  String _mapAuthError(String message) {
-    final msg = message.toLowerCase();
-    if (msg.contains('invalid login credentials') ||
-        msg.contains('invalid email or password')) {
+  // ── Google OAuth Login
+  Future<void> _loginGoogle() async {
+    setState(() => _googleLoading = true);
+    try {
+      await AuthService.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.naturerent://login-callback/',
+      );
+    } catch (e) {
+      if (mounted) _err('Login Google gagal: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
+    }
+  }
+
+  String _mapErr(String m) {
+    final s = m.toLowerCase();
+    if (s.contains('invalid login') || s.contains('invalid email or password')) {
       return 'Email atau kata sandi salah.';
     }
-    if (msg.contains('email not confirmed')) {
+    if (s.contains('email not confirmed')) {
       return 'Email belum dikonfirmasi. Cek inbox kamu.';
     }
-    if (msg.contains('too many requests')) {
-      return 'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.';
+    if (s.contains('too many')) {
+      return 'Terlalu banyak percobaan. Coba lagi nanti.';
     }
-    return message;
+    return m;
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
+  void _err(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    ));
   }
-
 
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
     ));
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // ── Hero Header with image placeholder
-          _buildHeader(context),
-
-          // ── Form sheet sliding up
-          Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.background,
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fade,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── App bar row
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                              size: 16, color: AppColors.textPrimary),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
+                  const SizedBox(height: 32),
+
+                  // ── Logo + title
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryDark,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.park_rounded,
+                            color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ── Title
-                          Text(
-                            'Masuk Akun',
-                            style: AppTextStyles.displayMedium,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Selamat datang kembali, $_roleLabel!',
-                            style: AppTextStyles.bodyMedium,
-                          ),
-
-                          const SizedBox(height: 28),
-
-                          // ── Email
-                          NrTextField(
-                            label: 'Alamat Email',
-                            hint: 'contoh@email.com',
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return 'Email wajib diisi';
-                              if (!v.contains('@')) return 'Format email tidak valid';
-                              return null;
-                            },
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // ── Password
-                          NrTextField(
-                            label: 'Kata Sandi',
-                            hint: '••••••••',
-                            controller: _passwordController,
-                            isPassword: true,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return 'Kata sandi wajib diisi';
-                              if (v.length < 8) return 'Minimal 8 karakter';
-                              return null;
-                            },
-                          ),
-
-                          // ── Lupa sandi
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                              ),
-                              child: Text(
-                                'Lupa kata sandi?',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          // ── Login button
-                          NrButton(
-                            text: 'Masuk',
-                            isLoading: _isLoading,
-                            onPressed: _handleLogin,
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // ── Register redirect
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Belum punya akun? ',
-                                style: AppTextStyles.bodyMedium,
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => RegisterPage(role: widget.role),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'Daftar',
-                                  style: AppTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // ── Divider
-                          _buildDivider(),
-
-                          const SizedBox(height: 20),
-
-                          // ── Social login
-                          _buildSocialButtons(),
-                          const SizedBox(height: 16),
+                          Text('NatureRent',
+                              style: AppTextStyles.headlineLarge.copyWith(
+                                  color: AppColors.primaryDark, fontSize: 22)),
+                          Text('Selamat datang kembali 👋',
+                              style: AppTextStyles.bodySmall
+                                  .copyWith(color: AppColors.textSecondary)),
                         ],
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 36),
+
+                  // ── Title
+                  Text('Masuk Akun',
+                      style: AppTextStyles.displayMedium
+                          .copyWith(fontSize: 26, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Text('Lanjutkan petualanganmu bersama kami.',
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(color: AppColors.textSecondary)),
+                  const SizedBox(height: 28),
+
+                  // ── Email
+                  _buildLabel('Email'),
+                  const SizedBox(height: 8),
+                  _buildEmailField(),
+                  const SizedBox(height: 18),
+
+                  // ── Password
+                  _buildLabel('Kata Sandi'),
+                  const SizedBox(height: 8),
+                  _buildPwField(),
+
+                  // ── Forgot
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {},
+                      child: Text('Lupa kata sandi?',
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600)),
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+                  const SizedBox(height: 8),
 
-  Widget _buildHeader(BuildContext context) {
-    return Stack(
-      children: [
-        // ── Image placeholder
-        Container(
-          width: double.infinity,
-          height: 200,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryDark,
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.image_outlined, size: 40, color: Colors.white38),
-                SizedBox(height: 6),
-                Text(
-                  'Tambahkan gambar di sini',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ),
+                  // ── Login button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryDark,
+                        disabledBackgroundColor:
+                            AppColors.primaryDark.withValues(alpha: 0.5),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 22, height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5))
+                          : Text('Masuk',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
-        // ── Gradient overlay bottom
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 60,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  AppColors.background.withValues(alpha: 0.9),
+                  // ── Divider
+                  _buildDivider('ATAU MASUK DENGAN'),
+                  const SizedBox(height: 20),
+
+                  // ── Google button (full width)
+                  _buildGoogleButton(),
+                  const SizedBox(height: 28),
+
+                  // ── Register redirect
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Belum punya akun? ',
+                          style: AppTextStyles.bodyMedium),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  RegisterPage(role: widget.role)),
+                        ),
+                        child: Text('Daftar Sekarang',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
         ),
-
-        // ── Back button
-        Positioned(
-          top: 40,
-          left: 16,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-            ),
-          ),
-        ),
-
-        // ── Logo on header
-        Positioned(
-          top: 44,
-          left: 0,
-          right: 0,
-          child: const Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.park_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'NatureRent',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildLabel(String t) => Text(t,
+      style: AppTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary, fontWeight: FontWeight.w600));
+
+  Widget _buildEmailField() {
+    return TextFormField(
+      controller: _emailCtrl,
+      keyboardType: TextInputType.emailAddress,
+      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+      decoration: _inputDec(
+        hint: 'contoh@gmail.com',
+        icon: Icons.alternate_email_rounded,
+      ),
+      validator: (v) {
+        if (v == null || v.isEmpty) return 'Email wajib diisi';
+        if (!v.contains('@')) return 'Format email tidak valid';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPwField() {
+    return TextFormField(
+      controller: _pwCtrl,
+      obscureText: _obscure,
+      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+      decoration: _inputDec(
+        hint: '••••••••',
+        icon: Icons.lock_outline_rounded,
+        suffix: GestureDetector(
+          onTap: () => setState(() => _obscure = !_obscure),
+          child: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              size: 18, color: AppColors.textHint),
+        ),
+      ),
+      validator: (v) {
+        if (v == null || v.isEmpty) return 'Kata sandi wajib diisi';
+        if (v.length < 8) return 'Minimal 8 karakter';
+        return null;
+      },
+    );
+  }
+
+  InputDecoration _inputDec(
+      {required String hint, required IconData icon, Widget? suffix}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+      prefixIcon: Icon(icon, size: 18, color: AppColors.textHint),
+      suffixIcon: suffix != null ? Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: suffix,
+      ) : null,
+      suffixIconConstraints: const BoxConstraints(),
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide:
+            const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildDivider(String label) {
     return Row(
       children: [
         const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'ATAU MASUK DENGAN',
-            style: AppTextStyles.caption,
-          ),
+          child: Text(label,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textHint, letterSpacing: 0.5)),
         ),
         const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
       ],
     );
   }
 
-  Widget _buildSocialButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: _SocialButton(
-            label: 'Google',
-            icon: Icons.g_mobiledata_rounded,
-            onPressed: () {},
-          ),
+  Widget _buildGoogleButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: _googleLoading ? null : _loginGoogle,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.surface,
+          side: const BorderSide(color: AppColors.border, width: 1.2),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _SocialButton(
-            label: 'Apple',
-            icon: Icons.apple_rounded,
-            onPressed: () {},
-          ),
-        ),
-      ],
+        child: _googleLoading
+            ? const SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(
+                    color: AppColors.primary, strokeWidth: 2))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _GoogleLogo(),
+                  const SizedBox(width: 12),
+                  Text('Lanjutkan dengan Google',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+      ),
     );
   }
 }
 
-class _SocialButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  const _SocialButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
-
+// ── Colorful Google "G" logo widget
+class _GoogleLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 20, color: AppColors.textPrimary),
-      label: Text(label, style: AppTextStyles.labelMedium),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        side: const BorderSide(color: AppColors.border),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: AppColors.surface,
+    return RichText(
+      text: const TextSpan(
+        style: TextStyle(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, fontSize: 18),
+        children: [
+          TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
+          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
+          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
+          TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
+          TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
+          TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+        ],
       ),
     );
   }
