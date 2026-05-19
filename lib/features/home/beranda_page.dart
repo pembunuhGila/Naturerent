@@ -150,31 +150,15 @@ class _BerandaPageState extends State<BerandaPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.park_rounded, color: AppColors.primary, size: 22),
-              const SizedBox(width: 6),
-              Text(
-                'NatureRent',
-                style: AppTextStyles.headlineLarge.copyWith(
-                  color: AppColors.primaryDark,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+          const Icon(Icons.park_rounded, color: AppColors.primary, size: 22),
+          const SizedBox(width: 6),
+          Text(
+            'NatureRent',
+            style: AppTextStyles.headlineLarge.copyWith(
+              color: AppColors.primaryDark,
+              letterSpacing: 0.3,
             ),
-            child: const Icon(Icons.notifications_none_rounded,
-                color: AppColors.textPrimary, size: 20),
           ),
         ],
       ),
