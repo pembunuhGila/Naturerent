@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
@@ -118,15 +119,45 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
   Future<void> _pilihGambar(ImageSource source) async {
     try {
+      // 1. Pick gambar
       final picked = await _picker.pickImage(
         source: source,
-        imageQuality: 70,
-        maxWidth: 800,
+        imageQuality: 85,
+        maxWidth: 1200,
       );
       if (picked == null) return;
-      setState(() => _gambarBaru = File(picked.path));
+
+      // 2. Crop gambar (rasio 1:1 untuk foto profil)
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressQuality: 80,
+        compressFormat: ImageCompressFormat.jpg,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Pangkas Foto Profil',
+            toolbarColor: AppColors.primaryDark,
+            toolbarWidgetColor: Colors.white,
+            statusBarColor: AppColors.primaryDark,
+            backgroundColor: Colors.black,
+            activeControlsWidgetColor: AppColors.primary,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+            showCropGrid: true,
+          ),
+          IOSUiSettings(
+            title: 'Pangkas Foto',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (cropped == null || !mounted) return;
+      setState(() => _gambarBaru = File(cropped.path));
     } catch (e) {
-      _snack('Gagal memilih foto: ${e.toString()}');
+      _snack('Gagal memilih/memangkas foto: ${e.toString()}');
     }
   }
 

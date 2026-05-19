@@ -4,7 +4,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/equipment.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/services/equipment_service.dart';
+import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../checkout/checkout_page.dart';
 import 'equipment_detail_page.dart';
 
 class EquipmentListPage extends StatefulWidget {
@@ -125,6 +127,28 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                           ),
                         ),
                       ),
+                      onSewa: () {
+                        CartService().tambah(_alatFiltered[i], widget.rental);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('${_alatFiltered[i].nama} ditambahkan ke keranjang'),
+                          backgroundColor: AppColors.primaryDark,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          duration: const Duration(seconds: 2),
+                          action: SnackBarAction(
+                            label: 'Lihat Keranjang',
+                            textColor: Colors.white,
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const CheckoutPage()),
+                            ),
+                          ),
+                        ));
+                      },
                     ),
                     childCount: _alatFiltered.length,
                   ),
@@ -171,15 +195,51 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                width: 38, height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
+              // Cart icon with badge
+              ValueListenableBuilder<int>(
+                valueListenable: CartService().count,
+                builder: (_, count, widget) => Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const CheckoutPage()),
+                      ),
+                      child: Container(
+                        width: 38, height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(Icons.shopping_bag_outlined,
+                            color: AppColors.textPrimary, size: 18),
+                      ),
+                    ),
+                    if (count > 0)
+                      Positioned(
+                        top: -4, right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                child: const Icon(Icons.notifications_none_rounded,
-                    color: AppColors.textPrimary, size: 18),
               ),
             ],
           ),
@@ -388,11 +448,13 @@ class _AlatCard extends StatelessWidget {
   final Equipment alat;
   final String namaRental;
   final VoidCallback onTap;
+  final VoidCallback onSewa;
 
   const _AlatCard({
     required this.alat,
     required this.namaRental,
     required this.onTap,
+    required this.onSewa,
   });
 
   String get _hargaFormatted {
@@ -510,25 +572,50 @@ class _AlatCard extends StatelessWidget {
                       const SizedBox(height: 6),
 
                       // Stok tersedia
-                      Row(
-                        children: [
-                          Icon(
-                            alat.stock > 0 ? Icons.check_circle_outline_rounded : Icons.cancel_outlined,
-                            size: 13,
-                            color: alat.stock > 0 ? AppColors.primary : AppColors.error,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            alat.stock > 0
-                                ? '${alat.stock} unit tersedia'
-                                : 'Stok habis',
-                            style: AppTextStyles.caption.copyWith(
+                          Row(
+                          children: [
+                            Icon(
+                              alat.stock > 0 ? Icons.check_circle_outline_rounded : Icons.cancel_outlined,
+                              size: 13,
                               color: alat.stock > 0 ? AppColors.primary : AppColors.error,
-                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                alat.stock > 0
+                                    ? '${alat.stock} unit tersedia'
+                                    : 'Stok habis',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: alat.stock > 0 ? AppColors.primary : AppColors.error,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            // ── Tombol Sewa
+                            GestureDetector(
+                              onTap: alat.stock > 0 ? onSewa : null,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: alat.stock > 0
+                                      ? AppColors.primaryDark
+                                      : AppColors.border,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Sewa',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: alat.stock > 0
+                                        ? Colors.white
+                                        : AppColors.textHint,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),

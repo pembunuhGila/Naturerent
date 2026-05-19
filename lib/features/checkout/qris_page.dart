@@ -1,0 +1,432 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../core/theme/app_theme.dart';
+
+class QrisPage extends StatefulWidget {
+  final double total;
+  final String namaRental;
+  final DateTime tanggalMulai;
+  final DateTime tanggalSelesai;
+
+  const QrisPage({
+    super.key,
+    required this.total,
+    required this.namaRental,
+    required this.tanggalMulai,
+    required this.tanggalSelesai,
+  });
+
+  @override
+  State<QrisPage> createState() => _QrisPageState();
+}
+
+class _QrisPageState extends State<QrisPage> {
+  // Countdown 15 menit
+  static const _durasi = Duration(minutes: 15);
+  late int _sisaDetik;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _sisaDetik = _durasi.inSeconds;
+    _mulaiTimer();
+  }
+
+  void _mulaiTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_sisaDetik <= 0) {
+        _timer?.cancel();
+        _showExpired();
+      } else {
+        setState(() => _sisaDetik--);
+      }
+    });
+  }
+
+  void _showExpired() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Waktu Habis',
+            style: AppTextStyles.headlineLarge
+                .copyWith(color: AppColors.textPrimary)),
+        content: Text(
+            'Kode QRIS sudah kadaluarsa. Silakan buat pesanan baru.',
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: Text('Kembali',
+                style: AppTextStyles.bodyMedium
+                    .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _konfirmasiPembayaran() {
+    _timer?.cancel();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: Color(0xFF2E7D32),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_rounded,
+                  color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 16),
+            Text('Pembayaran Berhasil!',
+                style: AppTextStyles.headlineLarge.copyWith(
+                    color: AppColors.textPrimary, fontSize: 18)),
+            const SizedBox(height: 8),
+            Text(
+              'Pesanan kamu sedang diproses.\nTim ${widget.namaRental} akan segera mengkonfirmasi.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // close dialog
+                Navigator.pop(context); // close qris
+                Navigator.pop(context); // close checkout
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryDark,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: Text('Lihat Pesanan',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  )),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String get _fmtTimer {
+    final m = _sisaDetik ~/ 60;
+    final s = _sisaDetik % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  String _fmtRupiah(double v) {
+    final s = v.toInt().toString();
+    final buf = StringBuffer('Rp ');
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  String _fmtTgl(DateTime dt) {
+    const b = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${dt.day} ${b[dt.month]} ${dt.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ));
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          child: Column(
+            children: [
+              // ── App Bar
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: AppColors.textPrimary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Pembayaran QRIS',
+                      style: AppTextStyles.headlineLarge.copyWith(
+                          color: AppColors.textPrimary, fontSize: 20)),
+                ],
+              ),
+              const SizedBox(height: 28),
+
+              // ── QR Card
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Header card
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 20),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryDark,
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('NatureRent',
+                                  style: AppTextStyles.headlineLarge.copyWith(
+                                      color: Colors.white, fontSize: 16)),
+                              Text('Scan & Bayar',
+                                  style: AppTextStyles.caption
+                                      .copyWith(color: Colors.white70)),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.timer_rounded,
+                                    color: Colors.white, size: 14),
+                                const SizedBox(width: 4),
+                                Text(_fmtTimer,
+                                    style: AppTextStyles.headlineMedium
+                                        .copyWith(
+                                            color: Colors.white,
+                                            fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // QR Code area
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          // QR Code (generated from free API)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Image.network(
+                              'https://api.qrserver.com/v1/create-qr-code/'
+                              '?size=200x200'
+                              '&data=NatureRent-${widget.namaRental}-${widget.total.toInt()}'
+                              '&color=1B3A2D'
+                              '&bgcolor=FFFFFF',
+                              width: 200,
+                              height: 200,
+                              fit: BoxFit.contain,
+                              loadingBuilder: (_, child, progress) {
+                                if (progress == null) return child;
+                                return const SizedBox(
+                                  width: 200,
+                                  height: 200,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                        color: AppColors.primary,
+                                        strokeWidth: 2),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stack) => Container(
+                                width: 200,
+                                height: 200,
+                                color: AppColors.background,
+                                child: const Center(
+                                  child: Icon(Icons.qr_code_2_rounded,
+                                      size: 100, color: AppColors.primaryDark),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Merchant info
+                          Text(widget.namaRental,
+                              style: AppTextStyles.headlineMedium.copyWith(
+                                  fontWeight: FontWeight.w700, fontSize: 15)),
+                          const SizedBox(height: 4),
+                          Text('${_fmtTgl(widget.tanggalMulai)} – ${_fmtTgl(widget.tanggalSelesai)}',
+                              style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textSecondary)),
+                          const SizedBox(height: 12),
+
+                          // Total
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('TOTAL PEMBAYARAN',
+                                    style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.textHint,
+                                        letterSpacing: 0.8,
+                                        fontSize: 10)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _fmtRupiah(widget.total),
+                                  style: AppTextStyles.displayLarge.copyWith(
+                                    color: AppColors.primaryDark,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 26,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Panduan
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: Column(
+                        children: [
+                          const Divider(color: AppColors.border),
+                          const SizedBox(height: 10),
+                          Text('Cara Membayar',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary)),
+                          const SizedBox(height: 10),
+                          ...[
+                            '1. Buka aplikasi e-wallet atau m-banking',
+                            '2. Pilih menu Scan QR / QRIS',
+                            '3. Arahkan kamera ke kode QR di atas',
+                            '4. Periksa detail transaksi & konfirmasi',
+                          ].map((s) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.circle,
+                                        size: 5, color: AppColors.textHint),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(s,
+                                          style: AppTextStyles.caption.copyWith(
+                                              color: AppColors.textSecondary)),
+                                    ),
+                                  ],
+                                ),
+                              )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ── CTA
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _konfirmasiPembayaran,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryDark,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: Text('Saya Sudah Membayar',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      )),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Keamanan
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.lock_rounded,
+                      size: 12, color: AppColors.textHint),
+                  const SizedBox(width: 4),
+                  Text('Transaksi Terenkripsi & Aman',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textHint, fontSize: 11)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
