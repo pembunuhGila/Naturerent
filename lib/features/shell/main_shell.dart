@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../home/beranda_page.dart';
 import '../home/rental_page.dart';
+import '../home/aktivitas_page.dart';
 import '../profil/profil_page.dart';
 
 class MainShell extends StatefulWidget {
@@ -17,7 +18,7 @@ class _MainShellState extends State<MainShell> {
   final List<Widget> _pages = const [
     BerandaPage(),
     RentalPage(),
-    _PlaceholderPage(label: 'Aktivitas'),
+    AktivitasPage(),
     ProfilPage(),
   ];
 
@@ -81,32 +82,34 @@ class _NrBottomNav extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Active indicator dot for RENTAL (triangle icon)
-                        if (i == 1 && isActive)
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              items[i].icon,
-                              size: 22,
-                              color: AppColors.white,
-                            ),
-                          )
-                        else
-                          Icon(
-                            items[i].icon,
-                            size: 22,
-                            color: isActive ? AppColors.primary : AppColors.textHint,
-                          ),
+                        isActive
+                            ? Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryDark,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  items[i].icon,
+                                  size: 22,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                items[i].icon,
+                                size: 22,
+                                color: AppColors.textHint,
+                              ),
                         const SizedBox(height: 4),
                         Text(
                           items[i].label,
                           style: AppTextStyles.caption.copyWith(
-                            color: isActive ? AppColors.primary : AppColors.textHint,
-                            fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                            color: isActive
+                                ? AppColors.primaryDark
+                                : AppColors.textHint,
+                            fontWeight: isActive
+                                ? FontWeight.w700
+                                : FontWeight.w400,
                           ),
                         ),
                       ],
@@ -126,25 +129,4 @@ class _NavItem {
   final IconData icon;
   final String label;
   const _NavItem({required this.icon, required this.label});
-}
-
-// ── Placeholder for pages not yet built
-class _PlaceholderPage extends StatelessWidget {
-  final String label;
-  const _PlaceholderPage({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction_rounded, size: 48, color: AppColors.textHint),
-          const SizedBox(height: 12),
-          Text('Halaman $label\nSegera Hadir', textAlign: TextAlign.center,
-              style: AppTextStyles.headlineMedium.copyWith(color: AppColors.textHint)),
-        ],
-      ),
-    );
-  }
 }

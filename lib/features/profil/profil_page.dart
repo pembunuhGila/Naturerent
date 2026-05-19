@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../auth/onboarding_page.dart';
+import '../home/aktivitas_page.dart';
 import 'edit_profil_page.dart';
 
 class ProfilPage extends StatefulWidget {
@@ -159,7 +160,12 @@ class _ProfilPageState extends State<ProfilPage> {
                 _MenuItem(
                   icon: Icons.history_rounded,
                   label: 'Aktivitas Saya',
-                  onTap: () => _snackComingSoon('Aktivitas Saya'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AktivitasPage(initialTab: 0),
+                    ),
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.notifications_outlined,
