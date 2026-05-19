@@ -36,11 +36,7 @@ class _RentalPageState extends State<RentalPage> {
   bool _lokasiSaya = false;
   Position? _userPos;
 
-  // Filter kategori alat
-  int _selectedFilter = 0;
-  final List<String> _filters = [
-    'Semua', 'Tenda', 'Carrier', 'Sleeping Bag', 'Matras', 'Kompor'
-  ];
+
 
   @override
   void initState() {
@@ -140,7 +136,6 @@ class _RentalPageState extends State<RentalPage> {
               if (widget.wisataId != null)
                 SliverToBoxAdapter(child: _buildLokasiBar()),
               SliverToBoxAdapter(child: _buildToggle()),
-              SliverToBoxAdapter(child: _buildFilterChips()),
               SliverToBoxAdapter(child: _buildSectionHeader()),
               if (_isLoading)
                 const SliverFillRemaining(
@@ -292,42 +287,6 @@ class _RentalPageState extends State<RentalPage> {
             )),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    return SizedBox(
-      height: 52,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemCount: _filters.length,
-        itemBuilder: (_, i) {
-          final isSelected = i == _selectedFilter;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedFilter = i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                ),
-              ),
-              child: Text(
-                _filters[i],
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
