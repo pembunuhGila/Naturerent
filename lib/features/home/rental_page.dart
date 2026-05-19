@@ -126,6 +126,7 @@ class _RentalPageState extends State<RentalPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false, // MainShell sudah handle bottom nav spacing
         child: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _muatRental,
