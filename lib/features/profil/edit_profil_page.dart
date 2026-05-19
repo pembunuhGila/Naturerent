@@ -173,13 +173,33 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
     setState(() => _isSaving = true);
 
-    try {
-      String? newAvatarUrl = _avatarUrl;
+    String? newAvatarUrl = _avatarUrl;
+    bool namaOk = false;
+    bool fotoOk = _gambarBaru == null; // tidak perlu upload kalau tidak ada gambar baru
 
-      // Upload foto baru ke Supabase Storage jika ada
-      if (_gambarBaru != null) {
+    // ── 1. Simpan nama ke public.users + auth metadata
+    try {
+      await AuthService().perbaruiProfil(namaLengkap: nama);
+      await _client.auth.updateUser(
+        UserAttributes(data: {'full_name': nama}),
+      );
+      namaOk = true;
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      _showErrorDialog(
+        judul: 'Gagal menyimpan nama',
+        pesan: e.toString(),
+        solusi: 'Periksa koneksi internet dan pastikan kamu sudah login.',
+      );
+      return;
+    }
+
+    // ── 2. Upload foto baru (jika ada)
+    if (_gambarBaru != null) {
+      try {
         final userId = _client.auth.currentUser?.id;
-        if (userId == null) throw Exception('User tidak ditemukan.');
+        if (userId == null) throw Exception('Session habis, silakan login ulang.');
 
         final ext = _gambarBaru!.path.split('.').last.toLowerCase();
         final storagePath = 'avatars/$userId.$ext';
@@ -193,26 +213,110 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
         newAvatarUrl =
             _client.storage.from('avatars').getPublicUrl(storagePath);
+
+        // Simpan URL avatar ke DB
+        await AuthService().perbaruiProfil(avatarUrl: newAvatarUrl);
+        fotoOk = true;
+      } catch (e) {
+        // Nama sudah tersimpan — hanya foto yang gagal
+        if (!mounted) return;
+        setState(() => _isSaving = false);
+
+        final pesanErr = e.toString().toLowerCase();
+        String solusi = 'Coba lagi beberapa saat.';
+
+        if (pesanErr.contains('not found') || pesanErr.contains('bucket')) {
+          solusi = '⚠️ Buat bucket "avatars" di Supabase Storage:\n'
+              'Supabase Dashboard → Storage → New Bucket → nama: avatars → Public ✓';
+        } else if (pesanErr.contains('row-level security') ||
+            pesanErr.contains('rls') ||
+            pesanErr.contains('policy')) {
+          solusi = 'Periksa RLS Policy di Supabase Storage bucket "avatars".\n'
+              'Tambahkan policy: Allow INSERT for authenticated users.';
+        } else if (pesanErr.contains('network') ||
+            pesanErr.contains('connection')) {
+          solusi = 'Periksa koneksi internet dan coba lagi.';
+        }
+
+        _showErrorDialog(
+          judul: 'Foto gagal disimpan',
+          pesan: '✅ Nama berhasil disimpan!\n\n'
+              '❌ Foto profil gagal diupload:\n${e.toString()}',
+          solusi: solusi,
+          onClose: () {
+            if (mounted) Navigator.pop(context, namaOk);
+          },
+        );
+        return;
       }
-
-      // Simpan ke public.users
-      await AuthService().perbaruiProfil(
-        namaLengkap: nama,
-        avatarUrl: newAvatarUrl,
-      );
-
-      // Sync ke auth metadata juga
-      await _client.auth.updateUser(
-        UserAttributes(data: {'full_name': nama}),
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context, true); // true = ada perubahan
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
-      _snack('Gagal menyimpan: ${e.toString()}');
     }
+
+    if (!mounted) return;
+    if (namaOk && fotoOk) {
+      Navigator.pop(context, true);
+    }
+  }
+
+  void _showErrorDialog({
+    required String judul,
+    required String pesan,
+    required String solusi,
+    VoidCallback? onClose,
+  }) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          const Icon(Icons.error_outline_rounded,
+              color: Colors.red, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(judul,
+                  style: AppTextStyles.headlineMedium
+                      .copyWith(color: AppColors.textPrimary))),
+        ]),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(pesan,
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textSecondary)),
+              if (solusi.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '💡 Solusi:\n$solusi',
+                    style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onClose?.call();
+            },
+            child: Text('Mengerti',
+                style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _snack(String msg) {
