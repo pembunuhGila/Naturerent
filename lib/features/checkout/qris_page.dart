@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/services/cart_service.dart';
 import '../../core/theme/app_theme.dart';
+import 'pesanan_detail_page.dart';
 
 class QrisPage extends StatefulWidget {
   final double total;
   final String namaRental;
   final DateTime tanggalMulai;
   final DateTime tanggalSelesai;
+  final List<CartItem> items;
 
   const QrisPage({
     super.key,
@@ -15,6 +18,7 @@ class QrisPage extends StatefulWidget {
     required this.namaRental,
     required this.tanggalMulai,
     required this.tanggalSelesai,
+    required this.items,
   });
 
   @override
@@ -77,62 +81,22 @@ class _QrisPageState extends State<QrisPage> {
 
   void _konfirmasiPembayaran() {
     _timer?.cancel();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFF2E7D32),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_rounded,
-                  color: Colors.white, size: 40),
-            ),
-            const SizedBox(height: 16),
-            Text('Pembayaran Berhasil!',
-                style: AppTextStyles.headlineLarge.copyWith(
-                    color: AppColors.textPrimary, fontSize: 18)),
-            const SizedBox(height: 8),
-            Text(
-              'Pesanan kamu sedang diproses.\nTim ${widget.namaRental} akan segera mengkonfirmasi.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-          ],
+    // Hapus keranjang dulu
+    final items = List<CartItem>.from(CartService().items);
+    CartService().bersihkan();
+
+    // Langsung navigate ke halaman detail pesanan
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => PesananDetailPage(
+          namaRental: widget.namaRental,
+          total: widget.total,
+          tanggalMulai: widget.tanggalMulai,
+          tanggalSelesai: widget.tanggalSelesai,
+          items: items,
         ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // close dialog
-                Navigator.pop(context); // close qris
-                Navigator.pop(context); // close checkout
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryDark,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: Text('Lihat Pesanan',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  )),
-            ),
-          ),
-        ],
       ),
+      (route) => route.isFirst,
     );
   }
 
