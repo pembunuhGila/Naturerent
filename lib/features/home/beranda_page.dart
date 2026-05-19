@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/wisata_location.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
-import '../home/rental_page.dart';
 import '../home/wisata_detail_page.dart';
 
 class BerandaPage extends StatefulWidget {
