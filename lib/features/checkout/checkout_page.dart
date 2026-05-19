@@ -79,6 +79,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           namaRental: _cart.items.first.rental.namaRental,
           tanggalMulai: _tanggalMulai!,
           tanggalSelesai: _tanggalSelesai!,
+          items: List<CartItem>.from(_cart.items),
         ),
       ),
     );
