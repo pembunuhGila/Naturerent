@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../auth/onboarding_page.dart';
+import 'edit_profil_page.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -15,6 +16,7 @@ class ProfilPage extends StatefulWidget {
 class _ProfilPageState extends State<ProfilPage> {
   final _client = AuthService.client;
   bool _isLoggingOut = false;
+  String? _avatarUrl;
 
   User? get _user => _client.auth.currentUser;
 
@@ -27,12 +29,51 @@ class _ProfilPageState extends State<ProfilPage> {
 
   String get _email => _user?.email ?? '-';
 
+  @override
+  void initState() {
+    super.initState();
+    _muatProfil();
+  }
+
+  Future<void> _muatProfil() async {
+    try {
+      final uid = _user?.id;
+      if (uid == null) return;
+      final data = await _client
+          .from('users')
+          .select('avatar_url, nama_lengkap')
+          .eq('id', uid)
+          .maybeSingle();
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = data?['avatar_url'] as String?;
+      });
+    } catch (_) {}
+  }
+
   String get _inisial {
     final words = _namaLengkap.trim().split(' ');
     if (words.length >= 2) {
       return '${words[0][0]}${words[1][0]}'.toUpperCase();
     }
     return _namaLengkap.isNotEmpty ? _namaLengkap[0].toUpperCase() : 'N';
+  }
+
+  Future<void> _bukaEditProfil() async {
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfilPage(
+          namaAwal: _namaLengkap,
+          email: _email,
+          avatarUrlAwal: _avatarUrl,
+        ),
+      ),
+    );
+    if (updated == true && mounted) {
+      _muatProfil(); // reload avatar & nama
+      setState(() {}); // refresh nama dari auth metadata
+    }
   }
 
   Future<void> _logout() async {
@@ -198,30 +239,40 @@ class _ProfilPageState extends State<ProfilPage> {
           // Avatar
           Stack(
             children: [
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryDark,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    _inisial,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
+              GestureDetector(
+                onTap: _bukaEditProfil,
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                        ? Image.network(_avatarUrl!,
+                            width: 90, height: 90, fit: BoxFit.cover)
+                        : Container(
+                            color: AppColors.primaryDark,
+                            child: Center(
+                              child: Text(
+                                _inisial,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -230,7 +281,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 bottom: 0,
                 right: 0,
                 child: GestureDetector(
-                  onTap: () => _snackComingSoon('Edit Foto'),
+                  onTap: _bukaEditProfil,
                   child: Container(
                     width: 28,
                     height: 28,
