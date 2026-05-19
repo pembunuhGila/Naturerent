@@ -71,7 +71,7 @@ class EquipmentService {
         .maybeSingle();
 
     if (data == null) return null;
-    return Equipment.fromMap(data as Map<String, dynamic>);
+    return Equipment.fromMap(data);
   }
 
   // ──────────────────────────────────────────────────────────
