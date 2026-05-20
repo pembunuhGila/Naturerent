@@ -7,6 +7,7 @@ import '../../core/models/rental_profile.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../equipment/equipment_list_page.dart';
+import '../home/aktivitas_page.dart';
 
 class RentalPage extends StatefulWidget {
   /// Jika [wisataId] diisi, hanya tampilkan rental dekat wisata tersebut.
@@ -205,15 +206,22 @@ class _RentalPageState extends State<RentalPage> {
                   .copyWith(color: AppColors.textPrimary, fontSize: 20),
             ),
           ),
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const AktivitasPage(initialTab: 0)),
             ),
-            child: const Icon(Icons.notifications_none_rounded,
-                color: AppColors.textPrimary, size: 18),
+            child: Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Icon(Icons.notifications_none_rounded,
+                  color: AppColors.textPrimary, size: 18),
+            ),
           ),
         ],
       ),
