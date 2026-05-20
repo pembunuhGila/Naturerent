@@ -55,6 +55,7 @@ class _LoginPageState extends State<LoginPage>
         email: _emailCtrl.text.trim(),
         password: _pwCtrl.text,
       );
+      await AuthService().syncProfilSetelahLogin();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const RoleGate()),

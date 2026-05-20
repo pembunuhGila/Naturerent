@@ -17,8 +17,8 @@ class _OwnerShellState extends State<OwnerShell> {
 
   final List<Widget> _pages = const [
     OwnerDashboardPage(),
-    OwnerInventoryPage(),
     OwnerOrdersPage(),
+    OwnerInventoryPage(),
     ProfilPage(),
   ];
 
@@ -44,30 +44,34 @@ class _OwnerBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(icon: Icons.dashboard_rounded, label: 'DASHBOARD'),
-      _NavItem(icon: Icons.inventory_2_rounded, label: 'ALAT'),
-      _NavItem(icon: Icons.receipt_long_rounded, label: 'PESANAN'),
-      _NavItem(icon: Icons.person_rounded, label: 'PROFIL'),
+      _NavItem(icon: Icons.dashboard_rounded, label: 'Dashboard'),
+      _NavItem(icon: Icons.receipt_long_rounded, label: 'Pesanan'),
+      _NavItem(icon: Icons.edit_note_rounded, label: 'Kelola'),
+      _NavItem(icon: Icons.person_outline_rounded, label: 'Profil'),
     ];
 
     return Container(
+      margin: EdgeInsets.fromLTRB(
+        24,
+        0,
+        24,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: const Border(
-          top: BorderSide(color: AppColors.border, width: 1),
-        ),
+        borderRadius: BorderRadius.circular(9),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        child: SizedBox(
+          height: 60,
           child: Row(
             children: List.generate(items.length, (i) {
               final isActive = i == currentIndex;
@@ -75,37 +79,45 @@ class _OwnerBottomNav extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => onTap(i),
                   behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? AppColors.primaryDark
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          items[i].icon,
-                          size: 22,
-                          color: isActive ? Colors.white : AppColors.textHint,
-                        ),
+                  child: Center(
+                    child: Container(
+                      width: isActive ? 92 : null,
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? const Color(0xFF13733A)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        items[i].label,
-                        style: AppTextStyles.caption.copyWith(
-                          color: isActive
-                              ? AppColors.primaryDark
-                              : AppColors.textHint,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                          fontSize: 10,
-                        ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            items[i].icon,
+                            size: 21,
+                            color: isActive
+                                ? Colors.white
+                                : const Color(0xFF817B72),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            items[i].label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              color: isActive
+                                  ? Colors.white
+                                  : const Color(0xFF817B72),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              letterSpacing: 0,
+                              height: 1,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               );

@@ -24,7 +24,9 @@ class RoleGate extends StatelessWidget {
           );
         }
 
-        final role = snapshot.data;
+        final role =
+            snapshot.data ??
+            AuthService().penggunaSaatIni?.userMetadata?['role'] as String?;
         if (role == 'rental_owner') return const OwnerShell();
         return const MainShell();
       },

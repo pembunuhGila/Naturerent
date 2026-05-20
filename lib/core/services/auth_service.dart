@@ -25,6 +25,7 @@ class AuthService {
     required String password,
     required String namaLengkap,
     required String noWa,
+    String? namaToko,
     required UserRole role,
   }) async {
     // 1. Daftarkan ke Supabase Auth
@@ -32,7 +33,12 @@ class AuthService {
     final response = await client.auth.signUp(
       email: email,
       password: password,
-      data: {'full_name': namaLengkap, 'no_wa': noWa, 'role': _petaRole(role)},
+      data: {
+        'full_name': namaLengkap,
+        'no_wa': noWa,
+        'role': _petaRole(role),
+        'store_name': namaToko,
+      },
     );
 
     // 2. Coba update public.users (hanya berhasil jika email confirmation OFF
