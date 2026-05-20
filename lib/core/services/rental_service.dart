@@ -60,6 +60,38 @@ class RentalService {
     return RentalProfile.fromMap(data);
   }
 
+  Future<RentalProfile> buatRentalDasarSaya() async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) throw Exception('Belum masuk.');
+
+    final meta = user.userMetadata ?? {};
+    final namaRental =
+        (meta['store_name'] as String?) ??
+        (meta['full_name'] as String?) ??
+        user.email?.split('@').first ??
+        'Rental Baru';
+    final noWa = meta['no_wa'] as String?;
+
+    final data = await client
+        .from('rental_profiles')
+        .insert({
+          'owner_id': user.id,
+          'nama_rental': namaRental,
+          'no_wa': noWa,
+          'is_active': true,
+        })
+        .select('*, rental_settings(*)')
+        .single();
+
+    return RentalProfile.fromMap(data);
+  }
+
+  Future<RentalProfile> pastikanRentalSayaAda() async {
+    final rental = await ambilRentalSaya();
+    if (rental != null) return rental;
+    return buatRentalDasarSaya();
+  }
+
   /// Ambil rental yang dekat dengan lokasi wisata tertentu.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
     // Ambil rental yang terhubung ke wisata ini via rental_wisata

@@ -5,6 +5,7 @@ import '../../core/services/equipment_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'owner_destination_data.dart';
+import 'owner_equipment_form_page.dart';
 import 'owner_edit_rental_page.dart';
 
 class OwnerInventoryPage extends StatefulWidget {
@@ -21,7 +22,9 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   final _equipmentService = EquipmentService();
 
   List<Equipment> _alat = [];
+  String? _rentalId;
   bool _loading = true;
+  bool _preparingAdd = false;
   String? _error;
 
   @override
@@ -52,6 +55,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
           : await _equipmentService.ambilSemuaAlatByRental(rental.id);
       if (!mounted) return;
       setState(() {
+        _rentalId = rental?.id;
         _alat = alat;
         _loading = false;
       });
@@ -74,6 +78,54 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
+  }
+
+  Future<void> _bukaTambahAlat() async {
+    var rentalId = _rentalId;
+    if (rentalId == null) {
+      setState(() => _preparingAdd = true);
+      try {
+        final rental = await _rentalService.pastikanRentalSayaAda();
+        rentalId = rental.id;
+        if (!mounted) return;
+        setState(() => _rentalId = rental.id);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _preparingAdd = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyiapkan profil rental: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      if (mounted) setState(() => _preparingAdd = false);
+    }
+
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerEquipmentFormPage(rentalId: rentalId),
+      ),
+    );
+    if (changed == true) _muatAlat();
+  }
+
+  Future<void> _bukaEditAlat(Equipment? equipment) async {
+    if (equipment == null) {
+      _comingSoon('Edit data contoh');
+      return;
+    }
+
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerEquipmentFormPage(equipment: equipment),
+      ),
+    );
+    if (changed == true) _muatAlat();
   }
 
   @override
@@ -131,8 +183,9 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                   loading: _loading,
                   error: _error,
                   alat: _alat,
-                  onEdit: () => _comingSoon('Edit alat'),
-                  onAdd: () => _comingSoon('Tambah alat'),
+                  onEdit: _bukaEditAlat,
+                  onAdd: _preparingAdd ? null : _bukaTambahAlat,
+                  preparingAdd: _preparingAdd,
                 ),
             ],
           ),
@@ -484,8 +537,9 @@ class _EquipmentManageTab extends StatelessWidget {
   final bool loading;
   final String? error;
   final List<Equipment> alat;
-  final VoidCallback onEdit;
-  final VoidCallback onAdd;
+  final ValueChanged<Equipment?> onEdit;
+  final VoidCallback? onAdd;
+  final bool preparingAdd;
 
   const _EquipmentManageTab({
     required this.loading,
@@ -493,24 +547,46 @@ class _EquipmentManageTab extends StatelessWidget {
     required this.alat,
     required this.onEdit,
     required this.onAdd,
+    required this.preparingAdd,
   });
 
   @override
   Widget build(BuildContext context) {
-    final displayItems = loading || error != null || alat.isEmpty
-        ? _demoEquipmentItems
-        : alat.map(_OwnerEquipmentItem.fromEquipment).toList();
+    final displayItems = alat.map(_OwnerEquipmentItem.fromEquipment).toList();
 
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        ...displayItems.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 36),
-            child: _EquipmentProductCard(item: item, onEdit: onEdit),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: CircularProgressIndicator(color: Color(0xFF087027)),
+            ),
+          )
+        else if (error != null)
+          _EquipmentEmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: 'Data peralatan gagal dimuat',
+            message: error!,
+          )
+        else if (displayItems.isEmpty)
+          const _EquipmentEmptyState(
+            icon: Icons.inventory_2_outlined,
+            title: 'Belum ada peralatan',
+            message: 'Tambahkan alat pertama agar bisa dikelola dan diedit.',
+          )
+        else
+          ...displayItems.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 36),
+              child: _EquipmentProductCard(
+                item: item,
+                onEdit: () => onEdit(item.equipment),
+              ),
+            ),
           ),
-        ),
         const SizedBox(height: 2),
         Center(
           child: SizedBox(
@@ -518,9 +594,18 @@ class _EquipmentManageTab extends StatelessWidget {
             height: 58,
             child: ElevatedButton.icon(
               onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              icon: preparingAdd
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.add_rounded, color: Colors.white),
               label: Text(
-                'Tambah Alat Baru',
+                preparingAdd ? 'Menyiapkan...' : 'Tambah Alat Baru',
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: Colors.white,
                   fontSize: 16,
@@ -539,6 +624,61 @@ class _EquipmentManageTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EquipmentEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const _EquipmentEmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: const Color(0xFF687369), size: 42),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF222523),
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF687369),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -674,32 +814,22 @@ class _EquipmentVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 1.68,
+      aspectRatio: 4 / 5,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: item.visualColor,
-                gradient: RadialGradient(
-                  center: Alignment.topLeft,
-                  radius: 1.1,
-                  colors: [
-                    item.visualColor.withValues(alpha: 0.86),
-                    item.visualColor,
-                  ],
-                ),
-              ),
-              child: Center(
-                child: Icon(
-                  item.icon,
-                  size: item.iconSize,
-                  color: item.iconColor,
-                ),
-              ),
-            ),
+            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+              Image.network(
+                item.imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _EquipmentImageFallback(item: item);
+                },
+              )
+            else
+              _EquipmentImageFallback(item: item),
             Positioned(
               top: 15,
               left: 15,
@@ -730,9 +860,34 @@ class _EquipmentVisual extends StatelessWidget {
   }
 }
 
+class _EquipmentImageFallback extends StatelessWidget {
+  final _OwnerEquipmentItem item;
+
+  const _EquipmentImageFallback({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: item.visualColor,
+        gradient: RadialGradient(
+          center: Alignment.topLeft,
+          radius: 1.1,
+          colors: [item.visualColor.withValues(alpha: 0.86), item.visualColor],
+        ),
+      ),
+      child: Center(
+        child: Icon(item.icon, size: item.iconSize, color: item.iconColor),
+      ),
+    );
+  }
+}
+
 enum _EquipmentStatus { available, low, empty }
 
 class _OwnerEquipmentItem {
+  final Equipment? equipment;
+  final String? imageUrl;
   final String name;
   final String price;
   final int stock;
@@ -743,6 +898,8 @@ class _OwnerEquipmentItem {
   final double iconSize;
 
   const _OwnerEquipmentItem({
+    this.equipment,
+    this.imageUrl,
     required this.name,
     required this.price,
     required this.stock,
@@ -750,8 +907,7 @@ class _OwnerEquipmentItem {
     required this.icon,
     required this.visualColor,
     this.iconColor = Colors.white,
-    this.iconSize = 118,
-  });
+  }) : iconSize = 118;
 
   factory _OwnerEquipmentItem.fromEquipment(Equipment equipment) {
     final status = equipment.stock <= 0
@@ -761,6 +917,8 @@ class _OwnerEquipmentItem {
         : _EquipmentStatus.available;
 
     return _OwnerEquipmentItem(
+      equipment: equipment,
+      imageUrl: equipment.gambarprimaryUrl,
       name: equipment.nama,
       price: _formatCompactRupiah(equipment.hargaPerHari),
       stock: equipment.stock,
@@ -809,47 +967,6 @@ class _OwnerEquipmentItem {
     _EquipmentStatus.empty => const Color(0xFFE05C60),
   };
 }
-
-const _demoEquipmentItems = [
-  _OwnerEquipmentItem(
-    name: 'Tenda Dome 4P',
-    price: 'Rp 75k',
-    stock: 12,
-    status: _EquipmentStatus.available,
-    icon: Icons.inventory_2_rounded,
-    visualColor: Color(0xFF0D6075),
-    iconSize: 120,
-  ),
-  _OwnerEquipmentItem(
-    name: 'Carrier 60L Pro',
-    price: 'Rp 45k',
-    stock: 2,
-    status: _EquipmentStatus.low,
-    icon: Icons.work_rounded,
-    visualColor: Color(0xFF1A2420),
-    iconColor: Color(0xFFFF7F2A),
-    iconSize: 124,
-  ),
-  _OwnerEquipmentItem(
-    name: 'Cooking Set Elite',
-    price: 'Rp 25k',
-    stock: 0,
-    status: _EquipmentStatus.empty,
-    icon: Icons.soup_kitchen_rounded,
-    visualColor: Color(0xFFF7F7F4),
-    iconColor: Color(0xFF666966),
-    iconSize: 126,
-  ),
-  _OwnerEquipmentItem(
-    name: 'Tenda Arpenaz 4.1',
-    price: 'Rp 150k',
-    stock: 25,
-    status: _EquipmentStatus.available,
-    icon: Icons.cabin_rounded,
-    visualColor: Color(0xFF82B75E),
-    iconSize: 128,
-  ),
-];
 
 String _formatCompactRupiah(double value) {
   final amount = value.round();

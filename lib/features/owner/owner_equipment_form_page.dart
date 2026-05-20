@@ -1,0 +1,1060 @@
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../core/models/equipment.dart';
+import '../../core/services/equipment_service.dart';
+import '../../core/theme/app_theme.dart';
+
+class OwnerEquipmentFormPage extends StatefulWidget {
+  final Equipment? equipment;
+  final String? rentalId;
+
+  const OwnerEquipmentFormPage({super.key, this.equipment, this.rentalId});
+
+  bool get isEdit => equipment != null;
+
+  @override
+  State<OwnerEquipmentFormPage> createState() => _OwnerEquipmentFormPageState();
+}
+
+class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _picker = ImagePicker();
+  final _equipmentService = EquipmentService();
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _priceCtrl;
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _capacityCtrl;
+  late final TextEditingController _weightCtrl;
+  late int _stock;
+  Uint8List? _pickedImageBytes;
+  String _pickedImageExtension = 'jpg';
+  String _pickedImageContentType = 'image/jpeg';
+  bool _isSaving = false;
+
+  static const _green = Color(0xFF0B6F28);
+  static const _pageBg = Color(0xFFF7F7F3);
+
+  @override
+  void initState() {
+    super.initState();
+    final equipment = widget.equipment;
+    _nameCtrl = TextEditingController(text: equipment?.nama ?? '');
+    _priceCtrl = TextEditingController(
+      text: equipment == null ? '' : equipment.hargaPerHari.round().toString(),
+    );
+    _descCtrl = TextEditingController(text: equipment?.deskripsi ?? '');
+    _capacityCtrl = TextEditingController();
+    _weightCtrl = TextEditingController();
+    _stock = equipment?.stock ?? 8;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _priceCtrl.dispose();
+    _descCtrl.dispose();
+    _capacityCtrl.dispose();
+    _weightCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
+      if (picked == null) return;
+      if (!mounted) return;
+
+      if (kIsWeb) {
+        final originalBytes = await picked.readAsBytes();
+        if (!mounted) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (_) => _SimpleWebCropDialog(imageBytes: originalBytes),
+        );
+        if (confirm != true) return;
+        final croppedBytes = await _centerCropToPng(originalBytes);
+        if (!mounted) return;
+        setState(() {
+          _pickedImageBytes = croppedBytes;
+          _pickedImageExtension = 'png';
+          _pickedImageContentType = 'image/png';
+        });
+        return;
+      }
+
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 4, ratioY: 5),
+        compressQuality: 80,
+        compressFormat: ImageCompressFormat.jpg,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Pangkas Foto Produk',
+            toolbarColor: AppColors.primaryDark,
+            toolbarWidgetColor: Colors.white,
+            statusBarLight: false,
+            backgroundColor: Colors.black,
+            activeControlsWidgetColor: AppColors.primary,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+            showCropGrid: true,
+          ),
+          IOSUiSettings(
+            title: 'Pangkas Foto',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (cropped == null || !mounted) return;
+      final bytes = await cropped.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _pickedImageBytes = bytes;
+        _pickedImageExtension = 'jpg';
+        _pickedImageContentType = 'image/jpeg';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memilih/memangkas foto: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<Uint8List> _centerCropToPng(Uint8List bytes) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    const targetAspect = 4 / 5;
+    final imageAspect = image.width / image.height;
+
+    late final Rect source;
+    if (imageAspect > targetAspect) {
+      final cropWidth = image.height * targetAspect;
+      source = Rect.fromLTWH(
+        (image.width - cropWidth) / 2,
+        0,
+        cropWidth,
+        image.height.toDouble(),
+      );
+    } else {
+      final cropHeight = image.width / targetAspect;
+      source = Rect.fromLTWH(
+        0,
+        (image.height - cropHeight) / 2,
+        image.width.toDouble(),
+        cropHeight,
+      );
+    }
+
+    const outputWidth = 1080;
+    const outputHeight = 1350;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImageRect(
+      image,
+      source,
+      Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble()),
+      Paint(),
+    );
+    final picture = recorder.endRecording();
+    final cropped = await picture.toImage(outputWidth, outputHeight);
+    final byteData = await cropped.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    cropped.dispose();
+
+    if (byteData == null) {
+      throw Exception('Gagal memproses foto.');
+    }
+    return byteData.buffer.asUint8List();
+  }
+
+  void _changeStock(int delta) {
+    setState(() => _stock = (_stock + delta).clamp(0, 999));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final harga = double.parse(_priceCtrl.text);
+    final deskripsi = _descCtrl.text.trim();
+
+    setState(() => _isSaving = true);
+    try {
+      if (widget.isEdit) {
+        String? imageUrl;
+        if (_pickedImageBytes != null) {
+          imageUrl = await _equipmentService.uploadFotoAlat(
+            bytes: _pickedImageBytes!,
+            rentalId: widget.equipment!.rentalId,
+            equipmentId: widget.equipment!.id,
+            extension: _pickedImageExtension,
+            contentType: _pickedImageContentType,
+          );
+        }
+
+        await _equipmentService.perbaruiAlat(
+          equipmentId: widget.equipment!.id,
+          nama: _nameCtrl.text.trim(),
+          deskripsi: deskripsi.isEmpty ? null : deskripsi,
+          hargaPerHari: harga,
+          stock: _stock,
+          imageUrl: imageUrl,
+        );
+      } else {
+        final rentalId = widget.rentalId;
+        if (rentalId == null) {
+          throw Exception('Profil rental belum ditemukan.');
+        }
+
+        String? imageUrl;
+        if (_pickedImageBytes != null) {
+          imageUrl = await _equipmentService.uploadFotoAlat(
+            bytes: _pickedImageBytes!,
+            rentalId: rentalId,
+            extension: _pickedImageExtension,
+            contentType: _pickedImageContentType,
+          );
+        }
+
+        await _equipmentService.tambahAlat(
+          rentalId: rentalId,
+          nama: _nameCtrl.text.trim(),
+          deskripsi: deskripsi.isEmpty ? null : deskripsi,
+          hargaPerHari: harga,
+          stock: _stock,
+          imageUrl: imageUrl,
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.isEdit
+                ? 'Peralatan berhasil diperbarui.'
+                : 'Alat baru berhasil ditambahkan.',
+          ),
+          backgroundColor: _green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan peralatan: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  void _deleteEquipment() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Peralatan'),
+        content: Text(
+          'Hapus ${widget.equipment?.nama ?? 'peralatan ini'} dari inventaris?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              setState(() => _isSaving = true);
+              try {
+                await _equipmentService.hapusAlat(widget.equipment!.id);
+                if (!mounted) return;
+                Navigator.pop(context, true);
+              } catch (e) {
+                if (!mounted) return;
+                setState(() => _isSaving = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Gagal menghapus peralatan: ${e.toString()}'),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+
+    return Scaffold(
+      backgroundColor: _pageBg,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF222523)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0,
+        title: Text(
+          widget.isEdit ? 'Edit Peralatan' : 'Tambah Alat Baru',
+          style: AppTextStyles.headlineMedium.copyWith(
+            color: const Color(0xFF1F2420),
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check_rounded, color: Color(0xFF1F2420)),
+            onPressed: _isSaving ? null : () => _submit(),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+            children: [
+              _ImagePickerCard(
+                isEdit: widget.isEdit,
+                imageUrl: widget.equipment?.gambarprimaryUrl,
+                pickedImageBytes: _pickedImageBytes,
+                onTap: _pickImage,
+              ),
+              const SizedBox(height: 30),
+              _SectionLabel('Nama Produk'),
+              const SizedBox(height: 10),
+              _TextBox(
+                controller: _nameCtrl,
+                hint: 'Contoh: Tenda Arpenaz',
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama produk wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 22),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel('Harga / Malam'),
+                        const SizedBox(height: 10),
+                        _PriceBox(controller: _priceCtrl),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel('Stok Unit'),
+                        const SizedBox(height: 10),
+                        _StockBox(
+                          value: _stock,
+                          onMinus: () => _changeStock(-1),
+                          onPlus: () => _changeStock(1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              _SectionLabel('Deskripsi Produk'),
+              const SizedBox(height: 10),
+              _TextBox(
+                controller: _descCtrl,
+                hint: 'Jelaskan kondisi dan fitur alat Anda di sini...',
+                minLines: 4,
+                maxLines: 5,
+              ),
+              const SizedBox(height: 26),
+              _SpecPanel(
+                capacityController: _capacityCtrl,
+                weightController: _weightCtrl,
+              ),
+              const SizedBox(height: 38),
+              if (widget.isEdit)
+                _DeleteButton(onPressed: _isSaving ? null : _deleteEquipment)
+              else
+                _SaveButton(
+                  isSaving: _isSaving,
+                  onPressed: _isSaving ? null : () => _submit(),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImagePickerCard extends StatelessWidget {
+  final bool isEdit;
+  final String? imageUrl;
+  final Uint8List? pickedImageBytes;
+  final VoidCallback onTap;
+
+  const _ImagePickerCard({
+    required this.isEdit,
+    required this.imageUrl,
+    required this.pickedImageBytes,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage =
+        pickedImageBytes != null || (imageUrl != null && imageUrl!.isNotEmpty);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: 4 / 5,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F5EC),
+            borderRadius: BorderRadius.circular(8),
+            border: hasImage
+                ? null
+                : Border.all(
+                    color: const Color(0xFFBFD0B9),
+                    width: 1.5,
+                    style: BorderStyle.solid,
+                  ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: hasImage ? _buildImage() : _buildEmptyState(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (pickedImageBytes != null)
+          Image.memory(pickedImageBytes!, fit: BoxFit.cover)
+        else
+          Image.network(imageUrl!, fit: BoxFit.cover),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.photo_camera_outlined, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'UBAH FOTO',
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF3F4942),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.add_a_photo_outlined,
+          color: Color(0xFF4B554C),
+          size: 42,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'UNGGAH FOTO PRODUK',
+          style: AppTextStyles.caption.copyWith(
+            color: const Color(0xFF4B554C),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .4,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Format JPG, PNG (Maks. 5MB)',
+          style: AppTextStyles.caption.copyWith(
+            color: const Color(0xFF6E776F),
+            fontSize: 12,
+            letterSpacing: 0,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SimpleWebCropDialog extends StatelessWidget {
+  final Uint8List imageBytes;
+
+  const _SimpleWebCropDialog({required this.imageBytes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Pangkas Foto Produk',
+                      style: AppTextStyles.headlineMedium.copyWith(
+                        color: const Color(0xFF202321),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: AspectRatio(
+                aspectRatio: 4 / 5,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(imageBytes, fit: BoxFit.cover),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+              child: Text(
+                'Foto akan dipangkas otomatis ke rasio 4:5 dari area tengah.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF687369),
+                  height: 1.35,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Batal'),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _OwnerEquipmentFormPageState._green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Gunakan Foto'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: AppTextStyles.caption.copyWith(
+        color: const Color(0xFF475048),
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.8,
+      ),
+    );
+  }
+}
+
+class _TextBox extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final int minLines;
+  final int maxLines;
+  final String? Function(String?)? validator;
+
+  const _TextBox({
+    required this.controller,
+    required this.hint,
+    this.minLines = 1,
+    this.maxLines = 1,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      minLines: minLines,
+      maxLines: maxLines,
+      validator: validator,
+      style: AppTextStyles.bodyMedium.copyWith(
+        color: const Color(0xFF202321),
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: _fieldDecoration(hint),
+    );
+  }
+}
+
+class _PriceBox extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _PriceBox({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      validator: (value) {
+        final parsed = int.tryParse(value ?? '');
+        if (parsed == null || parsed <= 0) return 'Harga wajib diisi';
+        return null;
+      },
+      style: AppTextStyles.bodyMedium.copyWith(
+        color: const Color(0xFF202321),
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+      ),
+      decoration: _fieldDecoration(
+        '150000',
+        prefix: Text(
+          'Rp',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: const Color(0xFF475048),
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StockBox extends StatelessWidget {
+  final int value;
+  final VoidCallback onMinus;
+  final VoidCallback onPlus;
+
+  const _StockBox({
+    required this.value,
+    required this.onMinus,
+    required this.onPlus,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _StockButton(
+            icon: Icons.remove_rounded,
+            color: const Color(0xFFF0F1ED),
+            iconColor: const Color(0xFF202321),
+            onTap: onMinus,
+          ),
+          Expanded(
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF202321),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          _StockButton(
+            icon: Icons.add_rounded,
+            color: _OwnerEquipmentFormPageState._green,
+            iconColor: Colors.white,
+            onTap: onPlus,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StockButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _StockButton({
+    required this.icon,
+    required this.color,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+    );
+  }
+}
+
+class _SpecPanel extends StatelessWidget {
+  final TextEditingController capacityController;
+  final TextEditingController weightController;
+
+  const _SpecPanel({
+    required this.capacityController,
+    required this.weightController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Spesifikasi Tambahan',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: _OwnerEquipmentFormPageState._green,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _SpecInput(
+                  icon: Icons.groups_2_outlined,
+                  label: 'Kapasitas',
+                  controller: capacityController,
+                  suffix: 'Orang',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _SpecInput(
+                  icon: Icons.shopping_bag_outlined,
+                  label: 'Berat',
+                  controller: weightController,
+                  suffix: 'Kg',
+                  decimal: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpecInput extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final TextEditingController controller;
+  final String suffix;
+  final bool decimal;
+
+  const _SpecInput({
+    required this.icon,
+    required this.label,
+    required this.controller,
+    required this.suffix,
+    this.decimal = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF3F4942)),
+            const SizedBox(width: 4),
+            Text(
+              label.toUpperCase(),
+              style: AppTextStyles.caption.copyWith(
+                color: const Color(0xFF3F4942),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(
+              decimal ? RegExp(r'[0-9.]') : RegExp(r'[0-9]'),
+            ),
+          ],
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFF0F4EA),
+            hintText: decimal ? '0.0' : '0',
+            hintStyle: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF748076),
+              fontSize: 15,
+            ),
+            suffixText: suffix,
+            suffixStyle: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF7A817A),
+              fontSize: 15,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SaveButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final bool isSaving;
+
+  const _SaveButton({required this.onPressed, required this.isSaving});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: isSaving
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Icon(Icons.save_outlined, color: Colors.white),
+        label: Text(
+          isSaving ? 'Menyimpan...' : 'Simpan Alat',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2C8735),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+
+  const _DeleteButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.delete_outline_rounded, size: 17),
+        label: Text(
+          'Hapus Peralatan',
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.error,
+          side: BorderSide(color: AppColors.error.withValues(alpha: 0.35)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+}
+
+InputDecoration _fieldDecoration(String hint, {Widget? prefix}) {
+  return InputDecoration(
+    filled: true,
+    fillColor: Colors.white,
+    hintText: hint,
+    hintStyle: AppTextStyles.bodyMedium.copyWith(
+      color: const Color(0xFF9A9F99),
+      fontSize: 16,
+      fontWeight: FontWeight.w400,
+    ),
+    prefixIcon: prefix == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(left: 16, right: 10),
+            child: Center(widthFactor: 1, child: prefix),
+          ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide.none,
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: AppColors.error),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+  );
+}

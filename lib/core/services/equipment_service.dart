@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/equipment.dart';
 import 'auth_service.dart';
@@ -97,6 +99,74 @@ class EquipmentService {
   // ──────────────────────────────────────────────────────────
   //  KATEGORI
   // ──────────────────────────────────────────────────────────
+
+  Future<void> tambahAlat({
+    required String rentalId,
+    required String nama,
+    required String? deskripsi,
+    required double hargaPerHari,
+    required int stock,
+    String? imageUrl,
+  }) async {
+    await client.from('equipment').insert({
+      'rental_id': rentalId,
+      'nama': nama,
+      'deskripsi': deskripsi,
+      'harga_per_hari': hargaPerHari,
+      'stock': stock,
+      'image_url': imageUrl,
+      'is_available': true,
+    });
+  }
+
+  Future<String> uploadFotoAlat({
+    required Uint8List bytes,
+    required String rentalId,
+    String? equipmentId,
+    String extension = 'jpg',
+    String contentType = 'image/jpeg',
+  }) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final ownerPath = equipmentId ?? 'new';
+    final storagePath = '$rentalId/$ownerPath/$timestamp.$extension';
+
+    await client.storage
+        .from('equipment-images')
+        .uploadBinary(
+          storagePath,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: true),
+        );
+
+    return client.storage.from('equipment-images').getPublicUrl(storagePath);
+  }
+
+  Future<void> perbaruiAlat({
+    required String equipmentId,
+    required String nama,
+    required String? deskripsi,
+    required double hargaPerHari,
+    required int stock,
+    String? imageUrl,
+  }) async {
+    final data = <String, dynamic>{
+      'nama': nama,
+      'deskripsi': deskripsi,
+      'harga_per_hari': hargaPerHari,
+      'stock': stock,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    if (imageUrl != null) {
+      data['image_url'] = imageUrl;
+    }
+
+    await client.from('equipment').update(data).eq('id', equipmentId);
+  }
+
+  Future<void> hapusAlat(String equipmentId) async {
+    await client.from('equipment').delete().eq('id', equipmentId);
+  }
 
   /// Ambil semua kategori alat (untuk filter chip).
   Future<List<Map<String, dynamic>>> ambilKategori() async {
