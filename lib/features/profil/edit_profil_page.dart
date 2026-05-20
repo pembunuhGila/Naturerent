@@ -194,27 +194,30 @@ class _EditProfilPageState extends State<EditProfilPage> {
     bool namaOk = false;
     bool fotoOk = _gambarBaru == null;
 
-    // ── 1. Simpan nama ke public.users
-    try {
-      await AuthService().perbaruiProfil(namaLengkap: nama);
-      namaOk = true;
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
-      _showErrorDialog(
-        judul: 'Gagal menyimpan nama',
-        pesan: e.toString(),
-        solusi: 'Periksa koneksi internet dan pastikan kamu sudah login.',
-      );
-      return;
-    }
-
-    // ── 2. Update auth metadata (non-blocking — kegagalan tidak memblokir save)
+    // ── 1. Update auth metadata (PRIMARY — selalu berhasil jika session aktif)
     try {
       await _client.auth.updateUser(
         UserAttributes(data: {'full_name': nama}),
       );
-    } catch (_) {/* abaikan — DB sudah tersimpan */}
+      namaOk = true;
+    } catch (_) {/* lanjut ke DB update */}
+
+    // ── 2. Simpan nama ke public.users (SECONDARY — mungkin diblokir RLS)
+    try {
+      await AuthService().perbaruiProfil(namaLengkap: nama);
+      namaOk = true;
+    } catch (_) {/* abaikan jika DB update gagal, auth sudah tersimpan */}
+
+    if (!namaOk) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      _showErrorDialog(
+        judul: 'Gagal menyimpan nama',
+        pesan: 'Tidak dapat terhubung ke server.',
+        solusi: 'Periksa koneksi internet dan pastikan kamu sudah login.',
+      );
+      return;
+    }
 
     // ── 3. Upload foto profil baru (jika ada)
     if (_gambarBaru != null) {
@@ -667,67 +670,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
     }
   }
 
-  void _showPilihKtp() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      color: AppColors.primary),
-                ),
-                title: Text('Ambil dari Kamera',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textPrimary)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pilihKtp(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.photo_library_rounded,
-                      color: AppColors.primary),
-                ),
-                title: Text('Pilih dari Galeri',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textPrimary)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pilihKtp(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // KTP harus diambil via kamera (bukan galeri)
+  void _showPilihKtp() => _pilihKtp(ImageSource.camera);
 
   Widget _buildKtpSection() {
     final hasKtp = _ktpBaru != null || (_ktpUrl != null && _ktpUrl!.isNotEmpty);
