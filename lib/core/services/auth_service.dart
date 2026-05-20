@@ -120,6 +120,7 @@ class AuthService {
     String? namaLengkap,
     String? noWa,
     String? avatarUrl,
+    String? ktpUrl,
   }) async {
     if (penggunaSaatIni == null) return;
 
@@ -129,6 +130,7 @@ class AuthService {
     if (namaLengkap != null) data['nama_lengkap'] = namaLengkap;
     if (noWa != null) data['no_wa'] = noWa;
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
+    if (ktpUrl != null) data['ktp_url'] = ktpUrl;
 
     await client.from('users').update(data).eq('id', penggunaSaatIni!.id);
   }
