@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -25,6 +26,7 @@ class _LoginPageState extends State<LoginPage>
   bool _obscure = true;
   late final AnimationController _anim;
   late final Animation<double> _fade;
+  StreamSubscription? _authSub;
 
   _LoginRoleConfig get _config => _LoginRoleConfig.fromRole(widget.role);
 
@@ -41,6 +43,7 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _anim.dispose();
     _emailCtrl.dispose();
     _pwCtrl.dispose();
@@ -77,6 +80,20 @@ class _LoginPageState extends State<LoginPage>
         OAuthProvider.google,
         redirectTo: 'io.supabase.naturerent://login-callback/',
       );
+      // Dengarkan perubahan auth setelah browser OAuth selesai
+      _authSub?.cancel();
+      _authSub = AuthService.client.auth.onAuthStateChange.listen((data) async {
+        if (data.event == AuthChangeEvent.signedIn && mounted) {
+          _authSub?.cancel();
+          await AuthService().syncProfilSetelahLogin();
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const RoleGate()),
+              (r) => false,
+            );
+          }
+        }
+      });
     } catch (e) {
       if (mounted) _showError('Login Google gagal: ${e.toString()}');
     } finally {
