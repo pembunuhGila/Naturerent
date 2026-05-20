@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dashboard_admin.dart';
 
 void main() {
   runApp(const NatureRentApp());
@@ -45,10 +46,14 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleLogin() {
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _isLoading = false);
-    });
-  }
+      Future.delayed(const Duration(seconds: 1), () {
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const DashboardPage()),
+      );
+    }
+  });
+}
 
   @override
   Widget build(BuildContext context) {
