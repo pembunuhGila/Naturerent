@@ -18,10 +18,13 @@ class _ProfilPageState extends State<ProfilPage> {
   final _client = AuthService.client;
   bool _isLoggingOut = false;
   String? _avatarUrl;
+  String? _namaDB;  // dari public.users table
 
   User? get _user => _client.auth.currentUser;
 
   String get _namaLengkap {
+    // Prioritaskan data dari DB agar langsung reflect setelah edit
+    if (_namaDB != null && _namaDB!.isNotEmpty) return _namaDB!;
     final meta = _user?.userMetadata;
     final fromMeta = meta?['full_name'] as String?;
     if (fromMeta != null && fromMeta.isNotEmpty) return fromMeta;
@@ -48,6 +51,9 @@ class _ProfilPageState extends State<ProfilPage> {
       if (!mounted) return;
       setState(() {
         _avatarUrl = data?['avatar_url'] as String?;
+        // Simpan nama dari DB untuk refresh langsung setelah edit
+        final dbNama = data?['nama_lengkap'] as String?;
+        if (dbNama != null && dbNama.isNotEmpty) _namaDB = dbNama;
       });
     } catch (_) {}
   }
@@ -72,8 +78,8 @@ class _ProfilPageState extends State<ProfilPage> {
       ),
     );
     if (updated == true && mounted) {
-      _muatProfil(); // reload avatar & nama
-      setState(() {}); // refresh nama dari auth metadata
+      await _muatProfil(); // reload nama & avatar dari DB
+      setState(() {}); // trigger rebuild
     }
   }
 
