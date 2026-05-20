@@ -174,12 +174,6 @@ class _ProfilPageState extends State<ProfilPage> {
                   ),
                 ),
                 _MenuItem(
-                  icon: Icons.notifications_outlined,
-                  label: 'Notifikasi',
-                  badge: 'BARU',
-                  onTap: () => _snackComingSoon('Notifikasi'),
-                ),
-                _MenuItem(
                   icon: Icons.receipt_long_rounded,
                   label: 'Daftar Transaksi',
                   onTap: () => _snackComingSoon('Daftar Transaksi'),
@@ -220,7 +214,6 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildAppBar() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           'Profil Saya',
@@ -228,17 +221,6 @@ class _ProfilPageState extends State<ProfilPage> {
             color: AppColors.textPrimary,
             fontSize: 20,
           ),
-        ),
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Icon(Icons.notifications_none_rounded,
-              color: AppColors.textPrimary, size: 18),
         ),
       ],
     );
@@ -393,26 +375,6 @@ class _ProfilPageState extends State<ProfilPage> {
                           ),
                         ),
                       ),
-                      if (item.badge != null) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryDark,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            item.badge!,
-                            style: AppTextStyles.caption.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 9,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
                       const Icon(Icons.chevron_right_rounded,
                           color: AppColors.textHint, size: 20),
                     ],
@@ -489,11 +451,7 @@ class _ProfilPageState extends State<ProfilPage> {
 class _MenuItem {
   final IconData icon;
   final String label;
-  final String? badge;
   final VoidCallback onTap;
   const _MenuItem(
-      {required this.icon,
-      required this.label,
-      this.badge,
-      required this.onTap});
+      {required this.icon, required this.label, required this.onTap});
 }
