@@ -1,11 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_button.dart';
 import '../../core/widgets/nr_text_field.dart';
-import '../../features/shell/role_gate.dart';
+import '../shell/main_shell.dart';
 import 'login_page.dart';
 import 'onboarding_page.dart';
 
@@ -25,9 +27,11 @@ class _RegisterPageState extends State<RegisterPage>
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _picker = ImagePicker();
 
   bool _isLoading = false;
   bool _agreedToTerms = false;
+  File? _ktpFile;
   late final AnimationController _animController;
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
@@ -66,6 +70,13 @@ class _RegisterPageState extends State<RegisterPage>
   static bool _hasSymbol(String v) =>
       v.contains(RegExp(r'[!@#\$%\^&\*()\-_=\+\[\]{}|;:,.<>?/\\`~"]'));
 
+  Future<void> _pilihKtp() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (picked != null) {
+      setState(() => _ktpFile = File(picked.path));
+    }
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.role != UserRole.pemilik && !_agreedToTerms) {
@@ -96,10 +107,24 @@ class _RegisterPageState extends State<RegisterPage>
         if (!mounted) return;
         _showMitraSuccessDialog();
       } else if (response.session != null) {
+        if (_ktpFile != null && response.user != null) {
+          try {
+            final uid = response.user!.id;
+            final ext = _ktpFile!.path.split('.').last.toLowerCase();
+            final path = 'ktp-docs/$uid.$ext';
+            final bytes = await _ktpFile!.readAsBytes();
+            await AuthService.client.storage.from('ktp-docs').uploadBinary(
+                  path, bytes, fileOptions: const FileOptions(upsert: true));
+            final url = AuthService.client.storage
+                .from('ktp-docs')
+                .getPublicUrl(path);
+            await AuthService().perbaruiProfil(ktpUrl: url);
+          } catch (_) {}
+        }
         await AuthService().syncProfilSetelahLogin();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const RoleGate()),
+          MaterialPageRoute(builder: (_) => const MainShell()),
           (route) => false,
         );
       } else if (response.user != null) {
@@ -276,6 +301,26 @@ class _RegisterPageState extends State<RegisterPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildKtpPicker() {
+    return GestureDetector(
+      onTap: _pilihKtp,
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: _ktpFile == null
+            ? const Center(child: Icon(Icons.add_a_photo_outlined, color: AppColors.textHint))
+            : ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(_ktpFile!, fit: BoxFit.cover, width: double.infinity),
+              ),
       ),
     );
   }
@@ -662,11 +707,22 @@ class _RegisterPageState extends State<RegisterPage>
               helperText: 'Min 8 karakter - Huruf kapital - Angka - Simbol',
               validator: _passwordValidator,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: _passwordController,
               builder: (_, val, child) => _PwStrength(pw: val.text),
             ),
+            const SizedBox(height: 20),
+            Text('Foto KTP',
+                style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text('Opsional · Bisa diupload nanti via Edit Profil',
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textHint)),
+            const SizedBox(height: 10),
+            _buildKtpPicker(),
             const SizedBox(height: 20),
             _buildTermsCheckbox(),
             const SizedBox(height: 28),
