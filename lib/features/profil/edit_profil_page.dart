@@ -29,8 +29,10 @@ class _EditProfilPageState extends State<EditProfilPage> {
   final _client = AuthService.client;
   final _picker = ImagePicker();
 
-  File? _gambarBaru;        // file lokal yang dipilih user
-  String? _avatarUrl;       // URL yang tersimpan di Supabase
+  File? _gambarBaru;        // file lokal foto profil
+  String? _avatarUrl;       // URL avatar di Supabase
+  File? _ktpBaru;           // file lokal foto KTP
+  String? _ktpUrl;          // URL KTP di Supabase
   bool _isSaving = false;
 
   // ──────────────────────────────────────────────────────────
@@ -41,6 +43,21 @@ class _EditProfilPageState extends State<EditProfilPage> {
     super.initState();
     _namaCtrl = TextEditingController(text: widget.namaAwal);
     _avatarUrl = widget.avatarUrlAwal;
+    _loadKtp(); // muat URL KTP dari DB
+  }
+
+  Future<void> _loadKtp() async {
+    try {
+      final uid = _client.auth.currentUser?.id;
+      if (uid == null) return;
+      final data = await _client
+          .from('users')
+          .select('ktp_url')
+          .eq('id', uid)
+          .maybeSingle();
+      if (!mounted) return;
+      setState(() => _ktpUrl = data?['ktp_url'] as String?);
+    } catch (_) {}
   }
 
   @override
@@ -138,7 +155,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
             toolbarTitle: 'Pangkas Foto Profil',
             toolbarColor: AppColors.primaryDark,
             toolbarWidgetColor: Colors.white,
-            statusBarColor: AppColors.primaryDark,
+            statusBarColor: AppColors.primaryDark, // ignore: deprecated_member_use
             backgroundColor: Colors.black,
             activeControlsWidgetColor: AppColors.primary,
             initAspectRatio: CropAspectRatioPreset.square,
@@ -175,14 +192,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
     String? newAvatarUrl = _avatarUrl;
     bool namaOk = false;
-    bool fotoOk = _gambarBaru == null; // tidak perlu upload kalau tidak ada gambar baru
+    bool fotoOk = _gambarBaru == null;
 
-    // ── 1. Simpan nama ke public.users + auth metadata
+    // ── 1. Simpan nama ke public.users
     try {
       await AuthService().perbaruiProfil(namaLengkap: nama);
-      await _client.auth.updateUser(
-        UserAttributes(data: {'full_name': nama}),
-      );
       namaOk = true;
     } catch (e) {
       if (!mounted) return;
@@ -195,7 +209,14 @@ class _EditProfilPageState extends State<EditProfilPage> {
       return;
     }
 
-    // ── 2. Upload foto baru (jika ada)
+    // ── 2. Update auth metadata (non-blocking — kegagalan tidak memblokir save)
+    try {
+      await _client.auth.updateUser(
+        UserAttributes(data: {'full_name': nama}),
+      );
+    } catch (_) {/* abaikan — DB sudah tersimpan */}
+
+    // ── 3. Upload foto profil baru (jika ada)
     if (_gambarBaru != null) {
       try {
         final userId = _client.auth.currentUser?.id;
@@ -206,55 +227,68 @@ class _EditProfilPageState extends State<EditProfilPage> {
         final bytes = await _gambarBaru!.readAsBytes();
 
         await _client.storage.from('avatars').uploadBinary(
-              storagePath,
-              bytes,
+              storagePath, bytes,
               fileOptions: const FileOptions(upsert: true),
             );
 
-        newAvatarUrl =
-            _client.storage.from('avatars').getPublicUrl(storagePath);
-
-        // Simpan URL avatar ke DB
+        newAvatarUrl = _client.storage.from('avatars').getPublicUrl(storagePath);
         await AuthService().perbaruiProfil(avatarUrl: newAvatarUrl);
         fotoOk = true;
       } catch (e) {
-        // Nama sudah tersimpan — hanya foto yang gagal
         if (!mounted) return;
         setState(() => _isSaving = false);
-
         final pesanErr = e.toString().toLowerCase();
         String solusi = 'Coba lagi beberapa saat.';
-
         if (pesanErr.contains('not found') || pesanErr.contains('bucket')) {
           solusi = '⚠️ Buat bucket "avatars" di Supabase Storage:\n'
-              'Supabase Dashboard → Storage → New Bucket → nama: avatars → Public ✓';
-        } else if (pesanErr.contains('row-level security') ||
-            pesanErr.contains('rls') ||
-            pesanErr.contains('policy')) {
-          solusi = 'Periksa RLS Policy di Supabase Storage bucket "avatars".\n'
+              'Dashboard → Storage → New Bucket → nama: avatars → Public ✓';
+        } else if (pesanErr.contains('rls') || pesanErr.contains('policy')) {
+          solusi = 'Periksa RLS Policy bucket "avatars".\n'
               'Tambahkan policy: Allow INSERT for authenticated users.';
-        } else if (pesanErr.contains('network') ||
-            pesanErr.contains('connection')) {
-          solusi = 'Periksa koneksi internet dan coba lagi.';
         }
-
         _showErrorDialog(
           judul: 'Foto gagal disimpan',
-          pesan: '✅ Nama berhasil disimpan!\n\n'
-              '❌ Foto profil gagal diupload:\n${e.toString()}',
+          pesan: '✅ Nama berhasil disimpan!\n\n❌ Foto profil gagal:\n${e.toString()}',
           solusi: solusi,
-          onClose: () {
-            if (mounted) Navigator.pop(context, namaOk);
-          },
+          onClose: () { if (mounted) Navigator.pop(context, namaOk); },
+        );
+        return;
+      }
+    } else {
+      fotoOk = true;
+    }
+
+    // ── 4. Upload foto KTP baru (jika ada)
+    if (_ktpBaru != null) {
+      try {
+        final userId = _client.auth.currentUser?.id;
+        if (userId == null) throw Exception('Session habis.');
+        final ext = _ktpBaru!.path.split('.').last.toLowerCase();
+        final storagePath = 'ktp-docs/$userId.$ext';
+        final bytes = await _ktpBaru!.readAsBytes();
+        await _client.storage.from('ktp-docs').uploadBinary(
+              storagePath, bytes,
+              fileOptions: const FileOptions(upsert: true),
+            );
+        final ktpPublicUrl =
+            _client.storage.from('ktp-docs').getPublicUrl(storagePath);
+        await AuthService().perbaruiProfil(ktpUrl: ktpPublicUrl);
+        setState(() => _ktpUrl = ktpPublicUrl);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isSaving = false);
+        _showErrorDialog(
+          judul: 'KTP gagal disimpan',
+          pesan: '✅ Profil berhasil disimpan!\n\n❌ Foto KTP gagal:\n${e.toString()}',
+          solusi: 'Buat bucket "ktp-docs" di Supabase Storage (Public ✓).',
+          onClose: () { if (mounted) Navigator.pop(context, namaOk); },
         );
         return;
       }
     }
 
     if (!mounted) return;
-    if (namaOk && fotoOk) {
-      Navigator.pop(context, true);
-    }
+    if (namaOk && fotoOk) Navigator.pop(context, true);
   }
 
   void _showErrorDialog({
@@ -358,7 +392,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
               const SizedBox(height: 36),
 
               // ── Field Nama
-              _buildLabel('Nama'),
+              _buildLabel('Nama Lengkap'),
               const SizedBox(height: 8),
               _buildTextField(
                 controller: _namaCtrl,
@@ -375,7 +409,18 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 hint: 'Email',
                 enabled: false,
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
+
+              // ── Foto KTP
+              _buildLabel('Foto KTP'),
+              const SizedBox(height: 4),
+              Text(
+                'Diperlukan untuk verifikasi identitas penyewa.',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
+              ),
+              const SizedBox(height: 10),
+              _buildKtpSection(),
+              const SizedBox(height: 36),
 
               // ── Tombol Simpan
               SizedBox(
@@ -603,6 +648,160 @@ class _EditProfilPageState extends State<EditProfilPage> {
           focusedBorder: InputBorder.none,
           disabledBorder: InputBorder.none,
         ),
+      ),
+    );
+  }
+
+  // ── Pick foto KTP dari galeri/kamera
+  Future<void> _pilihKtp(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+      if (picked == null || !mounted) return;
+      setState(() => _ktpBaru = File(picked.path));
+    } catch (e) {
+      _snack('Gagal memilih foto KTP: ${e.toString()}');
+    }
+  }
+
+  void _showPilihKtp() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      color: AppColors.primary),
+                ),
+                title: Text('Ambil dari Kamera',
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.textPrimary)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pilihKtp(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded,
+                      color: AppColors.primary),
+                ),
+                title: Text('Pilih dari Galeri',
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.textPrimary)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pilihKtp(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKtpSection() {
+    final hasKtp = _ktpBaru != null || (_ktpUrl != null && _ktpUrl!.isNotEmpty);
+    return GestureDetector(
+      onTap: _showPilihKtp,
+      child: Container(
+        width: double.infinity,
+        height: 140,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasKtp ? AppColors.primary : AppColors.border,
+            width: hasKtp ? 1.5 : 1,
+          ),
+        ),
+        child: hasKtp
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: _ktpBaru != null
+                        ? Image.file(_ktpBaru!, fit: BoxFit.cover)
+                        : Image.network(_ktpUrl!, fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => const Icon(
+                                Icons.broken_image_rounded,
+                                color: AppColors.textHint)),
+                  ),
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryDark.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.edit_rounded,
+                            color: Colors.white, size: 12),
+                        const SizedBox(width: 4),
+                        Text('Ganti',
+                            style: AppTextStyles.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700)),
+                      ]),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.badge_outlined,
+                        color: AppColors.primary, size: 28),
+                  ),
+                  const SizedBox(height: 10),
+                  Text('Tap untuk upload foto KTP',
+                      style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('Format: JPG / PNG',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textHint)),
+                ],
+              ),
       ),
     );
   }
