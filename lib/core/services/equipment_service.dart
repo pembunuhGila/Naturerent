@@ -32,9 +32,29 @@ class EquipmentService {
         .toList();
   }
 
+  /// Ambil semua alat rental untuk dashboard pemilik, termasuk yang nonaktif.
+  Future<List<Equipment>> ambilSemuaAlatByRental(String rentalId) async {
+    final data = await client
+        .from('equipment')
+        .select('''
+          *,
+          equipment_categories(nama, icon),
+          rental_profiles(nama_rental),
+          equipment_images(image_url, is_primary, sort_order)
+        ''')
+        .eq('rental_id', rentalId)
+        .order('nama');
+
+    return (data as List)
+        .map((e) => Equipment.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Ambil alat per rental, difilter berdasarkan category_id.
   Future<List<Equipment>> ambilAlatByKategori(
-      String rentalId, String categoryId) async {
+    String rentalId,
+    String categoryId,
+  ) async {
     final data = await client
         .from('equipment')
         .select('''
@@ -98,12 +118,15 @@ class EquipmentService {
     required DateTime tglSelesai,
     required int jumlah,
   }) async {
-    final result = await client.rpc('check_availability', params: {
-      'p_equipment_id': equipmentId,
-      'p_start_date': tglMulai.toIso8601String().substring(0, 10),
-      'p_end_date': tglSelesai.toIso8601String().substring(0, 10),
-      'p_quantity': jumlah,
-    });
+    final result = await client.rpc(
+      'check_availability',
+      params: {
+        'p_equipment_id': equipmentId,
+        'p_start_date': tglMulai.toIso8601String().substring(0, 10),
+        'p_end_date': tglSelesai.toIso8601String().substring(0, 10),
+        'p_quantity': jumlah,
+      },
+    );
     return result as bool? ?? false;
   }
 }

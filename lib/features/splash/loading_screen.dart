@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../auth/onboarding_page.dart';
-import '../shell/main_shell.dart';
+import '../shell/role_gate.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -36,7 +36,7 @@ class _LoadingScreenState extends State<LoadingScreen>
 
     final sudahLogin = AuthService().sudahMasuk;
     final halamanTujuan = sudahLogin
-        ? const MainShell()
+        ? const RoleGate()
         : const OnboardingPage();
 
     if (sudahLogin) {

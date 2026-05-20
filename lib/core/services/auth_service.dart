@@ -32,11 +32,7 @@ class AuthService {
     final response = await client.auth.signUp(
       email: email,
       password: password,
-      data: {
-        'full_name': namaLengkap,
-        'no_wa': noWa,
-        'role': _petaRole(role),
-      },
+      data: {'full_name': namaLengkap, 'no_wa': noWa, 'role': _petaRole(role)},
     );
 
     // 2. Coba update public.users (hanya berhasil jika email confirmation OFF
@@ -77,11 +73,14 @@ class AuthService {
     if (noWa == null && role == null) return;
 
     try {
-      await client.from('users').update({
-        'no_wa': noWa,
-        'role': role,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', user.id);
+      await client
+          .from('users')
+          .update({
+            'no_wa': noWa,
+            'role': role,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', user.id);
     } catch (_) {
       // Abaikan — akan dicoba ulang di sesi berikutnya
     }
@@ -125,10 +124,7 @@ class AuthService {
     if (noWa != null) data['no_wa'] = noWa;
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
 
-    await client
-        .from('users')
-        .update(data)
-        .eq('id', penggunaSaatIni!.id);
+    await client.from('users').update(data).eq('id', penggunaSaatIni!.id);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -143,15 +139,10 @@ class AuthService {
     if (penggunaSaatIni == null) throw Exception('Belum masuk.');
 
     // Re-authenticate dulu dengan password lama
-    await masuk(
-      email: penggunaSaatIni!.email!,
-      password: passwordLama,
-    );
+    await masuk(email: penggunaSaatIni!.email!, password: passwordLama);
 
     // Update ke password baru
-    await client.auth.updateUser(
-      UserAttributes(password: passwordBaru),
-    );
+    await client.auth.updateUser(UserAttributes(password: passwordBaru));
   }
 
   // ──────────────────────────────────────────────────────────
@@ -197,8 +188,7 @@ class AuthService {
   // ──────────────────────────────────────────────────────────
   //  STREAM AUTH STATE (untuk routing di main.dart)
   // ──────────────────────────────────────────────────────────
-  Stream<AuthState> get perubahanStatusAuth =>
-      client.auth.onAuthStateChange;
+  Stream<AuthState> get perubahanStatusAuth => client.auth.onAuthStateChange;
 
   // ──────────────────────────────────────────────────────────
   //  AMBIL ROLE dari DB
@@ -221,6 +211,7 @@ class AuthService {
     return switch (role) {
       UserRole.penyewa => 'customer',
       UserRole.pemilik => 'rental_owner',
+      UserRole.admin => 'admin',
     };
   }
 

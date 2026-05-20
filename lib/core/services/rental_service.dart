@@ -45,6 +45,21 @@ class RentalService {
         .toList();
   }
 
+  /// Ambil profil rental milik user owner yang sedang login.
+  Future<RentalProfile?> ambilRentalSaya() async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) return null;
+
+    final data = await client
+        .from('rental_profiles')
+        .select('*, rental_settings(*)')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+    if (data == null) return null;
+    return RentalProfile.fromMap(data);
+  }
+
   /// Ambil rental yang dekat dengan lokasi wisata tertentu.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
     // Ambil rental yang terhubung ke wisata ini via rental_wisata
@@ -53,10 +68,13 @@ class RentalService {
         .select('rental_profiles(*, rental_settings(*))')
         .eq('wisata_id', wisataId);
 
-    return (data as List).map((e) {
-      final rental = e['rental_profiles'] as Map<String, dynamic>;
-      return RentalProfile.fromMap(rental);
-    }).where((r) => r.isActive).toList();
+    return (data as List)
+        .map((e) {
+          final rental = e['rental_profiles'] as Map<String, dynamic>;
+          return RentalProfile.fromMap(rental);
+        })
+        .where((r) => r.isActive)
+        .toList();
   }
 
   /// Cek apakah rental sudah di-favorit oleh user saat ini.
@@ -108,9 +126,12 @@ class RentalService {
         .eq('user_id', user.id)
         .order('created_at', ascending: false);
 
-    return (data as List).map((e) {
-      final rental = e['rental_profiles'] as Map<String, dynamic>;
-      return RentalProfile.fromMap(rental);
-    }).where((r) => r.isActive).toList();
+    return (data as List)
+        .map((e) {
+          final rental = e['rental_profiles'] as Map<String, dynamic>;
+          return RentalProfile.fromMap(rental);
+        })
+        .where((r) => r.isActive)
+        .toList();
   }
 }

@@ -114,17 +114,11 @@ class OnboardingPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.image_outlined,
-            size: 48,
-            color: AppColors.textHint,
-          ),
+          Icon(Icons.image_outlined, size: 48, color: AppColors.textHint),
           const SizedBox(height: 8),
           Text(
             'Tambahkan gambar di sini',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textHint,
-            ),
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
           ),
         ],
       ),
@@ -178,4 +172,4 @@ class OnboardingPage extends StatelessWidget {
 }
 
 // ── Role enum (shared across pages)
-enum UserRole { penyewa, pemilik }
+enum UserRole { penyewa, pemilik, admin }
