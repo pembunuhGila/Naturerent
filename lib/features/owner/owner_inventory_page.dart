@@ -285,7 +285,7 @@ class _RentalManageTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 32),
-        const _RentalProfileCard(),
+        _RentalProfileCard(rentalProfile: rentalProfile),
         const SizedBox(height: 24),
         _NearbyDestinationSection(rentalProfile: rentalProfile),
         const SizedBox(height: 24),
@@ -324,10 +324,16 @@ class _RentalManageTab extends StatelessWidget {
 }
 
 class _RentalProfileCard extends StatelessWidget {
-  const _RentalProfileCard();
+  final RentalProfile? rentalProfile;
+
+  const _RentalProfileCard({required this.rentalProfile});
 
   @override
   Widget build(BuildContext context) {
+    final namaRental = rentalProfile?.namaRental ?? 'Base Camp Ranu Kumbolo';
+    final alamat = rentalProfile?.alamat ??
+        'Kaki Gunung Semeru, Desa Ranupani, Senduro, Lumajang, Jawa Timur';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
       decoration: BoxDecoration(
@@ -344,36 +350,6 @@ class _RentalProfileCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(7),
-            child: SizedBox(
-              height: 192,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
-                    'assets/images/loading_background.png',
-                    fit: BoxFit.cover,
-                  ),
-                  Container(color: Colors.black.withValues(alpha: 0.42)),
-                  Center(
-                    child: Text(
-                      'CURRENT RENTAL\nBASE',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.headlineLarge.copyWith(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
           Row(
             children: [
               Container(
@@ -405,7 +381,7 @@ class _RentalProfileCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Base Camp Ranu\nKumbolo',
+            namaRental,
             style: AppTextStyles.headlineLarge.copyWith(
               color: const Color(0xFF202321),
               fontSize: 26,
@@ -425,7 +401,7 @@ class _RentalProfileCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Kaki Gunung Semeru, Desa Ranupani,\nSenduro, Lumajang, Jawa Timur',
+                  alamat,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: const Color(0xFF58615A),
                     fontSize: 15,
