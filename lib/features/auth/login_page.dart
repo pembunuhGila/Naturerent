@@ -689,7 +689,7 @@ class _LoginRoleConfig {
         titleColor: AppColors.textPrimary,
         labelColor: AppColors.textSecondary,
         backgroundColor: AppColors.background,
-        showGoogleLogin: false, // Google provider belum aktif di Supabase
+        showGoogleLogin: true,
       ),
     };
   }

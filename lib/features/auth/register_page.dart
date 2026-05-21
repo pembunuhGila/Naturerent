@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,8 +31,10 @@ class _RegisterPageState extends State<RegisterPage>
   final _picker = ImagePicker();
 
   bool _isLoading = false;
+  bool _googleLoading = false;
   bool _agreedToTerms = false;
   File? _ktpFile;
+  StreamSubscription? _authSub;
   late final AnimationController _animController;
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
@@ -56,6 +59,7 @@ class _RegisterPageState extends State<RegisterPage>
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _animController.dispose();
     _namaController.dispose();
     _namaTokoController.dispose();
@@ -147,13 +151,30 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   Future<void> _handleGoogleRegister() async {
+    setState(() => _googleLoading = true);
     try {
       await AuthService.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'io.supabase.naturerent://login-callback/',
       );
+      // Dengarkan perubahan auth setelah browser OAuth selesai
+      _authSub?.cancel();
+      _authSub = AuthService.client.auth.onAuthStateChange.listen((data) async {
+        if (data.event == AuthChangeEvent.signedIn && mounted) {
+          _authSub?.cancel();
+          await AuthService().syncProfilSetelahLogin();
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const MainShell()),
+              (r) => false,
+            );
+          }
+        }
+      });
     } catch (e) {
       if (mounted) _showError('Google gagal: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
     }
   }
 
@@ -774,7 +795,7 @@ class _RegisterPageState extends State<RegisterPage>
               width: double.infinity,
               height: 52,
               child: OutlinedButton(
-                onPressed: _handleGoogleRegister,
+                onPressed: _googleLoading ? null : _handleGoogleRegister,
                 style: OutlinedButton.styleFrom(
                   backgroundColor: AppColors.surface,
                   side: const BorderSide(color: AppColors.border, width: 1.2),
@@ -782,20 +803,25 @@ class _RegisterPageState extends State<RegisterPage>
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _GoogleLogo(),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Daftar dengan Google',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
+                child: _googleLoading
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _GoogleLogo(),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Daftar dengan Google',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1000,47 +1026,6 @@ class _MitraTextFieldState extends State<_MitraTextField> {
   }
 }
 
-class _GoogleLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: const TextSpan(
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w800,
-          fontSize: 18,
-        ),
-        children: [
-          TextSpan(
-            text: 'G',
-            style: TextStyle(color: Color(0xFF4285F4)),
-          ),
-          TextSpan(
-            text: 'o',
-            style: TextStyle(color: Color(0xFFEA4335)),
-          ),
-          TextSpan(
-            text: 'o',
-            style: TextStyle(color: Color(0xFFFBBC05)),
-          ),
-          TextSpan(
-            text: 'g',
-            style: TextStyle(color: Color(0xFF4285F4)),
-          ),
-          TextSpan(
-            text: 'l',
-            style: TextStyle(color: Color(0xFF34A853)),
-          ),
-          TextSpan(
-            text: 'e',
-            style: TextStyle(color: Color(0xFFEA4335)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PwStrength extends StatelessWidget {
   final String pw;
   const _PwStrength({required this.pw});
@@ -1064,6 +1049,25 @@ class _PwStrength extends StatelessWidget {
         const SizedBox(height: 3),
         _Req(ok: _hasSym, label: 'Mengandung simbol (!@#\$%^&*)'),
       ],
+    );
+  }
+}
+
+class _GoogleLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: const TextSpan(
+        style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w800, fontSize: 18),
+        children: [
+          TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
+          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
+          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
+          TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
+          TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
+          TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+        ],
+      ),
     );
   }
 }
