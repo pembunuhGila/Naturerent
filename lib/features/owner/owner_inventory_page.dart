@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/equipment.dart';
+import '../../core/models/rental_profile.dart';
 import '../../core/services/equipment_service.dart';
+import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'owner_destination_data.dart';
 import 'owner_equipment_form_page.dart';
 import 'owner_edit_rental_page.dart';
+import 'widgets/owner_header_widget.dart';
 
 class OwnerInventoryPage extends StatefulWidget {
   const OwnerInventoryPage({super.key});
@@ -23,6 +26,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
 
   List<Equipment> _alat = [];
   String? _rentalId;
+  RentalProfile? _rentalProfile; // Simpan profil rental lengkap (termasuk lat/lng)
   bool _loading = true;
   bool _preparingAdd = false;
   String? _error;
@@ -56,6 +60,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
       if (!mounted) return;
       setState(() {
         _rentalId = rental?.id;
+        _rentalProfile = rental; // Simpan lengkap
         _alat = alat;
         _loading = false;
       });
@@ -141,55 +146,70 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
       backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
         bottom: false,
-        child: RefreshIndicator(
-          color: const Color(0xFF13733A),
-          onRefresh: _muatAlat,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(32, 64, 24, 130),
-            children: [
-              Text(
-                'Kelola',
-                style: AppTextStyles.displayLarge.copyWith(
-                  color: const Color(0xFF202321),
-                  fontSize: 36,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Pantau operasional tempat rental dan kelola\ninventaris alat camping Anda dengan mudah.',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: const Color(0xFF4C554D),
-                  fontSize: 16,
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 26),
-              _buildTabs(),
-              const SizedBox(height: 34),
-              if (_tabController.index == 0)
-                _RentalManageTab(
-                  onEdit: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const OwnerEditRentalPage(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const OwnerHeaderWidget(),
+            Expanded(
+              child: RefreshIndicator(
+                color: const Color(0xFF13733A),
+                onRefresh: _muatAlat,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(32, 28, 24, 130),
+                  children: [
+                    Text(
+                      'Kelola',
+                      style: AppTextStyles.displayLarge.copyWith(
+                        color: const Color(0xFF202321),
+                        fontSize: 36,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
                     ),
-                  ),
-                  onAddDestination: () => _comingSoon('Tambah rekomendasi'),
-                )
-              else
-                _EquipmentManageTab(
-                  loading: _loading,
-                  error: _error,
-                  alat: _alat,
-                  onEdit: _bukaEditAlat,
-                  onAdd: _preparingAdd ? null : _bukaTambahAlat,
-                  preparingAdd: _preparingAdd,
+                    const SizedBox(height: 10),
+                    Text(
+                      'Pantau operasional tempat rental dan kelola\ninventaris alat camping Anda dengan mudah.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: const Color(0xFF4C554D),
+                        fontSize: 16,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    _buildTabs(),
+                    const SizedBox(height: 34),
+                    if (_tabController.index == 0)
+                      _RentalManageTab(
+                        rentalProfile: _rentalProfile,
+                        onEdit: () async {
+                          final changed = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OwnerEditRentalPage(
+                                rentalProfile: _rentalProfile,
+                              ),
+                            ),
+                          );
+                          if (changed == true) _muatAlat();
+                        },
+                        onAddDestination: () => _comingSoon('Tambah rekomendasi'),
+                      )
+                    else
+                      _EquipmentManageTab(
+                        loading: _loading,
+                        error: _error,
+                        alat: _alat,
+                        onEdit: _bukaEditAlat,
+                        onAdd: _preparingAdd ? null : _bukaTambahAlat,
+                        preparingAdd: _preparingAdd,
+                      ),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
+
       ),
     );
   }
@@ -225,10 +245,12 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
 }
 
 class _RentalManageTab extends StatelessWidget {
+  final RentalProfile? rentalProfile;
   final VoidCallback onEdit;
   final VoidCallback onAddDestination;
 
   const _RentalManageTab({
+    required this.rentalProfile,
     required this.onEdit,
     required this.onAddDestination,
   });
@@ -265,7 +287,7 @@ class _RentalManageTab extends StatelessWidget {
         const SizedBox(height: 32),
         const _RentalProfileCard(),
         const SizedBox(height: 24),
-        const _NearbyDestinationSection(),
+        _NearbyDestinationSection(rentalProfile: rentalProfile),
         const SizedBox(height: 24),
         InkWell(
           onTap: onAddDestination,
@@ -419,15 +441,125 @@ class _RentalProfileCard extends StatelessWidget {
   }
 }
 
-class _NearbyDestinationSection extends StatelessWidget {
-  const _NearbyDestinationSection();
+class _NearbyDestinationSection extends StatefulWidget {
+  final RentalProfile? rentalProfile;
+
+  const _NearbyDestinationSection({this.rentalProfile});
+
+  @override
+  State<_NearbyDestinationSection> createState() =>
+      _NearbyDestinationSectionState();
+}
+
+class _NearbyDestinationSectionState
+    extends State<_NearbyDestinationSection> {
+  final _rentalService = RentalService();
+  List<DestinationInfo> _destinations = [];
+  bool _loadingDest = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _muatDestinasiTerdekat();
+  }
+
+  @override
+  void didUpdateWidget(_NearbyDestinationSection old) {
+    super.didUpdateWidget(old);
+    // Reload jika koordinat rental berubah
+    if (old.rentalProfile?.lat != widget.rentalProfile?.lat ||
+        old.rentalProfile?.lng != widget.rentalProfile?.lng) {
+      _muatDestinasiTerdekat();
+    }
+  }
+
+  Future<void> _muatDestinasiTerdekat() async {
+    setState(() => _loadingDest = true);
+    try {
+      final rental = widget.rentalProfile;
+      // Jika rental punya koordinat → hitung Haversine dari data Supabase
+      if (rental?.lat != null && rental?.lng != null) {
+        final wisataList = await _rentalService.ambilSemuaWisata();
+        final nearest = LocationService.getNearestWisata(
+          rentalLat: rental!.lat!,
+          rentalLng: rental.lng!,
+          wisataList: wisataList,
+          maxResults: 5,
+        );
+        if (!mounted) return;
+        setState(() {
+          _destinations = nearest.map((wd) {
+            // Konversi WisataWithDistance ke DestinationInfo
+            return DestinationInfo(
+              title: wd.wisata.nama,
+              distance: wd.jarakFormatted,
+              detailDistance: '${wd.jarakFormatted} dari rental',
+              icon: _iconForKategori(wd.wisata.kategori),
+              color: _colorForKategori(wd.wisata.kategori),
+              lat: wd.wisata.lat,
+              lng: wd.wisata.lng,
+            );
+          }).toList();
+          _loadingDest = false;
+        });
+        return;
+      }
+    } catch (_) {
+      // Jika gagal, fallback ke data statis
+    }
+    // Fallback: gunakan data statis dari owner_destination_data.dart
+    if (!mounted) return;
+    setState(() {
+      _destinations = ownerNearbyDestinations.toList();
+      _loadingDest = false;
+    });
+  }
+
+  IconData _iconForKategori(String? kategori) {
+    return switch (kategori?.toLowerCase()) {
+      'gunung' => Icons.terrain_rounded,
+      'ranu' || 'danau' => Icons.water_rounded,
+      'hutan' => Icons.forest_rounded,
+      'pantai' => Icons.beach_access_rounded,
+      'air terjun' || 'curug' => Icons.waterfall_chart_rounded,
+      _ => Icons.landscape_rounded,
+    };
+  }
+
+  Color _colorForKategori(String? kategori) {
+    return switch (kategori?.toLowerCase()) {
+      'gunung' => const Color(0xFF336A77),
+      'ranu' || 'danau' => const Color(0xFF6B8E7D),
+      'hutan' => const Color(0xFF4E6A35),
+      'pantai' => const Color(0xFF3B7DA4),
+      'air terjun' || 'curug' => const Color(0xFF6F9A3D),
+      _ => const Color(0xFF5A6B5D),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final showSeeAll = ownerNearbyDestinations.length > 3;
-    final items = showSeeAll
-        ? ownerNearbyDestinations.take(3).toList()
-        : ownerNearbyDestinations;
+    if (_loadingDest) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFBF8),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: CircularProgressIndicator(
+              color: Color(0xFF0B7130),
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final showSeeAll = _destinations.length > 3;
+    final items = showSeeAll ? _destinations.take(3).toList() : _destinations;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
@@ -468,13 +600,24 @@ class _NearbyDestinationSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          ...items.map((item) {
-            final isLast = item == items.last;
-            return Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              child: _SmallDestinationCard(item: item),
-            );
-          }),
+          if (_destinations.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Belum ada destinasi terdekat.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textHint,
+                ),
+              ),
+            )
+          else
+            ...items.map((item) {
+              final isLast = item == items.last;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+                child: _SmallDestinationCard(item: item),
+              );
+            }),
         ],
       ),
     );
