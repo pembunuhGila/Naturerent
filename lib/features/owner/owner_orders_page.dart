@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
+import 'widgets/owner_header_widget.dart';
 
 class OwnerOrdersPage extends StatelessWidget {
   const OwnerOrdersPage({super.key});
@@ -18,50 +19,58 @@ class OwnerOrdersPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            const OwnerHeaderWidget(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        'Pesanan Rental',
-                        style: AppTextStyles.headlineLarge.copyWith(
-                          fontSize: 20,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Pesanan Rental',
+                              style: AppTextStyles.headlineLarge.copyWith(
+                                fontSize: 20,
+                              ),
+                            ),
+                            Text(
+                              'Kelola permintaan sewa masuk',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Kelola permintaan sewa masuk',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(
+                          Icons.filter_list_rounded,
+                          color: AppColors.textPrimary,
+                          size: 18,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(
-                    Icons.filter_list_rounded,
-                    color: AppColors.textPrimary,
-                    size: 18,
-                  ),
-                ),
-              ],
+                  const SizedBox(height: 18),
+                  _SummaryStrip(),
+                  const SizedBox(height: 18),
+                  _EmptyOrders(),
+                ],
+              ),
             ),
-            const SizedBox(height: 18),
-            _SummaryStrip(),
-            const SizedBox(height: 18),
-            _EmptyOrders(),
           ],
         ),
       ),

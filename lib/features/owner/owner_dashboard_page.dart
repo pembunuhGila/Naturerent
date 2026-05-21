@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
+import 'widgets/owner_header_widget.dart';
 
 class OwnerDashboardPage extends StatelessWidget {
   const OwnerDashboardPage({super.key});
@@ -18,11 +19,15 @@ class OwnerDashboardPage extends StatelessWidget {
       backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(32, 28, 24, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _MitraBrand(),
-            const SizedBox(height: 48),
+            const OwnerHeaderWidget(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(32, 24, 24, 120),
+                children: [
+            const SizedBox(height: 24),
             Text(
               'Total Pendapatan Bulan Ini',
               style: AppTextStyles.bodyLarge.copyWith(
@@ -108,6 +113,9 @@ class OwnerDashboardPage extends StatelessWidget {
                 child: _TransactionCard(item: item),
               ),
             ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -169,27 +177,6 @@ const _transactions = [
   ),
 ];
 
-class _MitraBrand extends StatelessWidget {
-  const _MitraBrand();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.park_rounded, color: Color(0xFF116229), size: 24),
-        const SizedBox(width: 7),
-        Text(
-          'Mitra NatureRent',
-          style: AppTextStyles.headlineMedium.copyWith(
-            color: const Color(0xFF116229),
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _RevenueChartCard extends StatelessWidget {
   const _RevenueChartCard();
