@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../auth/onboarding_page.dart';
 import '../home/aktivitas_page.dart';
+import '../owner/owner_activity_page.dart';
 import 'edit_profil_page.dart';
 
 class ProfilPage extends StatefulWidget {
@@ -80,6 +81,29 @@ class _ProfilPageState extends State<ProfilPage> {
     if (updated == true && mounted) {
       await _muatProfil(); // reload nama & avatar dari DB
       setState(() {}); // trigger rebuild
+    }
+  }
+
+  /// Navigasi ke halaman aktivitas yang sesuai dengan role user.
+  /// Owner → OwnerActivityPage, Customer → AktivitasPage
+  Future<void> _bukaAktivitas() async {
+    // Ambil role dari DB
+    final role = await AuthService().ambilRolePengguna();
+    if (!mounted) return;
+
+    if (role == 'rental_owner') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const OwnerActivityPage()),
+      );
+    } else {
+      // Default: halaman aktivitas customer
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AktivitasPage(initialTab: 0),
+        ),
+      );
     }
   }
 
@@ -166,12 +190,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 _MenuItem(
                   icon: Icons.history_rounded,
                   label: 'Aktivitas Saya',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AktivitasPage(initialTab: 0),
-                    ),
-                  ),
+                  onTap: _bukaAktivitas,
                 ),
                 _MenuItem(
                   icon: Icons.receipt_long_rounded,
