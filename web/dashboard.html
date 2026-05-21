@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NatureRent — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════
+       SIDEBAR
+       ═══════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- Brand -->
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 4C11.5 4 8 8.5 9 13C6 13 3.5 15.5 4.5 19C5.5 22.5 9 24 12 22.5L12 27H15V22C15.3 22.05 15.65 22.08 16 22.08C16.35 22.08 16.7 22.05 17 22V27H20V22.5C23 24 26.5 22.5 27.5 19C28.5 15.5 26 13 23 13C24 8.5 20.5 4 16 4Z" fill="#1a6b3a"/>
+          <path d="M16 14V27" stroke="#1a6b3a" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="sidebar-brand-text">
+        <span class="sidebar-brand-name">NatureRent</span>
+        <span class="sidebar-brand-sub">Operations Portal</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Overview
+      </a>
+      <a href="rental-orders.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+        </svg>
+        Rental Orders
+      </a>
+      <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-2-2.2-3.3C13 5.6 12 5 11 5H5c-.6 0-1.1.2-1.4.6L1.3 8.5c-.2.3-.3.6-.3 1V16c0 .6.4 1 1 1h1"/>
+          <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+        </svg>
+        Fleet Management
+      </a>
+      <a href="customer-base.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Customer Base
+      </a>
+      <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        Analytics
+      </a>
+      <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        System Settings
+      </a>
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Help Center
+      </a>
+      <a href="index.html" class="nav-item sign-out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign Out
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════════════════════════
+       MAIN WRAPPER
+       ═══════════════════════════════════ -->
+  <div class="main-wrapper">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" placeholder="Search orders, customers, or equipment..." />
+      </div>
+
+      <div class="topbar-actions">
+        <button class="topbar-btn" type="button" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="notif-dot"></span>
+        </button>
+        <button class="topbar-btn" type="button" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button class="topbar-btn" type="button" aria-label="Apps">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </button>
+
+        <div class="topbar-divider"></div>
+
+        <div class="topbar-user">
+          <div class="topbar-avatar">AT</div>
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">Alex Thompson</span>
+            <span class="topbar-user-role">Senior Admin</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <h1 class="page-title">Operational Overview</h1>
+        <p class="page-subtitle">Real-time performance metrics for NatureRent nationwide operations.</p>
+      </div>
+
+      <!-- ── Stat Cards ── -->
+      <div class="stats-grid">
+
+        <!-- Total Owners -->
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <span class="stat-badge up">↑ 12%</span>
+          </div>
+          <div class="stat-label">Total Owners</div>
+          <div class="stat-value">1,284</div>
+        </div>
+
+        <!-- Today's Transactions -->
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <span class="stat-badge up">↑ 8%</span>
+          </div>
+          <div class="stat-label">Today's Transactions</div>
+          <div class="stat-value">342</div>
+        </div>
+
+        <!-- Commission Revenue (highlighted) -->
+        <div class="stat-card highlight">
+          <div class="stat-card-top">
+            <div class="stat-icon white">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+              </svg>
+            </div>
+            <span class="stat-badge up">↑ 23%</span>
+          </div>
+          <div class="stat-label">Commission Revenue</div>
+          <div class="stat-value">$42,590</div>
+        </div>
+
+        <!-- Active Rentals -->
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+              </svg>
+            </div>
+            <span class="stat-badge down">↓ 5%</span>
+          </div>
+          <div class="stat-label">Active Rentals</div>
+          <div class="stat-value">892</div>
+        </div>
+
+      </div>
+
+      <!-- ── Middle Row: Chart + System Log ── -->
+      <div class="middle-row">
+
+        <!-- Transaction Volume Chart -->
+        <div class="card-panel">
+          <div class="chart-header">
+            <div class="chart-header-left">
+              <h3>Transaction Volume</h3>
+              <p>Monthly breakdown of rental activity</p>
+            </div>
+            <button class="chart-period" type="button">
+              Last 6 Months
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="chart-area">
+            <svg class="chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
+              <!-- Grid lines -->
+              <line x1="0" y1="50" x2="600" y2="50" stroke="#ebebea" stroke-width="1"/>
+              <line x1="0" y1="100" x2="600" y2="100" stroke="#ebebea" stroke-width="1"/>
+              <line x1="0" y1="150" x2="600" y2="150" stroke="#ebebea" stroke-width="1"/>
+
+              <!-- Area fill -->
+              <path d="M0 180 Q50 160 100 140 Q150 130 200 110 Q250 120 300 100 Q350 80 400 60 Q450 70 500 50 Q550 30 600 20 L600 200 L0 200 Z"
+                    fill="url(#chartGrad)" opacity="0.4"/>
+
+              <!-- Line -->
+              <path d="M0 180 Q50 160 100 140 Q150 130 200 110 Q250 120 300 100 Q350 80 400 60 Q450 70 500 50 Q550 30 600 20"
+                    fill="none" stroke="#2a7d48" stroke-width="2.5" stroke-linecap="round"/>
+
+              <!-- Dots -->
+              <circle cx="0" cy="180" r="4" fill="#2a7d48"/>
+              <circle cx="120" cy="140" r="4" fill="#2a7d48"/>
+              <circle cx="240" cy="110" r="4" fill="#2a7d48"/>
+              <circle cx="360" cy="100" r="4" fill="#2a7d48"/>
+              <circle cx="480" cy="50" r="4" fill="#2a7d48"/>
+              <circle cx="600" cy="20" r="6" fill="#2a7d48" stroke="#fff" stroke-width="2"/>
+
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2a7d48" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#2a7d48" stop-opacity="0.02"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          <div class="chart-labels">
+            <span>Jan</span>
+            <span>Feb</span>
+            <span>Mar</span>
+            <span>Apr</span>
+            <span>May</span>
+            <span class="active">Jun</span>
+          </div>
+        </div>
+
+        <!-- System Log -->
+        <div class="card-panel">
+          <div class="log-header">
+            <h3>System Log</h3>
+            <a href="#">View All</a>
+          </div>
+
+          <div class="log-list">
+
+            <div class="log-item">
+              <div class="log-avatar green">MV</div>
+              <div class="log-content">
+                <div class="log-text"><strong>Marcus V. approved 4 new listing requests.</strong><br/><span class="log-status-dot online"></span> Online now</div>
+                <div class="log-meta">
+                  <span class="log-time">2 min ago</span>
+                  <span class="log-dot"></span>
+                  <span class="log-tag">Rentals</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="log-item">
+              <div class="log-avatar orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <div class="log-content">
+                <div class="log-text"><strong>Manual payout initiated for <span class="highlight-id">ID #9203</span></strong></div>
+                <div class="log-meta">
+                  <span class="log-time">15 min ago</span>
+                  <span class="log-dot"></span>
+                  <span class="log-tag">Finance</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="log-item">
+              <div class="log-avatar blue">SK</div>
+              <div class="log-content">
+                <div class="log-text"><strong>Sarah K. resolved customer dispute <span class="highlight-id">#442</span>.</strong></div>
+                <div class="log-meta">
+                  <span class="log-time">1 hour ago</span>
+                  <span class="log-dot"></span>
+                  <span class="log-tag">Support</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="log-item">
+              <div class="log-avatar gray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+                </svg>
+              </div>
+              <div class="log-content">
+                <div class="log-text"><strong>System backup and maintenance completed.</strong></div>
+                <div class="log-meta">
+                  <span class="log-time">3 hours ago</span>
+                  <span class="log-dot"></span>
+                  <span class="log-tag">Infrastructure</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Bottom Row: Transactions + Inventory ── -->
+      <div class="bottom-row">
+
+        <!-- Recent Transactions -->
+        <div class="card-panel">
+          <div class="transactions-header">
+            <div class="transactions-header-left">
+              <h3>Recent Transactions</h3>
+              <p>Live feed of global rental activities</p>
+            </div>
+            <div class="transactions-actions">
+              <button class="btn-outline" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                </svg>
+                Filters
+              </button>
+              <button class="btn-outline" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rental Entity</th>
+                  <th>Customer</th>
+                  <th>Status</th>
+                  <th>Commission</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="entity-info">
+                      <span class="entity-name">Mountain e-Bike Pro</span>
+                      <span class="entity-type">Outdoor Gear</span>
+                      <span class="entity-id">#RN-9431</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="customer-info">
+                      <span class="customer-name">David Miller</span>
+                      <span class="customer-type">Premium Member</span>
+                    </div>
+                  </td>
+                  <td><span class="status-badge completed">Completed</span></td>
+                  <td><span class="commission-amount">$12.40</span></td>
+                  <td>
+                    <button class="action-btn" type="button">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="entity-info">
+                      <span class="entity-name">Tandem Kayak X-1</span>
+                      <span class="entity-type">Water Sports</span>
+                      <span class="entity-id">#RN-8877</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="customer-info">
+                      <span class="customer-name">Samantha Reed</span>
+                      <span class="customer-type">Guest</span>
+                    </div>
+                  </td>
+                  <td><span class="status-badge in-progress">In Progress</span></td>
+                  <td><span class="commission-amount">$28.50</span></td>
+                  <td>
+                    <button class="action-btn" type="button">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="entity-info">
+                      <span class="entity-name">Portable Glamping Tent</span>
+                      <span class="entity-type">Shelter</span>
+                      <span class="entity-id">#RN-6042</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="customer-info">
+                      <span class="customer-name">Johnathan Doe</span>
+                      <span class="customer-type">Regular</span>
+                    </div>
+                  </td>
+                  <td><span class="status-badge pending">Pending</span></td>
+                  <td><span class="commission-amount">$45.00</span></td>
+                  <td>
+                    <button class="action-btn" type="button">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Inventory Status -->
+        <div class="card-panel inventory-panel">
+          <div class="inventory-header">
+            <h3>Inventory Status</h3>
+          </div>
+
+          <div class="inventory-list">
+            <div class="inventory-item">
+              <div class="inventory-item-top">
+                <span class="inventory-label">Camping Gear</span>
+                <span class="inventory-pct green">82%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill green" style="width: 82%"></div>
+              </div>
+              <span class="inventory-desc">1,640 units currently rented</span>
+            </div>
+
+            <div class="inventory-item">
+              <div class="inventory-item-top">
+                <span class="inventory-label">Bicycles</span>
+                <span class="inventory-pct green">64%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill green" style="width: 64%"></div>
+              </div>
+              <span class="inventory-desc">512 units currently rented</span>
+            </div>
+
+            <div class="inventory-item">
+              <div class="inventory-item-top">
+                <span class="inventory-label">Water Sports</span>
+                <span class="inventory-pct red">17%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill red" style="width: 17%"></div>
+              </div>
+              <span class="inventory-desc">Critical: high demand</span>
+            </div>
+
+            <div class="inventory-item">
+              <div class="inventory-item-top">
+                <span class="inventory-label">Photography</span>
+                <span class="inventory-pct orange">12%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill orange" style="width: 12%"></div>
+              </div>
+              <span class="inventory-desc">Seasonal</span>
+            </div>
+          </div>
+
+          <!-- Optimization Insight -->
+          <div class="insight-card">
+            <h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Optimization Insight
+            </h4>
+            <p>Consider shifting marketing focus to "Photography" category for the upcoming weekend.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+</body>
+</html>

@@ -1,50 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="naturerent">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <!-- cropperjs for image_cropper on Flutter Web -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-
-  <title>naturerent</title>
-  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NatureRent — Operations Portal Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Background -->
+  <div class="bg-scene"></div>
+
+  <!-- SVG Tree Silhouettes -->
+  <svg class="bg-trees" viewBox="0 0 1440 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+    <!-- Far background trees (lightest) -->
+    <g opacity="0.25" fill="#0e2210">
+      <polygon points="100,500 130,360 160,500"/>
+      <polygon points="180,500 220,300 260,500"/>
+      <polygon points="320,500 360,320 400,500"/>
+      <polygon points="500,500 545,280 590,500"/>
+      <polygon points="700,500 745,310 790,500"/>
+      <polygon points="900,500 940,290 980,500"/>
+      <polygon points="1100,500 1145,310 1190,500"/>
+      <polygon points="1280,500 1320,340 1360,500"/>
+    </g>
+    <!-- Mid trees -->
+    <g opacity="0.45" fill="#0a1c0c">
+      <polygon points="0,500 45,300 90,500"/>
+      <polygon points="70,500 115,260 160,500"/>
+      <polygon points="210,500 265,230 320,500"/>
+      <polygon points="350,500 400,250 450,500"/>
+      <polygon points="520,500 580,210 640,500"/>
+      <polygon points="680,500 735,240 790,500"/>
+      <polygon points="860,500 915,220 970,500"/>
+      <polygon points="1020,500 1075,250 1130,500"/>
+      <polygon points="1200,500 1255,260 1310,500"/>
+      <polygon points="1360,500 1400,290 1440,500"/>
+    </g>
+    <!-- Front trees (darkest) -->
+    <g opacity="0.75" fill="#061409">
+      <polygon points="-20,500 40,230 100,500"/>
+      <polygon points="80,500 150,170 220,500"/>
+      <polygon points="180,500 255,190 330,500"/>
+      <polygon points="300,500 375,150 450,500"/>
+      <polygon points="430,500 510,140 590,500"/>
+      <polygon points="600,500 680,160 760,500"/>
+      <polygon points="750,500 825,145 900,500"/>
+      <polygon points="890,500 965,155 1040,500"/>
+      <polygon points="1050,500 1125,165 1200,500"/>
+      <polygon points="1180,500 1255,180 1330,500"/>
+      <polygon points="1330,500 1390,210 1450,500"/>
+    </g>
+    <!-- Ground fill -->
+    <rect x="0" y="460" width="1440" height="40" fill="#060e07" opacity="0.9"/>
+  </svg>
+
+  <div class="bg-mist"></div>
+
+  <!-- Page content -->
+  <div class="page">
+
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-logo">
+        <!-- Leaf / plant icon -->
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 4C11.5 4 8 8.5 9 13C6 13 3.5 15.5 4.5 19C5.5 22.5 9 24 12 22.5L12 27H15V22C15.3 22.05 15.65 22.08 16 22.08C16.35 22.08 16.7 22.05 17 22V27H20V22.5C23 24 26.5 22.5 27.5 19C28.5 15.5 26 13 23 13C24 8.5 20.5 4 16 4Z" fill="#1a6b3a"/>
+          <path d="M16 14V27" stroke="#1a6b3a" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1 class="brand-name">NatureRent</h1>
+      <p class="brand-sub">Operations Portal Admin</p>
+    </div>
+
+    <!-- Login card -->
+    <div class="card">
+      <h2 class="card-title">Welcome Back</h2>
+      <p class="card-desc">Enter your credentials to access the fleet management dashboard.</p>
+
+      <!-- Email -->
+      <div class="field">
+        <div class="field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+          Email Address
+        </div>
+        <input type="email" placeholder="admin@naturerent.com" autocomplete="email"/>
+      </div>
+
+      <!-- Password -->
+      <div class="field">
+        <div class="field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Password
+        </div>
+        <div class="input-wrap">
+          <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password"/>
+          <button class="eye-btn" onclick="togglePassword()" type="button" aria-label="Toggle password">
+            <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Remember / Forgot -->
+      <div class="meta-row">
+        <label class="remember">
+          <input type="checkbox"/> Remember Me
+        </label>
+        <a href="#" class="forgot">Forgot Password?</a>
+      </div>
+
+      <!-- Login button -->
+      <button class="btn-login" type="button" onclick="handleLogin()">Log In</button>
+
+      <!-- Divider -->
+      <div class="or-divider">or continue with</div>
+
+      <!-- Social -->
+      <div class="socials">
+        <button class="btn-social" type="button">
+          <!-- Google icon -->
+          <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+            <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+          </svg>
+          Google
+        </button>
+        <button class="btn-social" type="button">
+          <!-- Microsoft icon -->
+          <svg viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg">
+            <rect width="11" height="11" fill="#f35325"/>
+            <rect x="12" width="11" height="11" fill="#81bc06"/>
+            <rect y="12" width="11" height="11" fill="#05a6f0"/>
+            <rect x="12" y="12" width="11" height="11" fill="#ffba08"/>
+          </svg>
+          Microsoft
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="footer-copy">© 2024 NatureRent. All rights reserved.</span>
+    <nav class="footer-links">
+      <a href="#">Support</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+    </nav>
+  </footer>
+
+  <script>
+    function togglePassword() {
+      const pw = document.getElementById('pw');
+      const icon = document.getElementById('eye-icon');
+      const isHidden = pw.type === 'password';
+      pw.type = isHidden ? 'text' : 'password';
+      icon.innerHTML = isHidden
+        ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23" stroke-width="2" stroke-linecap="round"/>'
+        : '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+    }
+
+    function handleLogin() {
+      const btn = document.querySelector('.btn-login');
+      btn.textContent = 'Logging in...';
+      btn.style.opacity = '0.7';
+      btn.style.pointerEvents = 'none';
+      setTimeout(function() {
+        window.location.href = 'dashboard.html';
+      }, 800);
+    }
+  </script>
 </body>
 </html>
