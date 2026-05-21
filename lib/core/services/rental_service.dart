@@ -92,6 +92,36 @@ class RentalService {
     return buatRentalDasarSaya();
   }
 
+  /// Update detail rental milik owner yang sedang login (nama, alamat, lat, lng).
+  Future<RentalProfile> perbaruiDetailRental({
+    required String rentalId,
+    required String namaRental,
+    String? alamat,
+    double? lat,
+    double? lng,
+  }) async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) throw Exception('Belum masuk.');
+
+    final payload = <String, dynamic>{
+      'nama_rental': namaRental,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (alamat != null) payload['alamat'] = alamat;
+    if (lat != null) payload['lat'] = lat;
+    if (lng != null) payload['lng'] = lng;
+
+    final data = await client
+        .from('rental_profiles')
+        .update(payload)
+        .eq('id', rentalId)
+        .eq('owner_id', user.id)
+        .select('*, rental_settings(*)')
+        .single();
+
+    return RentalProfile.fromMap(data);
+  }
+
   /// Ambil rental yang dekat dengan lokasi wisata tertentu.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
     // Ambil rental yang terhubung ke wisata ini via rental_wisata

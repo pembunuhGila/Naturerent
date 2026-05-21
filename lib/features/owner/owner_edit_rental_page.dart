@@ -1,22 +1,54 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import '../../core/models/rental_profile.dart';
+import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'owner_destination_data.dart';
+import 'owner_map_picker_page.dart';
 
 class OwnerEditRentalPage extends StatefulWidget {
-  const OwnerEditRentalPage({super.key});
+  /// Profil rental yang akan diedit. Boleh null jika rental belum dibuat.
+  final RentalProfile? rentalProfile;
+
+  const OwnerEditRentalPage({super.key, this.rentalProfile});
 
   @override
   State<OwnerEditRentalPage> createState() => _OwnerEditRentalPageState();
 }
 
 class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
-  final _namaRentalController = TextEditingController(text: 'Rimba Basecamp');
-  final _alamatController = TextEditingController(
-    text: 'Kaki Gunung Semeru, Desa Ranupani, Senduro, Lumajang, Jawa Timur',
-  );
+  late final TextEditingController _namaRentalController;
+  late final TextEditingController _alamatController;
+
   final Set<String> _nearbyTitles = {'Ranu Kumbolo', 'Gunung Semeru'};
   final Set<String> _selected = {'Ranu Kumbolo', 'Gunung Semeru'};
+  final _rentalService = RentalService();
+
+  // ── State GPS
+  double? _lat;
+  double? _lng;
+  bool _loadingGps = false;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final rental = widget.rentalProfile;
+    _namaRentalController = TextEditingController(
+      text: rental?.namaRental ?? 'Rimba Basecamp',
+    );
+    _alamatController = TextEditingController(
+      text: rental?.alamat ??
+          'Kaki Gunung Semeru, Desa Ranupani, Senduro, Lumajang, Jawa Timur',
+    );
+    // Muat koordinat yang sudah tersimpan sebelumnya
+    _lat = rental?.lat;
+    _lng = rental?.lng;
+  }
 
   @override
   void dispose() {
@@ -25,18 +57,141 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     super.dispose();
   }
 
-  void _save() {
+  // ─────────────────────────────────────────────────────
+  //  GPS Logic
+  // ─────────────────────────────────────────────────────
+
+  /// Buka map picker — user bisa tap peta atau gunakan GPS di dalam map picker.
+  Future<void> _ambilLokasiGps() async {
+    setState(() => _loadingGps = true);
+
+    // Minta permission dulu sebelum buka peta
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _snackError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
+        setState(() => _loadingGps = false);
+        return;
+      }
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) {
+          _snackError('Izin lokasi ditolak.');
+          setState(() => _loadingGps = false);
+          return;
+        }
+      }
+      if (perm == LocationPermission.deniedForever) {
+        _snackError('Izin lokasi diblokir. Buka Pengaturan > Aplikasi.');
+        setState(() => _loadingGps = false);
+        return;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() => _loadingGps = false);
+
+    // Buka halaman map picker
+    final result = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerMapPickerPage(
+          initialLat: _lat,
+          initialLng: _lng,
+        ),
+        fullscreenDialog: true,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _lat = result.latitude;
+        _lng = result.longitude;
+      });
+      _snackSuccess(
+        'Lokasi disimpan: ${result.latitude.toStringAsFixed(6)}, ${result.longitude.toStringAsFixed(6)}',
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  Save Logic
+  // ─────────────────────────────────────────────────────
+
+  Future<void> _save() async {
+    final namaRental = _namaRentalController.text.trim();
+    final alamat = _alamatController.text.trim();
+
+    if (namaRental.isEmpty) {
+      _snackError('Nama rental tidak boleh kosong.');
+      return;
+    }
+
+    // Jika belum ada rentalId, tidak bisa simpan ke backend
+    final rentalId = widget.rentalProfile?.id;
+    if (rentalId == null) {
+      // Fallback: tampilkan snackbar saja (rental belum dibuat)
+      _snackSuccess('Perubahan detail rental tersimpan (lokal).');
+      Navigator.pop(context, true);
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await _rentalService.perbaruiDetailRental(
+        rentalId: rentalId,
+        namaRental: namaRental,
+        alamat: alamat.isEmpty ? null : alamat,
+        lat: _lat,
+        lng: _lng,
+      );
+
+      if (!mounted) return;
+      _snackSuccess('Perubahan detail rental berhasil disimpan.');
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      _snackError('Gagal menyimpan: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  Snackbar Helpers
+  // ─────────────────────────────────────────────────────
+
+  void _snackSuccess(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Perubahan detail rental tersimpan.'),
+        content: Text(msg),
         backgroundColor: const Color(0xFF123E1E),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
-    Navigator.pop(context);
   }
+
+  void _snackError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  Build
+  // ─────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +234,13 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                   const SizedBox(height: 28),
                   _IdentityCard(controller: _namaRentalController),
                   const SizedBox(height: 22),
-                  _LocationCard(controller: _alamatController),
+                  _LocationCard(
+                    controller: _alamatController,
+                    lat: _lat,
+                    lng: _lng,
+                    loadingGps: _loadingGps,
+                    onAmbilGps: _ambilLokasiGps,
+                  ),
                   const SizedBox(height: 54),
                   Text(
                     'Dekat dari Lokasimu',
@@ -99,21 +260,8 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                         disabled: _nearbyTitles.contains(item.title),
                         onTap: () {
                           if (_nearbyTitles.contains(item.title)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '${item.title} sudah ada di destinasi terdekat.',
-                                ),
-                                backgroundColor: const Color(0xFF123E1E),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                              ),
+                            _snackSuccess(
+                              '${item.title} sudah ada di destinasi terdekat.',
                             );
                             return;
                           }
@@ -145,24 +293,34 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
         child: SizedBox(
           height: 48,
           child: ElevatedButton(
-            onPressed: _save,
+            onPressed: (_saving || _loadingGps) ? null : _save,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF123E1E),
               foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFF123E1E).withValues(alpha: 0.5),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
             ),
-            child: Text(
-              'SIMPAN PERUBAHAN',
-              style: AppTextStyles.caption.copyWith(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.4,
-              ),
-            ),
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text(
+                    'SIMPAN PERUBAHAN',
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
           ),
         ),
       ),
@@ -208,6 +366,10 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Section Cards
+// ─────────────────────────────────────────────────────────────
+
 class _IdentityCard extends StatelessWidget {
   final TextEditingController controller;
   const _IdentityCard({required this.controller});
@@ -228,89 +390,200 @@ class _IdentityCard extends StatelessWidget {
 
 class _LocationCard extends StatelessWidget {
   final TextEditingController controller;
-  const _LocationCard({required this.controller});
+  final double? lat;
+  final double? lng;
+  final bool loadingGps;
+  final VoidCallback onAmbilGps;
+
+  const _LocationCard({
+    required this.controller,
+    required this.lat,
+    required this.lng,
+    required this.loadingGps,
+    required this.onAmbilGps,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasLocation = lat != null && lng != null;
+
     return _EditSectionCard(
       title: 'Lokasi & Alamat',
       subtitle: 'Pastikan titik GPS akurat agar penyewa\ntidak tersesat.',
       child: Column(
         children: [
+          // ── Area peta / placeholder
           ClipRRect(
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(20),
             child: SizedBox(
-              height: 224,
+              height: 240,
               width: double.infinity,
               child: Stack(
-                fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    'assets/images/loading_background.png',
-                    fit: BoxFit.cover,
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.2),
+                  // ── Peta interaktif (read-only preview) jika ada koordinat
+                  if (hasLocation)
+                    AbsorbPointer(
+                      // Nonaktifkan interaksi agar scroll halaman tidak terganggu
+                      absorbing: false,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(lat!, lng!),
+                          initialZoom: 15.0,
+                          interactionOptions: const InteractionOptions(
+                            flags: InteractiveFlag.none, // preview saja
+                          ),
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.naturerent.app',
+                            maxZoom: 19,
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(lat!, lng!),
+                                width: 48,
+                                height: 60,
+                                alignment: Alignment.topCenter,
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF123E1E),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      padding: const EdgeInsets.all(6),
+                                      child: const Icon(
+                                        Icons.store_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    CustomPaint(
+                                      size: const Size(12, 8),
+                                      painter: _TrianglePainter(
+                                        color: const Color(0xFF123E1E),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                    ),
-                  ),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF123E1E),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.location_on_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Titik Lokasi',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
+                    )
+                  else
+                    // ── Placeholder sebelum ada koordinat
+                    Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(
+                          'assets/images/loading_background.png',
+                          fit: BoxFit.cover,
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.35),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.map_outlined,
+                                color: Colors.white70,
+                                size: 36,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Titik lokasi belum dipilih',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Ketuk tombol di bawah untuk buka peta',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+
+                  // ── Tombol "Buka Peta / GPS" — selalu di pojok kanan bawah
                   Positioned(
-                    right: 16,
-                    bottom: 18,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Ubah di Peta',
-                        style: AppTextStyles.caption.copyWith(
-                          color: const Color(0xFF123E1E),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
+                    right: 12,
+                    bottom: 12,
+                    child: GestureDetector(
+                      onTap: loadingGps ? null : onAmbilGps,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (loadingGps)
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF123E1E),
+                                ),
+                              )
+                            else
+                              const Icon(
+                                Icons.map_rounded,
+                                color: Color(0xFF123E1E),
+                                size: 15,
+                              ),
+                            const SizedBox(width: 6),
+                            Text(
+                              loadingGps
+                                  ? 'Membuka...'
+                                  : hasLocation
+                                      ? 'Ubah di Peta'
+                                      : 'Buka Peta GPS',
+                              style: AppTextStyles.caption.copyWith(
+                                color: const Color(0xFF123E1E),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -319,6 +592,42 @@ class _LocationCard extends StatelessWidget {
               ),
             ),
           ),
+
+          // ── Tampilkan koordinat jika sudah ada
+          if (hasLocation) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEBF5EB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFA8D5A2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Color(0xFF1A6B30),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Lat: ${lat!.toStringAsFixed(6)}  •  Lng: ${lng!.toStringAsFixed(6)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF1A6B30),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 24),
           _LabeledInput(
             label: 'ALAMAT LENGKAP',
@@ -330,6 +639,31 @@ class _LocationCard extends StatelessWidget {
     );
   }
 }
+
+// Painter segitiga untuk marker pin (shared dengan map picker)
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  const _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = ui.Paint()..color = color;
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_TrianglePainter old) => old.color != color;
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  Shared Widgets
+// ─────────────────────────────────────────────────────────────
 
 class _EditSectionCard extends StatelessWidget {
   final String title;
