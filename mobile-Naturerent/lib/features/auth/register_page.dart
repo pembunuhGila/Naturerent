@@ -785,7 +785,7 @@ class _RegisterPageState extends State<RegisterPage>
                 child: Text(
                   'Masuk',
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: const Color(0xFF176B37),
+                    color: const Color(0xFF18743A),
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),

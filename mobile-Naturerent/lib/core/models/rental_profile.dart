@@ -8,6 +8,7 @@ class RentalProfile {
   final double? lat;
   final double? lng;
   final String? noWa;
+  final String? fotoProfil;
   final String? fotoBanner; // URL dari Supabase Storage — null berarti belum ada foto
   final bool isActive;
   final DateTime createdAt;
@@ -25,6 +26,7 @@ class RentalProfile {
     this.lat,
     this.lng,
     this.noWa,
+    this.fotoProfil,
     this.fotoBanner,
     required this.isActive,
     required this.createdAt,
@@ -42,6 +44,7 @@ class RentalProfile {
       lat: (map['lat'] as num?)?.toDouble(),
       lng: (map['lng'] as num?)?.toDouble(),
       noWa: map['no_wa'] as String?,
+      fotoProfil: map['foto_profil'] as String?,
       fotoBanner: map['foto_banner'] as String?,
       isActive: map['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(map['created_at'] as String),
