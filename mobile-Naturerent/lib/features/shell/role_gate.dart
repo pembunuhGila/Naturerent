@@ -27,9 +27,46 @@ class RoleGate extends StatelessWidget {
         final role =
             snapshot.data ??
             AuthService().penggunaSaatIni?.userMetadata?['role'] as String?;
+
         if (role == 'rental_owner') return const OwnerShell();
-        return const MainShell();
+        if (role == null || role == 'customer') return const MainShell();
+
+        return const _UnsupportedRoleLogout();
       },
+    );
+  }
+}
+
+class _UnsupportedRoleLogout extends StatefulWidget {
+  const _UnsupportedRoleLogout();
+
+  @override
+  State<_UnsupportedRoleLogout> createState() => _UnsupportedRoleLogoutState();
+}
+
+class _UnsupportedRoleLogoutState extends State<_UnsupportedRoleLogout> {
+  @override
+  void initState() {
+    super.initState();
+    _logout();
+  }
+
+  Future<void> _logout() async {
+    await AuthService().keluar();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const OnboardingPage()),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
     );
   }
 }

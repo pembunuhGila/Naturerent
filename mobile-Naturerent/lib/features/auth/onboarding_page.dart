@@ -172,4 +172,4 @@ class OnboardingPage extends StatelessWidget {
 }
 
 // ── Role enum (shared across pages)
-enum UserRole { penyewa, pemilik, admin }
+enum UserRole { penyewa, pemilik }

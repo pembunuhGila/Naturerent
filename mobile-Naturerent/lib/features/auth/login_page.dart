@@ -667,18 +667,6 @@ class _LoginRoleConfig {
         backgroundColor: Color(0xFFF5F4F0),
         showGoogleLogin: false,
       ),
-      UserRole.admin => const _LoginRoleConfig(
-        title: 'Masuk Admin',
-        subtitle: 'Akses panel operasional NatureRent.',
-        buttonText: 'Masuk sebagai Admin',
-        registerPrompt: 'Butuh akses?  ',
-        emailLabel: 'Email Admin',
-        accentColor: Color(0xFF263238),
-        titleColor: Color(0xFF202321),
-        labelColor: Color(0xFF4B555A),
-        backgroundColor: Color(0xFFF3F5F4),
-        showGoogleLogin: false,
-      ),
       UserRole.penyewa => const _LoginRoleConfig(
         title: 'Masuk Akun',
         subtitle: 'Lanjutkan petualanganmu bersama kami.',

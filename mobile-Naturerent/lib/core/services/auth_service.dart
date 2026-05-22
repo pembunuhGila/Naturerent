@@ -219,7 +219,6 @@ class AuthService {
     return switch (role) {
       UserRole.penyewa => 'customer',
       UserRole.pemilik => 'rental_owner',
-      UserRole.admin => 'admin',
     };
   }
 
