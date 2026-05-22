@@ -27,7 +27,7 @@ class OwnerHeaderWidget extends StatelessWidget {
               onTap: () => Navigator.maybePop(context),
               child: const Icon(
                 Icons.arrow_back_rounded,
-                color: Color(0xFF116229),
+                color: Color(0xFF18743A),
                 size: 22,
               ),
             ),
@@ -35,14 +35,14 @@ class OwnerHeaderWidget extends StatelessWidget {
           ],
           const Icon(
             Icons.park_rounded,
-            color: Color(0xFF116229),
+            color: Color(0xFF18743A),
             size: 24,
           ),
           const SizedBox(width: 7),
           Text(
             'Mitra NatureRent',
             style: AppTextStyles.headlineMedium.copyWith(
-              color: const Color(0xFF116229),
+              color: const Color(0xFF18743A),
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),

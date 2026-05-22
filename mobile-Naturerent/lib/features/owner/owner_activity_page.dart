@@ -37,7 +37,7 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
     ));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -67,7 +67,7 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
                     Text(
                       'Pantau pesanan dan riwayat transaksi rental Anda.',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: const Color(0xFF496171),
                         fontSize: 13,
                       ),
                     ),
@@ -81,14 +81,14 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: const Color(0xFFE0E5DE)),
               ),
               child: TabBar(
                 controller: _tabCtrl,
-                labelColor: const Color(0xFF0E6F2A),
-                unselectedLabelColor: AppColors.textSecondary,
+                labelColor: const Color(0xFF18743A),
+                unselectedLabelColor: const Color(0xFF496171),
                 labelStyle: AppTextStyles.bodySmall.copyWith(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
@@ -97,10 +97,10 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
                   fontSize: 12,
                 ),
                 indicator: BoxDecoration(
-                  color: const Color(0xFF0E6F2A).withValues(alpha: 0.1),
+                  color: const Color(0xFFE4EFE7),
                   borderRadius: BorderRadius.circular(10),
                   border: const Border(
-                    bottom: BorderSide(color: Color(0xFF0E6F2A), width: 2),
+                    bottom: BorderSide(color: Color(0xFF18743A), width: 2),
                   ),
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
@@ -157,10 +157,10 @@ class _OwnerEmptyTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF0E6F2A).withValues(alpha: 0.08),
+                color: const Color(0xFFE4EFE7),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 40, color: const Color(0xFF0E6F2A)),
+              child: Icon(icon, size: 40, color: const Color(0xFF18743A)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -176,7 +176,7 @@ class _OwnerEmptyTab extends StatelessWidget {
               pesan,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textHint,
+                color: const Color(0xFF7B8794),
               ),
             ),
           ],

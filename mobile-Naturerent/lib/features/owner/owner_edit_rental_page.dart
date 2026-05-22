@@ -167,7 +167,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: const Color(0xFF123E1E),
+        backgroundColor: const Color(0xFF18743A),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -226,7 +226,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                   Text(
                     'Perbarui informasi rental Anda agar\ntetap relevan bagi para petualang.',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: const Color(0xFF757D73),
+                      color: const Color(0xFF496171),
                       fontSize: 16,
                       height: 1.55,
                     ),
@@ -295,9 +295,9 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
           child: ElevatedButton(
             onPressed: (_saving || _loadingGps) ? null : _save,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF123E1E),
+              backgroundColor: const Color(0xFF18743A),
               foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFF123E1E).withValues(alpha: 0.5),
+              disabledBackgroundColor: const Color(0xFF18743A).withValues(alpha: 0.5),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -451,7 +451,7 @@ class _LocationCard extends StatelessWidget {
                                   children: [
                                     Container(
                                       decoration: const BoxDecoration(
-                                        color: Color(0xFF123E1E),
+                                        color: Color(0xFF18743A),
                                         shape: BoxShape.circle,
                                       ),
                                       padding: const EdgeInsets.all(6),
@@ -464,7 +464,7 @@ class _LocationCard extends StatelessWidget {
                                     CustomPaint(
                                       size: const Size(12, 8),
                                       painter: _TrianglePainter(
-                                        color: const Color(0xFF123E1E),
+                                        color: const Color(0xFF18743A),
                                       ),
                                     ),
                                   ],
@@ -560,13 +560,13 @@ class _LocationCard extends StatelessWidget {
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Color(0xFF123E1E),
+                                  color: Color(0xFF18743A),
                                 ),
                               )
                             else
                               const Icon(
                                 Icons.map_rounded,
-                                color: Color(0xFF123E1E),
+                                color: Color(0xFF18743A),
                                 size: 15,
                               ),
                             const SizedBox(width: 6),
@@ -577,7 +577,7 @@ class _LocationCard extends StatelessWidget {
                                       ? 'Ubah di Peta'
                                       : 'Buka Peta GPS',
                               style: AppTextStyles.caption.copyWith(
-                                color: const Color(0xFF123E1E),
+                                color: const Color(0xFF18743A),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0,
@@ -600,15 +600,15 @@ class _LocationCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFEBF5EB),
+                color: const Color(0xFFE4EFE7),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFA8D5A2)),
+                border: Border.all(color: const Color(0xFFE0E5DE)),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.check_circle_outline_rounded,
-                    color: Color(0xFF1A6B30),
+                    color: Color(0xFF18743A),
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -616,7 +616,7 @@ class _LocationCard extends StatelessWidget {
                     child: Text(
                       'Lat: ${lat!.toStringAsFixed(6)}  •  Lng: ${lng!.toStringAsFixed(6)}',
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF1A6B30),
+                        color: const Color(0xFF18743A),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0,
@@ -684,7 +684,7 @@ class _EditSectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFEAEDE7)),
+        border: Border.all(color: const Color(0xFFE0E5DE)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.025),
@@ -758,7 +758,7 @@ class _LabeledInput extends StatelessWidget {
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF0F0ED),
+            fillColor: const Color(0xFFF2F4F1),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
@@ -769,7 +769,7 @@ class _LabeledInput extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFF123E1E)),
+              borderSide: const BorderSide(color: Color(0xFF18743A)),
             ),
           ),
         ),
@@ -830,7 +830,7 @@ class _DestinationCard extends StatelessWidget {
                       children: [
                         const Icon(
                           Icons.star_rounded,
-                          color: Color(0xFF337F52),
+                          color: Color(0xFF18743A),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -884,7 +884,7 @@ class _DestinationCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: disabled
                         ? const Color(0xFFEAEAE7)
-                        : const Color(0xFF337F52),
+                        : const Color(0xFF18743A),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary greens (nature-inspired)
-  static const Color primary = Color(0xFF2D5016);
-  static const Color primaryDark = Color(0xFF1A3009);
-  static const Color primaryLight = Color(0xFF4A7C22);
-  static const Color primaryMedium = Color(0xFF3D6B1A);
+  static const Color primary = Color(0xFF18743A);
+  static const Color primaryDark = Color(0xFF18743A);
+  static const Color primaryLight = Color(0xFF18743A);
+  static const Color primaryMedium = Color(0xFF18743A);
 
   // Background
   static const Color background = Color(0xFFF5F0E8);
@@ -20,11 +20,11 @@ class AppColors {
 
   // Border
   static const Color border = Color(0xFFD8E4C8);
-  static const Color borderFocus = Color(0xFF2D5016);
+  static const Color borderFocus = Color(0xFF18743A);
 
   // Others
   static const Color error = Color(0xFFD32F2F);
-  static const Color success = Color(0xFF388E3C);
+  static const Color success = Color(0xFF18743A);
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
   static const Color overlay = Color(0x80000000);

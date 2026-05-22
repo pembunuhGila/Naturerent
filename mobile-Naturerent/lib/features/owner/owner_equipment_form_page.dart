@@ -37,8 +37,8 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   String _pickedImageContentType = 'image/jpeg';
   bool _isSaving = false;
 
-  static const _green = Color(0xFF0B6F28);
-  static const _pageBg = Color(0xFFF7F7F3);
+  static const _green = Color(0xFF18743A);
+  static const _pageBg = Color(0xFFF8F8F5);
 
   @override
   void initState() {
@@ -100,11 +100,11 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Pangkas Foto Produk',
-            toolbarColor: AppColors.primaryDark,
+            toolbarColor: const Color(0xFF18743A),
             toolbarWidgetColor: Colors.white,
             statusBarLight: false,
             backgroundColor: Colors.black,
-            activeControlsWidgetColor: AppColors.primary,
+            activeControlsWidgetColor: const Color(0xFF18743A),
             lockAspectRatio: true,
             hideBottomControls: false,
             showCropGrid: true,
@@ -461,12 +461,12 @@ class _ImagePickerCard extends StatelessWidget {
         aspectRatio: 4 / 5,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF0F5EC),
+            color: const Color(0xFFF2F4F1),
             borderRadius: BorderRadius.circular(8),
             border: hasImage
                 ? null
                 : Border.all(
-                    color: const Color(0xFFBFD0B9),
+                    color: const Color(0xFFE0E5DE),
                     width: 1.5,
                     style: BorderStyle.solid,
                   ),
@@ -510,7 +510,7 @@ class _ImagePickerCard extends StatelessWidget {
                 Text(
                   'UBAH FOTO',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF3F4942),
+                    color: const Color(0xFF344B3B),
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1,
@@ -530,14 +530,14 @@ class _ImagePickerCard extends StatelessWidget {
       children: [
         const Icon(
           Icons.add_a_photo_outlined,
-          color: Color(0xFF4B554C),
+          color: Color(0xFF496171),
           size: 42,
         ),
         const SizedBox(height: 12),
         Text(
           'UNGGAH FOTO PRODUK',
           style: AppTextStyles.caption.copyWith(
-            color: const Color(0xFF4B554C),
+            color: const Color(0xFF496171),
             fontSize: 13,
             fontWeight: FontWeight.w900,
             letterSpacing: .4,
@@ -654,7 +654,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text.toUpperCase(),
       style: AppTextStyles.caption.copyWith(
-        color: const Color(0xFF475048),
+        color: const Color(0xFF496171),
         fontSize: 13,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.8,
@@ -721,7 +721,7 @@ class _PriceBox extends StatelessWidget {
         prefix: Text(
           'Rp',
           style: AppTextStyles.bodyMedium.copyWith(
-            color: const Color(0xFF475048),
+            color: const Color(0xFF496171),
             fontSize: 16,
             fontWeight: FontWeight.w800,
           ),
@@ -906,12 +906,12 @@ class _SpecInput extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: const Color(0xFF3F4942)),
+            Icon(icon, size: 16, color: const Color(0xFF344B3B)),
             const SizedBox(width: 4),
             Text(
               label.toUpperCase(),
               style: AppTextStyles.caption.copyWith(
-                color: const Color(0xFF3F4942),
+                color: const Color(0xFF344B3B),
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,
@@ -930,7 +930,7 @@ class _SpecInput extends StatelessWidget {
           ],
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF0F4EA),
+            fillColor: const Color(0xFFF2F4F1),
             hintText: decimal ? '0.0' : '0',
             hintStyle: AppTextStyles.bodyMedium.copyWith(
               color: const Color(0xFF748076),
@@ -987,7 +987,7 @@ class _SaveButton extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2C8735),
+          backgroundColor: const Color(0xFF18743A),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),

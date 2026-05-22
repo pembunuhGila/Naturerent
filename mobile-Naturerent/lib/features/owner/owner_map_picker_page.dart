@@ -156,7 +156,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                       children: [
                         Container(
                           decoration: const BoxDecoration(
-                            color: Color(0xFF123E1E),
+                            color: Color(0xFF18743A),
                             shape: BoxShape.circle,
                           ),
                           padding: const EdgeInsets.all(6),
@@ -169,7 +169,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                         CustomPaint(
                           size: const Size(12, 8),
                           painter: _TrianglePainter(
-                            color: const Color(0xFF123E1E),
+                            color: const Color(0xFF18743A),
                           ),
                         ),
                       ],
@@ -263,7 +263,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                     children: [
                       const Icon(
                         Icons.location_on_rounded,
-                        color: Color(0xFF123E1E),
+                        color: Color(0xFF18743A),
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -284,16 +284,16 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEBF5EB),
+                      color: const Color(0xFFE4EFE7),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFA8D5A2)),
+                      border: Border.all(color: const Color(0xFFE0E5DE)),
                     ),
                     child: Text(
                       'Lat: ${_markerPos.latitude.toStringAsFixed(6)}'
                       '   •   '
                       'Lng: ${_markerPos.longitude.toStringAsFixed(6)}',
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF1A6B30),
+                        color: const Color(0xFF18743A),
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0,
@@ -308,7 +308,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                     child: ElevatedButton.icon(
                       onPressed: () => Navigator.pop(context, _markerPos),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF123E1E),
+                        backgroundColor: const Color(0xFF18743A),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -377,10 +377,10 @@ class _MapButton extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: Color(0xFF123E1E),
+                    color: Color(0xFF18743A),
                   ),
                 )
-              : Icon(icon, color: const Color(0xFF123E1E), size: 22),
+              : Icon(icon, color: const Color(0xFF18743A), size: 22),
         ),
       ),
     );

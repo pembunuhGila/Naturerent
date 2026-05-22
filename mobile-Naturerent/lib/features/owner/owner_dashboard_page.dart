@@ -31,7 +31,7 @@ class OwnerDashboardPage extends StatelessWidget {
             Text(
               'Total Pendapatan Bulan Ini',
               style: AppTextStyles.bodyLarge.copyWith(
-                color: const Color(0xFF454E45),
+                color: const Color(0xFF344B3B),
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 height: 1.1,
@@ -41,7 +41,7 @@ class OwnerDashboardPage extends StatelessWidget {
             Text(
               'Rp 12.450.000',
               style: AppTextStyles.displayLarge.copyWith(
-                color: const Color(0xFF2B4E33),
+                color: const Color(0xFF18743A),
                 fontSize: 38,
                 fontWeight: FontWeight.w900,
                 height: 1,
@@ -56,7 +56,7 @@ class OwnerDashboardPage extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDDF6D6),
+                  color: const Color(0xFFE4EFE7),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Row(
@@ -64,14 +64,14 @@ class OwnerDashboardPage extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.trending_up_rounded,
-                      color: Color(0xFF147A25),
+                      color: Color(0xFF18743A),
                       size: 16,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       '12% DARI BULAN LALU',
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF147A25),
+                        color: const Color(0xFF18743A),
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                         letterSpacing: 0.2,
@@ -98,7 +98,7 @@ class OwnerDashboardPage extends StatelessWidget {
                 Text(
                   'LIHAT SEMUA',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF2B4E33),
+                    color: const Color(0xFF18743A),
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.3,
@@ -126,7 +126,7 @@ class OwnerDashboardPage extends StatelessWidget {
 const _transactions = [
   _TransactionItem(
     icon: Icons.terrain_rounded,
-    imageColor: Color(0xFFDDEB9B),
+    imageColor: Color(0xFF18743A),
     title: 'Tenda Dome 4P\nAlpine',
     subtitle: 'Sewa 3 Hari • 24 Okt',
     amount: '+Rp\n270.000',
@@ -134,7 +134,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.hiking_rounded,
-    imageColor: Color(0xFF29302B),
+    imageColor: Color(0xFF385B57),
     title: 'Sepatu Trekking\nEiger',
     subtitle: 'Sewa 2 Hari • 23 Okt',
     amount: '+Rp\n135.000',
@@ -142,7 +142,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.soup_kitchen_rounded,
-    imageColor: Color(0xFFF47A22),
+    imageColor: Color(0xFF18743A),
     title: 'Paket Memasak\nUltralight',
     subtitle: 'Sewa 1 Hari • 22 Okt',
     amount: '+Rp\n45.000',
@@ -150,7 +150,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.cabin_rounded,
-    imageColor: Color(0xFFB59B61),
+    imageColor: Color(0xFF18743A),
     title: 'Penyewaan Tenda\nDome 4P',
     subtitle: 'Sewa 2 hari • 25 Okt',
     amount: '+Rp\n450.000',
@@ -159,7 +159,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.bedtime_rounded,
-    imageColor: Color(0xFFCFB617),
+    imageColor: Color(0xFF336A77),
     title: 'Paket Hiking Sleeping\nBag (2x)',
     subtitle: 'Sewa 2 hari • 25 Okt',
     amount: '+Rp\n140.000',
@@ -168,7 +168,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.local_fire_department_rounded,
-    imageColor: Color(0xFF3C4A40),
+    imageColor: Color(0xFF385B57),
     title: 'Alat Masak Portabel\n& Gas',
     subtitle: 'Sewa 2 hari • 25 Okt',
     amount: '+Rp\n85.000',
@@ -222,13 +222,13 @@ class _RevenueChartCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F2ED),
+                  color: const Color(0xFFF2F4F1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   'Bulan ini',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF626A60),
+                    color: const Color(0xFF496171),
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
@@ -252,7 +252,7 @@ class _RevenueChartCard extends StatelessWidget {
               'Pendapatan tertinggi pada Minggu ke-3',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySmall.copyWith(
-                color: const Color(0xFF404940),
+                color: const Color(0xFF496171),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -283,8 +283,8 @@ class _ChartBar extends StatelessWidget {
                 height: data.height,
                 decoration: BoxDecoration(
                   color: data.isDark
-                      ? const Color(0xFF2B4E33)
-                      : const Color(0xFFE6E7E3),
+                      ? const Color(0xFF18743A)
+                      : const Color(0xFFE4EFE7),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(4),
                   ),
@@ -297,8 +297,8 @@ class _ChartBar extends StatelessWidget {
             data.label,
             style: AppTextStyles.caption.copyWith(
               color: data.isDark
-                  ? const Color(0xFF116229)
-                  : const Color(0xFF626A60),
+                  ? const Color(0xFF18743A)
+                  : const Color(0xFF496171),
               fontSize: 11,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
@@ -308,7 +308,7 @@ class _ChartBar extends StatelessWidget {
           Text(
             data.range,
             style: AppTextStyles.caption.copyWith(
-              color: const Color(0xFF90968D),
+              color: const Color(0xFF7B8794),
               fontSize: 8,
               fontWeight: FontWeight.w700,
               letterSpacing: 0,
@@ -370,7 +370,7 @@ class _TransactionCard extends StatelessWidget {
                 Text(
                   item.subtitle,
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: const Color(0xFF5D655D),
+                    color: const Color(0xFF496171),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -386,7 +386,7 @@ class _TransactionCard extends StatelessWidget {
                 item.amount,
                 textAlign: TextAlign.right,
                 style: AppTextStyles.headlineMedium.copyWith(
-                  color: const Color(0xFF2B4E33),
+                  color: const Color(0xFF18743A),
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   height: 1.15,
@@ -397,8 +397,8 @@ class _TransactionCard extends StatelessWidget {
                 item.note,
                 style: AppTextStyles.caption.copyWith(
                   color: item.isSuccess
-                      ? const Color(0xFF00A927)
-                      : const Color(0xFF5D655D),
+                      ? const Color(0xFF18743A)
+                      : const Color(0xFF496171),
                   fontSize: item.isSuccess ? 10 : 11,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,

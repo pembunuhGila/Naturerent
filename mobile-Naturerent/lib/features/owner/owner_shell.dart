@@ -86,7 +86,7 @@ class _OwnerBottomNav extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: isActive
-                            ? const Color(0xFF13733A)
+                            ? const Color(0xFF18743A)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(11),
                       ),

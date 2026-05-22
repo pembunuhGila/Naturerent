@@ -78,7 +78,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$fitur segera hadir.'),
-        backgroundColor: const Color(0xFF13733A),
+        backgroundColor: const Color(0xFF18743A),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -153,7 +153,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
             const OwnerHeaderWidget(),
             Expanded(
               child: RefreshIndicator(
-                color: const Color(0xFF13733A),
+                color: const Color(0xFF18743A),
                 onRefresh: _muatAlat,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(32, 28, 24, 130),
@@ -171,7 +171,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                     Text(
                       'Pantau operasional tempat rental dan kelola\ninventaris alat camping Anda dengan mudah.',
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: const Color(0xFF4C554D),
+                        color: const Color(0xFF496171),
                         fontSize: 16,
                         height: 1.45,
                       ),
@@ -221,8 +221,8 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
         TabBar(
           controller: _tabController,
           onTap: (_) => setState(() {}),
-          labelColor: const Color(0xFF0E6F2A),
-          unselectedLabelColor: const Color(0xFF475048),
+          labelColor: const Color(0xFF18743A),
+          unselectedLabelColor: const Color(0xFF496171),
           labelStyle: AppTextStyles.bodyMedium.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.w900,
@@ -231,10 +231,10 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
-          indicatorColor: const Color(0xFF0E6F2A),
+          indicatorColor: const Color(0xFF18743A),
           indicatorWeight: 2,
           indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: const Color(0xFFE8EAE4),
+          dividerColor: const Color(0xFFE0E5DE),
           tabs: const [
             Tab(text: 'Tempat Rental'),
             Tab(text: 'Kelola Peralatan'),
@@ -277,7 +277,7 @@ class _RentalManageTab extends StatelessWidget {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF087027),
+              backgroundColor: const Color(0xFF18743A),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(7),
@@ -359,13 +359,13 @@ class _RentalProfileCard extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE4F5E3),
+                  color: const Color(0xFFE4EFE7),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   'BASE AKTIF',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF148036),
+                    color: const Color(0xFF18743A),
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1,
@@ -375,7 +375,7 @@ class _RentalProfileCard extends StatelessWidget {
               const SizedBox(width: 10),
               const Icon(
                 Icons.verified_rounded,
-                color: Color(0xFF148036),
+                color: Color(0xFF18743A),
                 size: 17,
               ),
             ],
@@ -396,7 +396,7 @@ class _RentalProfileCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.location_on_outlined,
-                color: Color(0xFF0B7130),
+                color: Color(0xFF18743A),
                 size: 24,
               ),
               const SizedBox(width: 8),
@@ -532,10 +532,10 @@ class _NearbyDestinationSectionState
   Color _colorForKategori(String? kategori) {
     return switch (kategori?.toLowerCase()) {
       'gunung' => const Color(0xFF336A77),
-      'ranu' || 'danau' => const Color(0xFF6B8E7D),
-      'hutan' => const Color(0xFF4E6A35),
-      'pantai' => const Color(0xFF3B7DA4),
-      'air terjun' || 'curug' => const Color(0xFF6F9A3D),
+      'ranu' || 'danau' => const Color(0xFF18743A),
+      'hutan' => const Color(0xFF18743A),
+      'pantai' => const Color(0xFF336A77),
+      'air terjun' || 'curug' => const Color(0xFF18743A),
       _ => const Color(0xFF5A6B5D),
     };
   }
@@ -546,14 +546,14 @@ class _NearbyDestinationSectionState
       return Container(
         padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
         decoration: BoxDecoration(
-          color: const Color(0xFFFBFBF8),
+          color: const Color(0xFFF8F8F5),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Center(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: CircularProgressIndicator(
-              color: Color(0xFF0B7130),
+              color: Color(0xFF18743A),
               strokeWidth: 2,
             ),
           ),
@@ -569,7 +569,7 @@ class _NearbyDestinationSectionState
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBF8),
+        color: const Color(0xFFF8F8F5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -598,7 +598,7 @@ class _NearbyDestinationSectionState
                   child: Text(
                     'Lihat Semua',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF0B7130),
+                      color: const Color(0xFF18743A),
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
@@ -712,7 +712,7 @@ class _EquipmentManageTab extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(
-              child: CircularProgressIndicator(color: Color(0xFF087027)),
+              child: CircularProgressIndicator(color: Color(0xFF18743A)),
             ),
           )
         else if (error != null)
@@ -763,9 +763,9 @@ class _EquipmentManageTab extends StatelessWidget {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF087027),
+                backgroundColor: const Color(0xFF18743A),
                 elevation: 14,
-                shadowColor: const Color(0xFF087027).withValues(alpha: 0.25),
+                shadowColor: const Color(0xFF18743A).withValues(alpha: 0.25),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(9),
                 ),
@@ -880,7 +880,7 @@ class _EquipmentProductCard extends StatelessWidget {
                   TextSpan(
                     text: item.price,
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: const Color(0xFF0E7C35),
+                      color: const Color(0xFF18743A),
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1088,13 +1088,13 @@ class _OwnerEquipmentItem {
   };
 
   Color get badgeColor => switch (status) {
-    _EquipmentStatus.available => const Color(0xFF9BFA8D),
+    _EquipmentStatus.available => const Color(0xFFE4EFE7),
     _EquipmentStatus.low => const Color(0xFFC65787),
     _EquipmentStatus.empty => const Color(0xFFFFE0E0),
   };
 
   Color get badgeTextColor => switch (status) {
-    _EquipmentStatus.available => const Color(0xFF087027),
+    _EquipmentStatus.available => const Color(0xFF18743A),
     _EquipmentStatus.low => Colors.white,
     _EquipmentStatus.empty => const Color(0xFFD65B66),
   };
@@ -1141,7 +1141,7 @@ IconData _iconForCategory(String text) {
 }
 
 Color _visualColorForStatus(_EquipmentStatus status) => switch (status) {
-  _EquipmentStatus.available => const Color(0xFF0D6075),
+  _EquipmentStatus.available => const Color(0xFF18743A),
   _EquipmentStatus.low => const Color(0xFF1A2420),
   _EquipmentStatus.empty => const Color(0xFFF7F7F4),
 };

@@ -16,7 +16,7 @@ class OwnerOrdersPage extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -42,7 +42,7 @@ class OwnerOrdersPage extends StatelessWidget {
                             Text(
                               'Kelola permintaan sewa masuk',
                               style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
+                                color: const Color(0xFF496171),
                               ),
                             ),
                           ],
@@ -52,9 +52,9 @@ class OwnerOrdersPage extends StatelessWidget {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: const Color(0xFFE0E5DE)),
                         ),
                         child: const Icon(
                           Icons.filter_list_rounded,
@@ -84,9 +84,9 @@ class _SummaryStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE0E5DE)),
       ),
       child: Row(
         children: const [
@@ -134,12 +134,12 @@ class _SummaryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.primary, size: 20),
+        Icon(icon, color: const Color(0xFF18743A), size: 20),
         const SizedBox(height: 8),
         Text(
           value,
           style: AppTextStyles.headlineLarge.copyWith(
-            color: AppColors.primaryDark,
+            color: const Color(0xFF18743A),
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -147,7 +147,7 @@ class _SummaryItem extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: AppTextStyles.caption.copyWith(
-            color: AppColors.textSecondary,
+            color: const Color(0xFF496171),
             fontSize: 10,
           ),
         ),
@@ -162,15 +162,15 @@ class _EmptyOrders extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE0E5DE)),
       ),
       child: Column(
         children: [
           const Icon(
             Icons.receipt_long_outlined,
-            color: AppColors.textHint,
+            color: Color(0xFF7B8794),
             size: 54,
           ),
           const SizedBox(height: 12),
@@ -186,7 +186,7 @@ class _EmptyOrders extends StatelessWidget {
             'Pesanan dari penyewa akan tampil setelah checkout tersimpan ke database.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: const Color(0xFF496171),
             ),
           ),
         ],
