@@ -27,6 +27,8 @@ class _RegisterPageState extends State<RegisterPage>
   final _namaTokoController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _alamatController = TextEditingController();
+  final _rekeningController = TextEditingController();
   final _passwordController = TextEditingController();
   final _picker = ImagePicker();
 
@@ -34,10 +36,31 @@ class _RegisterPageState extends State<RegisterPage>
   bool _googleLoading = false;
   bool _agreedToTerms = false;
   File? _ktpFile;
+  File? _fotoProfilTokoFile;
+  File? _fotoKtpOwnerFile;
+  File? _fotoNpwpFile;
+  File? _fotoNibFile;
+  String? _selectedKota;
+  String? _selectedBank;
   StreamSubscription? _authSub;
   late final AnimationController _animController;
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
+
+  static const _kotaOptions = [
+    'Malang',
+    'Surabaya',
+    'Jakarta',
+    'Bandung',
+    'Yogyakarta',
+  ];
+
+  static const _bankOptions = [
+    'BCA',
+    'BRI',
+    'MANDIRI',
+    'BNI',
+  ];
 
   @override
   void initState() {
@@ -65,6 +88,8 @@ class _RegisterPageState extends State<RegisterPage>
     _namaTokoController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _alamatController.dispose();
+    _rekeningController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -81,11 +106,55 @@ class _RegisterPageState extends State<RegisterPage>
     }
   }
 
+  Future<void> _pickOwnerImage(_OwnerUploadType type) async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 75,
+    );
+    if (picked == null) return;
+
+    setState(() {
+      final file = File(picked.path);
+      switch (type) {
+        case _OwnerUploadType.profile:
+          _fotoProfilTokoFile = file;
+          break;
+        case _OwnerUploadType.ktp:
+          _fotoKtpOwnerFile = file;
+          break;
+        case _OwnerUploadType.npwp:
+          _fotoNpwpFile = file;
+          break;
+        case _OwnerUploadType.nib:
+          _fotoNibFile = file;
+          break;
+      }
+    });
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.role != UserRole.pemilik && !_agreedToTerms) {
       _showError('Harap setujui Ketentuan Layanan terlebih dahulu.');
       return;
+    }
+    if (widget.role == UserRole.pemilik) {
+      if (_fotoProfilTokoFile == null) {
+        _showError('Foto profil toko wajib diupload.');
+        return;
+      }
+      if (_fotoKtpOwnerFile == null) {
+        _showError('Foto KTP wajib diupload.');
+        return;
+      }
+      if (_fotoNpwpFile == null) {
+        _showError('Foto NPWP wajib diupload.');
+        return;
+      }
+      if (_fotoNibFile == null) {
+        _showError('Foto NIB wajib diupload.');
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -94,9 +163,7 @@ class _RegisterPageState extends State<RegisterPage>
         email: _emailController.text.trim(),
         password: _passwordController.text,
         namaLengkap: _namaController.text.trim(),
-        noWa: widget.role == UserRole.pemilik
-            ? ''
-            : _phoneController.text.trim(),
+        noWa: _phoneController.text.trim(),
         namaToko: widget.role == UserRole.pemilik
             ? _namaTokoController.text.trim()
             : null,
@@ -478,10 +545,10 @@ class _RegisterPageState extends State<RegisterPage>
   Widget _buildMitraFormCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(32, 32, 32, 28),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -491,51 +558,175 @@ class _RegisterPageState extends State<RegisterPage>
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _MitraTextField(
-            label: 'NAMA PEMILIK',
-            hint: 'Contoh: Rachmad Zaki Setyawan',
-            icon: Icons.person_outline_rounded,
-            controller: _namaController,
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Nama pemilik wajib diisi';
-              if (v.length < 3) return 'Nama terlalu pendek';
-              return null;
-            },
+          _MitraSection(
+            title: 'Detail Toko',
+            children: [
+              _MitraTextField(
+                label: 'Nama Toko',
+                hint: 'Masukkan nama toko',
+                icon: Icons.storefront_outlined,
+                controller: _namaTokoController,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Nama toko wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _MitraTextField(
+                label: 'Nomor Telepon',
+                hint: 'Masukkan nomor telepon',
+                icon: Icons.phone_outlined,
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Nomor telepon wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _MitraDropdownField(
+                label: 'Kota',
+                hint: 'Pilih kota',
+                icon: Icons.location_city_outlined,
+                value: _selectedKota,
+                items: _kotaOptions,
+                onChanged: (value) => setState(() => _selectedKota = value),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Kota wajib dipilih';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _MitraTextField(
+                label: 'Alamat',
+                hint: 'Masukkan alamat toko',
+                icon: Icons.place_outlined,
+                controller: _alamatController,
+                keyboardType: TextInputType.streetAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Alamat wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _OwnerUploadButton(
+                label: 'Foto Profil Toko',
+                buttonText: 'Upload Foto Profil',
+                file: _fotoProfilTokoFile,
+                onTap: () => _pickOwnerImage(_OwnerUploadType.profile),
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-          _MitraTextField(
-            label: 'NAMA TOKO',
-            hint: 'Contoh: Sekawan Outdoor',
-            icon: Icons.storefront_outlined,
-            controller: _namaTokoController,
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Nama toko wajib diisi';
-              if (v.length < 3) return 'Nama toko terlalu pendek';
-              return null;
-            },
+          const SizedBox(height: 28),
+          _MitraSection(
+            title: 'Verifikasi Dokumen',
+            children: [
+              _OwnerUploadButton(
+                label: 'Foto KTP',
+                buttonText: 'Upload Foto KTP',
+                file: _fotoKtpOwnerFile,
+                onTap: () => _pickOwnerImage(_OwnerUploadType.ktp),
+              ),
+              const SizedBox(height: 16),
+              _OwnerUploadButton(
+                label: 'Foto NPWP',
+                buttonText: 'Upload Foto NPWP',
+                file: _fotoNpwpFile,
+                onTap: () => _pickOwnerImage(_OwnerUploadType.npwp),
+              ),
+              const SizedBox(height: 16),
+              _OwnerUploadButton(
+                label: 'Foto NIB',
+                buttonText: 'Upload Foto NIB',
+                file: _fotoNibFile,
+                onTap: () => _pickOwnerImage(_OwnerUploadType.nib),
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-          _MitraTextField(
-            label: 'ALAMAT EMAIL',
-            hint: 'mitra04@gmail.com',
-            icon: Icons.mail_outline_rounded,
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Email wajib diisi';
-              if (!v.contains('@')) return 'Format email tidak valid';
-              return null;
-            },
+          const SizedBox(height: 28),
+          _MitraSection(
+            title: 'Detail Keuangan',
+            children: [
+              _MitraDropdownField(
+                label: 'Pilih Bank',
+                hint: 'Pilih Bank',
+                icon: Icons.account_balance_outlined,
+                value: _selectedBank,
+                items: _bankOptions,
+                onChanged: (value) => setState(() => _selectedBank = value),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Bank wajib dipilih';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _MitraTextField(
+                label: 'Nomor Rekening',
+                hint: 'Masukkan nomor rekening',
+                icon: Icons.credit_card_outlined,
+                controller: _rekeningController,
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Nomor rekening wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-          _MitraTextField(
-            label: 'KATA SANDI',
-            hint: '........',
-            icon: Icons.lock_outline_rounded,
-            controller: _passwordController,
-            isPassword: true,
-            validator: _passwordValidator,
+          const SizedBox(height: 28),
+          _MitraSection(
+            title: 'Akun Rental',
+            children: [
+              _MitraTextField(
+                label: 'Nama Pemilik Toko',
+                hint: 'Masukkan nama pemilik toko',
+                icon: Icons.person_outline_rounded,
+                controller: _namaController,
+                keyboardType: TextInputType.name,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Nama pemilik toko wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _MitraTextField(
+                label: 'Email',
+                hint: 'Masukkan email',
+                icon: Icons.mail_outline_rounded,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Email wajib diisi';
+                  final email = v.trim();
+                  final valid = RegExp(
+                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                  ).hasMatch(email);
+                  if (!valid) return 'Format email tidak valid';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              _MitraTextField(
+                label: 'Password',
+                hint: 'Masukkan password',
+                icon: Icons.lock_outline_rounded,
+                controller: _passwordController,
+                isPassword: true,
+                validator: _ownerPasswordValidator,
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           SizedBox(
@@ -552,7 +743,7 @@ class _RegisterPageState extends State<RegisterPage>
                 elevation: 8,
                 shadowColor: const Color(0xFF18743A).withValues(alpha: 0.2),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: _isLoading
@@ -574,23 +765,25 @@ class _RegisterPageState extends State<RegisterPage>
                     ),
             ),
           ),
-          const SizedBox(height: 32),
-          const Divider(color: Color(0xFFE8EBE5)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Sudah punya akun Mitra? ',
+                'Sudah punya akun? ',
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: const Color(0xFF496171),
                   fontSize: 15,
                 ),
               ),
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => const LoginPage(role: UserRole.pemilik),
+                  ),
+                ),
                 child: Text(
-                  'Masuk di sini',
+                  'Masuk',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: const Color(0xFF176B37),
                     fontSize: 15,
@@ -840,6 +1033,12 @@ class _RegisterPageState extends State<RegisterPage>
     return null;
   }
 
+  String? _ownerPasswordValidator(String? v) {
+    if (v == null || v.isEmpty) return 'Password wajib diisi';
+    if (v.length < 6) return 'Minimal 6 karakter';
+    return null;
+  }
+
   Widget _buildTermsCheckbox() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -895,6 +1094,8 @@ class _RegisterPageState extends State<RegisterPage>
   }
 }
 
+enum _OwnerUploadType { profile, ktp, npwp, nib }
+
 class _BrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -911,6 +1112,35 @@ class _BrandMark extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _MitraSection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _MitraSection({
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: const Color(0xFF18743A),
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...children,
       ],
     );
   }
@@ -950,10 +1180,10 @@ class _MitraTextFieldState extends State<_MitraTextField> {
         Text(
           widget.label,
           style: AppTextStyles.caption.copyWith(
-            color: const Color(0xFF7A8277),
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-            letterSpacing: 1.1,
+            color: const Color(0xFF344B3B),
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            letterSpacing: 0,
           ),
         ),
         const SizedBox(height: 8),
@@ -991,33 +1221,227 @@ class _MitraTextFieldState extends State<_MitraTextField> {
                   )
                 : null,
             filled: true,
-            fillColor: const Color(0xFFE1E3DF),
+            fillColor: const Color(0xFFF2F4F1),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 15,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(
                 color: Color(0xFF18743A),
                 width: 1.3,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.error, width: 1.1),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.error, width: 1.3),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MitraDropdownField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final IconData icon;
+  final String? value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+  final String? Function(String?)? validator;
+
+  const _MitraDropdownField({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: const Color(0xFF344B3B),
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            letterSpacing: 0,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          validator: validator,
+          onChanged: onChanged,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFF748078),
+          ),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: const Color(0xFF25302A),
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF7B8794),
+              fontSize: 15,
+            ),
+            prefixIcon: Icon(icon, color: const Color(0xFF748078), size: 17),
+            filled: true,
+            fillColor: const Color(0xFFF2F4F1),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 15,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFF18743A),
+                width: 1.3,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.1),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.3),
+            ),
+          ),
+          items: items
+              .map(
+                (item) => DropdownMenuItem<String>(
+                  value: item,
+                  child: Text(item),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _OwnerUploadButton extends StatelessWidget {
+  final String label;
+  final String buttonText;
+  final File? file;
+  final VoidCallback onTap;
+
+  const _OwnerUploadButton({
+    required this.label,
+    required this.buttonText,
+    required this.file,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fileName = file?.path.split(Platform.pathSeparator).last;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: const Color(0xFF344B3B),
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            letterSpacing: 0,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F4F1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: file == null
+                    ? const Color(0xFFE0E5DE)
+                    : const Color(0xFF18743A),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4EFE7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.upload_file_rounded,
+                    color: Color(0xFF18743A),
+                    size: 21,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    fileName ?? buttonText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: file == null
+                          ? const Color(0xFF496171)
+                          : const Color(0xFF25302A),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (file != null) ...[
+                  const SizedBox(width: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(
+                      file!,
+                      width: 42,
+                      height: 42,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
