@@ -29,32 +29,30 @@ button {
 }
 
 .sidebar {
-    width: 250px;
-    height: 100vh;
-    position: fixed;
+    width: 220px;
+    background-color: #1f5a3f;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
-    padding: 22px 16px;
-    background-color: #063f2d;
-    color: #fff;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-header {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 48px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.sidebar-header > i {
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background-color: #2c6b36;
+.sidebar-header i {
     color: #fff;
+    font-size: 1.3rem;
+    flex-shrink: 0;
 }
 
 .header-text {
@@ -66,14 +64,15 @@ button {
 .header-title {
     font-size: 1rem;
     font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
 }
 
 .header-subtitle {
-    color: #4ce49d;
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.1;
 }
 
 .sidebar-nav {
@@ -84,107 +83,69 @@ button {
 }
 
 .nav-item {
-    min-height: 42px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 0 14px;
-    border-left: 4px solid transparent;
-    color: rgba(255, 255, 255, 0.62);
-    font-size: 0.88rem;
+    padding: 12px 14px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
     font-weight: 500;
     text-decoration: none;
-    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.nav-item:hover,
-.nav-item.active {
+.nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
     color: #fff;
-    background-color: rgba(10, 121, 83, 0.62);
 }
 
 .nav-item.active {
-    border-left-color: #25f49b;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
 }
 
 .nav-item i {
-    width: 18px;
-    text-align: center;
-}
-
-.sidebar-footer {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding-top: 18px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.support-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.85rem;
-    text-decoration: none;
-}
-
-.admin-profile {
-    min-height: 58px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 8px;
-    background-color: rgba(10, 121, 83, 0.34);
-}
-
-.admin-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #d9f99d, #0d9488);
-    color: #063f2d;
-    font-size: 0.72rem;
-    font-weight: 800;
+    font-size: 1.1rem;
     flex-shrink: 0;
 }
 
-.admin-profile div:nth-child(2) {
-    flex: 1;
-    min-width: 0;
+.sidebar-footer {
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.admin-profile strong,
-.admin-profile span {
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.admin-profile strong {
+.user-profile:hover {
     color: #fff;
-    font-size: 0.72rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
 }
 
-.admin-profile span {
-    color: #4ce49d;
-    font-size: 0.62rem;
+.user-profile i {
+    font-size: 1.1rem;
+    flex-shrink: 0;
 }
 
-.admin-profile i {
-    color: #4ce49d;
-    font-size: 0.8rem;
+.user-profile span {
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .main-content {
     flex: 1;
     min-width: 0;
-    margin-left: 250px;
+    margin-left: 220px;
     background-color: #f7f8fd;
 }
 
