@@ -463,7 +463,7 @@ class _RegisterPageState extends State<RegisterPage>
             ),
             const SizedBox(height: 10),
             Text(
-              'Mulailah petualangan bisnis penyewaan alat\ncamping Anda bersama kami.',
+              'Kembangkan Bisnis Penyewaan Alat\nCamping Anda Bersama Kami.',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyLarge.copyWith(
                 color: const Color(0xFF496171),
@@ -521,7 +521,7 @@ class _RegisterPageState extends State<RegisterPage>
           fit: StackFit.expand,
           children: [
             Image.asset(
-              'assets/images/loading_background.png',
+              'assets/images/registrasi_owner.png',
               fit: BoxFit.cover,
             ),
             DecoratedBox(
