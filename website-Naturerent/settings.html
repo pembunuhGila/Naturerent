@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NatureRent - System Setting</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-leaf"></i>
+                <div class="header-text">
+                    <span class="header-title">NatureRent</span>
+                    <span class="header-subtitle">Admin Portal</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fa-solid fa-table-cells-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="pemilik-rental.html" class="nav-item">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Manage Users</span>
+                </a>
+                <a href="pemilik-rental.html" class="nav-item">
+                    <i class="fa-solid fa-handshake"></i>
+                    <span>Manage Partners</span>
+                </a>
+                <a href="komisi.html" class="nav-item">
+                    <i class="fa-solid fa-money-check-dollar"></i>
+                    <span>Commission</span>
+                </a>
+                <a href="transaksi.html" class="nav-item">
+                    <i class="fa-solid fa-chart-simple"></i>
+                    <span>Reports</span>
+                </a>
+                <a href="settings.html" class="nav-item active">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>System Setting</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="#" class="support-link">
+                    <i class="fa-regular fa-circle-question"></i>
+                    <span>Support</span>
+                </a>
+                <div class="admin-profile">
+                    <div class="admin-avatar">AU</div>
+                    <div>
+                        <strong>Admin User</strong>
+                        <span>Administrator</span>
+                    </div>
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h1>System Setting</h1>
+                <div class="topbar-actions">
+                    <label class="settings-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" placeholder="Search settings...">
+                    </label>
+                    <button class="icon-btn" type="button" aria-label="Notifications">
+                        <i class="fa-regular fa-bell"></i>
+                    </button>
+                    <button class="icon-btn" type="button" aria-label="Settings shortcut">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                    <button class="icon-btn" type="button" aria-label="Account">
+                        <i class="fa-regular fa-circle-user"></i>
+                    </button>
+                </div>
+            </header>
+
+            <section class="settings-section">
+                <div class="page-heading">
+                    <h2>System Setting</h2>
+                    <p>Manage your application global configurations, contact details, and transaction preferences.</p>
+                </div>
+
+                <div class="settings-grid">
+                    <article class="setting-card app-info-card">
+                        <div class="card-title">
+                            <span class="card-icon mint">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </span>
+                            <h3>Application Information</h3>
+                        </div>
+
+                        <form class="settings-form">
+                            <label for="app-name">App Name</label>
+                            <input id="app-name" type="text" value="NatureRent">
+
+                            <label>Brand Logo</label>
+                            <div class="logo-upload">
+                                <button type="button" class="upload-box">
+                                    <i class="fa-solid fa-upload"></i>
+                                    <span>Change</span>
+                                </button>
+                                <div class="upload-copy">
+                                    <p>Recommended size: 512x512px. SVG or PNG with transparent background.</p>
+                                    <a href="#">Download current logo</a>
+                                </div>
+                            </div>
+
+                            <label for="description">Description</label>
+                            <textarea id="description" rows="5">NatureRent is the leading eco-friendly equipment rental platform connecting adventure seekers with premium outdoor gear and sustainable travel resources.</textarea>
+                        </form>
+                    </article>
+
+                    <article class="setting-card">
+                        <div class="card-title">
+                            <span class="card-icon mint">
+                                <i class="fa-solid fa-palette"></i>
+                            </span>
+                            <h3>Appearance</h3>
+                        </div>
+
+                        <div class="theme-card">
+                            <div>
+                                <h4>Default Theme</h4>
+                                <p>Choose how the interface looks for admins.</p>
+                            </div>
+                            <div class="theme-toggle">
+                                <button type="button" class="theme-option active">
+                                    <i class="fa-solid fa-sun"></i>
+                                    Light
+                                </button>
+                                <button type="button" class="theme-option">
+                                    <i class="fa-solid fa-moon"></i>
+                                    Dark
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="accent-section">
+                            <p>Brand Primary Accent</p>
+                            <div class="accent-row">
+                                <button class="accent-swatch selected green" type="button" aria-label="Green accent"></button>
+                                <button class="accent-swatch teal" type="button" aria-label="Teal accent"></button>
+                                <button class="accent-swatch forest" type="button" aria-label="Forest accent"></button>
+                                <button class="accent-swatch navy" type="button" aria-label="Navy accent"></button>
+                                <button class="custom-color" type="button">Custom Color</button>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="setting-card">
+                        <div class="card-title">
+                            <span class="card-icon blue">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </span>
+                            <h3>Contact Information</h3>
+                        </div>
+
+                        <form class="settings-form contact-form">
+                            <div class="field-row">
+                                <div>
+                                    <label for="email">Official Email</label>
+                                    <input id="email" type="email" value="admin@naturerent.com">
+                                </div>
+                                <div>
+                                    <label for="phone">Service Number</label>
+                                    <input id="phone" type="tel" value="+62 21 5550 1234">
+                                </div>
+                            </div>
+
+                            <label for="address">Office Address</label>
+                            <textarea id="address" rows="4">The Green Hub, Fl. 12, Sudirman Central Business District, Jakarta 12190, Indonesia</textarea>
+                        </form>
+                    </article>
+
+                    <article class="setting-card">
+                        <div class="card-title">
+                            <span class="card-icon mint">
+                                <i class="fa-regular fa-credit-card"></i>
+                            </span>
+                            <h3>Transaction Settings</h3>
+                        </div>
+
+                        <form class="settings-form transaction-form">
+                            <div class="field-row">
+                                <div>
+                                    <label for="payment-time">Payment Time Limit</label>
+                                    <select id="payment-time">
+                                        <option>30 Minutes</option>
+                                        <option>1 Hour</option>
+                                        <option>2 Hours</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="currency">System Currency</label>
+                                    <select id="currency">
+                                        <option>Indonesian Rupiah (IDR)</option>
+                                        <option>US Dollar (USD)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="toggle-panel">
+                                <div>
+                                    <strong>Auto Cancel Unpaid Orders</strong>
+                                    <span>Cancel reservations if not paid within limit.</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span></span>
+                                </label>
+                            </div>
+                        </form>
+                    </article>
+                </div>
+
+                <div class="settings-actions">
+                    <button type="button" class="reset-btn">Reset</button>
+                    <button type="button" class="save-btn">Save Changes</button>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
