@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NatureRent - Transaksi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="transaksi.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-tree"></i>
+                <div class="header-text">
+                    <span class="header-title">NatureRent</span>
+                    <span class="header-subtitle">Operations Portal</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-coins"></i>
+                    <span>Komisi</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-person"></i>
+                    <span>Pemilik Rental</span>
+                </div>
+                <div class="nav-item active">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span>Transaksi</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>System Settings</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <h1>Transaksi</h1>
+                <p class="header-subtitle">Kelola dan monitor semua transaksi penyewaan kami camping</p>
+            </header>
+
+            <!-- Content Section -->
+            <section class="content-section">
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" placeholder="Cari ID Transaksi, user, atau nama...">
+                    </div>
+                    
+                    <div class="filter-controls">
+                        <select class="filter-select">
+                            <option>Semua Status</option>
+                            <option>Selesai</option>
+                            <option>Proses</option>
+                            <option>Ditolak</option>
+                        </select>
+                        
+                        <select class="filter-select">
+                            <option>Semua Periode</option>
+                            <option>1 Hari</option>
+                            <option>2-3 Hari</option>
+                            <option>Seminggu</option>
+                        </select>
+                        
+                        <button class="filter-btn">
+                            <i class="fa-solid fa-filter"></i> Filter
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Section -->
+                <div class="table-wrapper">
+                    <table class="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>TRANSAKSI</th>
+                                <th>TANGGAL</th>
+                                <th>USER</th>
+                                <th>RENTAL ITEM</th>
+                                <th>TOTAL</th>
+                                <th>STATUS</th>
+                                <th>AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="transaction-id">TRX-20250526-001</td>
+                                <td class="transaction-date">26 Mei 2025</td>
+                                <td class="user-name">Susmini</td>
+                                <td class="rental-item">Susmini Gear Rental</td>
+                                <td class="total-price">Rp 250.000</td>
+                                <td class="status-cell"><span class="badge badge-success">Selesai</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250526-002</td>
+                                <td class="transaction-date">25 Mei 2025</td>
+                                <td class="user-name">Siti Aisyah</td>
+                                <td class="rental-item">Green Valley Glamping</td>
+                                <td class="total-price">Rp 350.000</td>
+                                <td class="status-cell"><span class="badge badge-success">Selesai</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250525-003</td>
+                                <td class="transaction-date">25 Mei 2025</td>
+                                <td class="user-name">Rizky Pratama</td>
+                                <td class="rental-item">Lembah Putih Outdoor</td>
+                                <td class="total-price">Rp 180.000</td>
+                                <td class="status-cell"><span class="badge badge-warning">Proses</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250525-004</td>
+                                <td class="transaction-date">25 Mei 2025</td>
+                                <td class="user-name">Diani Lestari</td>
+                                <td class="rental-item">Susmini Gear Rental</td>
+                                <td class="total-price">Rp 420.000</td>
+                                <td class="status-cell"><span class="badge badge-success">Selesai</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250524-005</td>
+                                <td class="transaction-date">24 Mei 2025</td>
+                                <td class="user-name">Andi Wijaya</td>
+                                <td class="rental-item">Safari Marin</td>
+                                <td class="total-price">Rp 300.000</td>
+                                <td class="status-cell"><span class="badge badge-danger">Ditolak</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250524-006</td>
+                                <td class="transaction-date">24 Mei 2025</td>
+                                <td class="user-name">Nina Kartika</td>
+                                <td class="rental-item">Spiri Adventure</td>
+                                <td class="total-price">Rp 200.000</td>
+                                <td class="status-cell"><span class="badge badge-warning">Proses</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250523-007</td>
+                                <td class="transaction-date">23 Mei 2025</td>
+                                <td class="user-name">Fajar Ramadhan</td>
+                                <td class="rental-item">Lembah Putih Outdoor</td>
+                                <td class="total-price">Rp 175.000</td>
+                                <td class="status-cell"><span class="badge badge-warning">Proses</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="transaction-id">TRX-20250523-008</td>
+                                <td class="transaction-date">23 Mei 2025</td>
+                                <td class="user-name">Maya Sari</td>
+                                <td class="rental-item">Green Valley Glamping</td>
+                                <td class="total-price">Rp 375.000</td>
+                                <td class="status-cell"><span class="badge badge-success">Selesai</span></td>
+                                <td class="action-cell">
+                                    <button class="action-btn view-btn" title="Lihat Detail">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn download-btn" title="Download">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-section">
+                    <p class="pagination-info">Menampilkan 1 - 8 dari 540 data</p>
+                    <div class="pagination">
+                        <button class="pagination-btn prev-btn" disabled>
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button class="pagination-btn active">1</button>
+                        <button class="pagination-btn">2</button>
+                        <button class="pagination-btn">3</button>
+                        <span class="pagination-dots">...</span>
+                        <button class="pagination-btn">68</button>
+                        <button class="pagination-btn next-btn">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="transaksi.js"></script>
+</body>
+</html>

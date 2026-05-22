@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NatureRent - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-tree"></i>
+                <div class="header-text">
+                    <span class="header-title">NatureRent</span>
+                    <span class="header-subtitle">Operations Portal</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-coins"></i>
+                    <span>Komisi</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-person"></i>
+                    <span>Pemilih Rental</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span>Transaksi</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>System Settings</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <h1>Dashboard</h1>
+                <p class="header-subtitle">Selamat datang di Operations Portal NatureRent</p>
+            </header>
+
+            <!-- Content Section -->
+            <section class="content-section">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon transactions">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Transaksi</h3>
+                            <p class="stat-value">2,543</p>
+                            <p class="stat-label">Total Transaksi</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon rentals">
+                            <i class="fa-solid fa-person"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Pemilik Rental</h3>
+                            <p class="stat-value">28</p>
+                            <p class="stat-label">Total Pemilik Rental</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon commission">
+                            <i class="fa-solid fa-coins"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Komisi</h3>
+                            <p class="stat-value">Rp 45.2M</p>
+                            <p class="stat-label">Total Komisi Bulan Ini</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon revenue">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Revenue</h3>
+                            <p class="stat-value">Rp 150.8M</p>
+                            <p class="stat-label">Total Pendapatan</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Access Section -->
+                <div class="quick-access-section">
+                    <h2>Akses Cepat</h2>
+                    <div class="quick-access-grid">
+                        <a href="transaksi.html" class="quick-card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Transaksi</h3>
+                                <p>Kelola dan monitor semua transaksi penyewaan</p>
+                            </div>
+                            <div class="card-arrow">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="pemilik-rental.html" class="quick-card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-person"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Pemilik Rental</h3>
+                                <p>Kelola data pemilik rental dengan mudah</p>
+                            </div>
+                            <div class="card-arrow">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="komisi.html" class="quick-card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-coins"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Komisi</h3>
+                                <p>Monitor komisi dan pembayaran pemilik rental</p>
+                            </div>
+                            <div class="card-arrow">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </div>
+                        </a>
+
+                        <a href="settings.html" class="quick-card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-sliders"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Pengaturan Sistem</h3>
+                                <p>Kelola konfigurasi dan pengaturan sistem</p>
+                            </div>
+                            <div class="card-arrow">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-section">
+                    <h2>Aktivitas Terbaru</h2>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon transaction">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="activity-title">Transaksi Baru</p>
+                                <p class="activity-description">TRX-20250526-001 dari Susmini Hernanto</p>
+                                <p class="activity-time">2 jam yang lalu</p>
+                            </div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-icon rental">
+                                <i class="fa-solid fa-person-circle-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="activity-title">Pemilik Rental Baru</p>
+                                <p class="activity-description">Green Valley Glamping ditambahkan</p>
+                                <p class="activity-time">5 jam yang lalu</p>
+                            </div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-icon payment">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="activity-title">Pembayaran Komisi</p>
+                                <p class="activity-description">Pembayaran komisi Bulan Mei telah diproses</p>
+                                <p class="activity-time">1 hari yang lalu</p>
+                            </div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-icon setting">
+                                <i class="fa-solid fa-gear"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="activity-title">Pengaturan Sistem</p>
+                                <p class="activity-description">Konfigurasi komisi diperbarui</p>
+                                <p class="activity-time">3 hari yang lalu</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
