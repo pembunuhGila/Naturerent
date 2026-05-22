@@ -119,7 +119,7 @@ navItems.forEach(item => {
             window.location.href = 'dashboard.html';
         } else if (page === 'Komisi') {
             window.location.href = 'komisi.html';
-        } else if (page === 'Pemilih Rental') {
+        } else if (page === 'Pemilik Rental') {
             window.location.href = 'pemilik-rental.html';
         } else if (page === 'Transaksi') {
             window.location.href = 'transaksi.html';

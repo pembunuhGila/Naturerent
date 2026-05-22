@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NatureRent - Komisi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="komisi.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-tree"></i>
+                <div class="header-text">
+                    <span class="header-title">NatureRent</span>
+                    <span class="header-subtitle">Operations Portal</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="komisi.html" class="nav-item active">
+                    <i class="fa-solid fa-coins"></i>
+                    <span>Komisi</span>
+                </a>
+                <a href="pemilik-rental.html" class="nav-item">
+                    <i class="fa-solid fa-person"></i>
+                    <span>Pemilik Rental</span>
+                </a>
+                <a href="transaksi.html" class="nav-item">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span>Transaksi</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>System Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <h1>Kelola Komisi</h1>
+                <p class="header-subtitle">Kelola data komisi dengan mudah dan terstruktur.</p>
+            </header>
+
+            <section class="content-section">
+                <div class="commission-card">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Pengaturan Pengurangan Komisi</h2>
+                            <p>Konfigurasikan berapa banyak yang dipotong platform dari setiap transaksi penyewaan.</p>
+                        </div>
+                    </div>
+
+                    <form class="commission-form">
+                        <label for="commission-rate">Persentase Komisi Standar</label>
+                        <div class="input-with-suffix">
+                            <input type="number" id="commission-rate" value="12" min="0" max="100">
+                            <span>%</span>
+                        </div>
+                        <p class="form-note">Tarif ini berlaku untuk semua kategori penyewaan peralatan.</p>
+
+                        <div class="form-actions">
+                            <button type="button" class="save-btn">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="history-card">
+                    <div class="history-header">
+                        <div class="section-heading">
+                            <div>
+                                <h2>History Komisi</h2>
+                                <p>Catatan waktu riil terkait semua potongan platform dan pembagian transaksi.</p>
+                            </div>
+                        </div>
+
+                        <button type="button" class="filter-btn">
+                            <i class="fa-solid fa-filter"></i>
+                            <span>Filter</span>
+                        </button>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="commission-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Transaksi</th>
+                                    <th>Pemilik Rental</th>
+                                    <th>Jumlah Kotor</th>
+                                    <th>Jumlah Komisi</th>
+                                    <th>Status</th>
+                                    <th>Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="transaction-id">#TRX-98210</td>
+                                    <td>
+                                        <div class="owner-cell">
+                                            <span class="owner-avatar">A</span>
+                                            <span>Summit Peak Gear</span>
+                                        </div>
+                                    </td>
+                                    <td>Rp 700.000</td>
+                                    <td class="commission-value">Rp 70.010</td>
+                                    <td><span class="badge badge-success">Lunas</span></td>
+                                    <td>Dec 12, 14:30</td>
+                                </tr>
+                                <tr>
+                                    <td class="transaction-id">#TRX-98200</td>
+                                    <td>
+                                        <div class="owner-cell">
+                                            <span class="owner-avatar">B</span>
+                                            <span>River Runner Rentals</span>
+                                        </div>
+                                    </td>
+                                    <td>Rp 250.000</td>
+                                    <td class="commission-value">Rp 25.000</td>
+                                    <td><span class="badge badge-success">Lunas</span></td>
+                                    <td>Oct 26, 09:15</td>
+                                </tr>
+                                <tr>
+                                    <td class="transaction-id">#TRX-97914</td>
+                                    <td>
+                                        <div class="owner-cell">
+                                            <span class="owner-avatar">C</span>
+                                            <span>Forest Bound Hub</span>
+                                        </div>
+                                    </td>
+                                    <td>Rp 150.000</td>
+                                    <td class="commission-value">Rp 15.000</td>
+                                    <td><span class="badge badge-warning">Proses</span></td>
+                                    <td>Oct 22, 17:45</td>
+                                </tr>
+                                <tr>
+                                    <td class="transaction-id">#TRX-98102</td>
+                                    <td>
+                                        <div class="owner-cell">
+                                            <span class="owner-avatar">D</span>
+                                            <span>Trail Blazer Co.</span>
+                                        </div>
+                                    </td>
+                                    <td>Rp 300.000</td>
+                                    <td class="commission-value">Rp 30.000</td>
+                                    <td><span class="badge badge-success">Lunas</span></td>
+                                    <td>Oct 21, 18:20</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination-section">
+                        <p class="pagination-info">Menampilkan 1 - 4 dari 1284 Transaksi</p>
+                        <div class="pagination">
+                            <button class="pagination-btn" disabled>
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button class="pagination-btn active">1</button>
+                            <button class="pagination-btn">2</button>
+                            <button class="pagination-btn">3</button>
+                            <button class="pagination-btn">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
