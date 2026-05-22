@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/equipment.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/models/wisata_location.dart';
+import '../../core/services/destination_suggestion_service.dart';
 import '../../core/services/equipment_service.dart';
-import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'owner_destination_data.dart';
@@ -429,9 +430,13 @@ class _NearbyDestinationSection extends StatefulWidget {
 
 class _NearbyDestinationSectionState
     extends State<_NearbyDestinationSection> {
-  final _rentalService = RentalService();
+  static const _visibleSuggestionCount = 5;
+  static const _maxSuggestionCount = 10;
+
+  final _destinationSuggestionService = DestinationSuggestionService();
   List<DestinationInfo> _destinations = [];
   bool _loadingDest = true;
+  String? _destinationMessage;
 
   @override
   void initState() {
@@ -450,45 +455,67 @@ class _NearbyDestinationSectionState
   }
 
   Future<void> _muatDestinasiTerdekat() async {
-    setState(() => _loadingDest = true);
-    try {
-      final rental = widget.rentalProfile;
-      // Jika rental punya koordinat → hitung Haversine dari data Supabase
-      if (rental?.lat != null && rental?.lng != null) {
-        final wisataList = await _rentalService.ambilSemuaWisata();
-        final nearest = LocationService.getNearestWisata(
-          rentalLat: rental!.lat!,
-          rentalLng: rental.lng!,
-          wisataList: wisataList,
-          maxResults: 5,
-        );
-        if (!mounted) return;
-        setState(() {
-          _destinations = nearest.map((wd) {
-            // Konversi WisataWithDistance ke DestinationInfo
-            return DestinationInfo(
-              title: wd.wisata.nama,
-              distance: wd.jarakFormatted,
-              detailDistance: '${wd.jarakFormatted} dari rental',
-              icon: _iconForKategori(wd.wisata.kategori),
-              color: _colorForKategori(wd.wisata.kategori),
-              lat: wd.wisata.lat,
-              lng: wd.wisata.lng,
-            );
-          }).toList();
-          _loadingDest = false;
-        });
-        return;
-      }
-    } catch (_) {
-      // Jika gagal, fallback ke data statis
-    }
-    // Fallback: gunakan data statis dari owner_destination_data.dart
-    if (!mounted) return;
     setState(() {
-      _destinations = ownerNearbyDestinations.toList();
-      _loadingDest = false;
+      _loadingDest = true;
+      _destinationMessage = null;
     });
+
+    final rental = widget.rentalProfile;
+    if (rental?.lat == null || rental?.lng == null) {
+      if (!mounted) return;
+      setState(() {
+        _destinations = [];
+        _destinationMessage =
+            'Tambahkan titik lokasi toko rental untuk melihat saran destinasi.';
+        _loadingDest = false;
+      });
+      return;
+    }
+
+    try {
+      // Jika rental punya koordinat → hitung Haversine dari data Supabase
+      final nearest = await _destinationSuggestionService.ambilSaranUntukRental(
+        rental,
+        limit: _maxSuggestionCount,
+      );
+      if (!mounted) return;
+      setState(() {
+        _destinations = nearest
+            .map((wd) => _destinationInfoFromWisata(
+                  wd.wisata,
+                  wd.jarakFormatted,
+                ))
+            .toList();
+        _destinationMessage = _destinations.isEmpty
+            ? 'Belum ada destinasi dengan data latitude dan longitude.'
+            : null;
+        _loadingDest = false;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _destinations = [];
+        _destinationMessage = 'Gagal memuat saran destinasi terdekat.';
+        _loadingDest = false;
+      });
+      return;
+    }
+  }
+
+  DestinationInfo _destinationInfoFromWisata(
+    WisataLocation wisata,
+    String jarakFormatted,
+  ) {
+    return DestinationInfo(
+      title: wisata.nama,
+      distance: jarakFormatted,
+      detailDistance: '$jarakFormatted dari rental',
+      icon: _iconForKategori(wisata.kategori),
+      color: _colorForKategori(wisata.kategori),
+      lat: wisata.lat,
+      lng: wisata.lng,
+    );
   }
 
   IconData _iconForKategori(String? kategori) {
@@ -534,8 +561,10 @@ class _NearbyDestinationSectionState
       );
     }
 
-    final showSeeAll = _destinations.length > 3;
-    final items = showSeeAll ? _destinations.take(3).toList() : _destinations;
+    final showSeeAll = _destinations.length > _visibleSuggestionCount;
+    final items = showSeeAll
+        ? _destinations.take(_visibleSuggestionCount).toList()
+        : _destinations;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
@@ -549,10 +578,10 @@ class _NearbyDestinationSectionState
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Destinasi Terdekat',
+                'Saran Destinasi Terdekat',
                 style: AppTextStyles.headlineMedium.copyWith(
                   color: const Color(0xFF202321),
-                  fontSize: 21,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -561,7 +590,9 @@ class _NearbyDestinationSectionState
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const OwnerNearbyDestinationsPage(),
+                      builder: (_) => OwnerNearbyDestinationsPage(
+                        destinations: _destinations,
+                      ),
                     ),
                   ),
                   child: Text(
@@ -580,7 +611,7 @@ class _NearbyDestinationSectionState
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                'Belum ada destinasi terdekat.',
+                _destinationMessage ?? 'Belum ada saran destinasi terdekat.',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textHint,
                 ),
@@ -1116,7 +1147,12 @@ Color _visualColorForStatus(_EquipmentStatus status) => switch (status) {
 };
 
 class OwnerNearbyDestinationsPage extends StatelessWidget {
-  const OwnerNearbyDestinationsPage({super.key});
+  final List<DestinationInfo> destinations;
+
+  const OwnerNearbyDestinationsPage({
+    super.key,
+    required this.destinations,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1131,7 +1167,7 @@ class OwnerNearbyDestinationsPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF263229)),
         ),
         title: Text(
-          'Destinasi Terdekat',
+          'Saran Destinasi Terdekat',
           style: AppTextStyles.bodyMedium.copyWith(
             color: const Color(0xFF263229),
             fontSize: 16,
@@ -1141,7 +1177,7 @@ class OwnerNearbyDestinationsPage extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
-        children: ownerNearbyDestinations
+        children: destinations
             .map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 14),
