@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/equipment.dart';
 import '../../core/models/rental_profile.dart';
-import '../../core/models/wisata_location.dart';
-import '../../core/services/destination_suggestion_service.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -26,6 +24,9 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   final _equipmentService = EquipmentService();
 
   List<Equipment> _alat = [];
+  List<DestinationInfo> _suggestedDestinations = List.of(
+    ownerNearbyDestinations,
+  );
   String? _rentalId;
   RentalProfile? _rentalProfile; // Simpan profil rental lengkap (termasuk lat/lng)
   bool _loading = true;
@@ -183,17 +184,24 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                       _RentalManageTab(
                         rentalProfile: _rentalProfile,
                         onEdit: () async {
-                          final changed = await Navigator.push<bool>(
+                          final updatedDestinations =
+                              await Navigator.push<List<DestinationInfo>>(
                             context,
                             MaterialPageRoute(
                               builder: (_) => OwnerEditRentalPage(
                                 rentalProfile: _rentalProfile,
+                                suggestedDestinations: _suggestedDestinations,
                               ),
                             ),
                           );
-                          if (changed == true) _muatAlat();
+                          if (updatedDestinations != null) {
+                            setState(() {
+                              _suggestedDestinations = updatedDestinations;
+                            });
+                            _muatAlat();
+                          }
                         },
-                        onAddDestination: () => _comingSoon('Tambah rekomendasi'),
+                        suggestedDestinations: _suggestedDestinations,
                       )
                     else
                       _EquipmentManageTab(
@@ -248,12 +256,12 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
 class _RentalManageTab extends StatelessWidget {
   final RentalProfile? rentalProfile;
   final VoidCallback onEdit;
-  final VoidCallback onAddDestination;
+  final List<DestinationInfo> suggestedDestinations;
 
   const _RentalManageTab({
     required this.rentalProfile,
     required this.onEdit,
-    required this.onAddDestination,
+    required this.suggestedDestinations,
   });
 
   @override
@@ -288,36 +296,8 @@ class _RentalManageTab extends StatelessWidget {
         const SizedBox(height: 32),
         _RentalProfileCard(rentalProfile: rentalProfile),
         const SizedBox(height: 24),
-        _NearbyDestinationSection(rentalProfile: rentalProfile),
-        const SizedBox(height: 24),
-        InkWell(
-          onTap: onAddDestination,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            height: 62,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFDDE7DC), width: 1.4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.add_circle_outline_rounded,
-                  color: Color(0xFF6E7A6E),
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Tambah Rekomendasi Baru',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: const Color(0xFF4F5A50),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        _NearbyDestinationSection(
+          destinations: suggestedDestinations,
         ),
       ],
     );
@@ -418,153 +398,19 @@ class _RentalProfileCard extends StatelessWidget {
   }
 }
 
-class _NearbyDestinationSection extends StatefulWidget {
-  final RentalProfile? rentalProfile;
+class _NearbyDestinationSection extends StatelessWidget {
+  final List<DestinationInfo> destinations;
 
-  const _NearbyDestinationSection({this.rentalProfile});
+  const _NearbyDestinationSection({required this.destinations});
 
-  @override
-  State<_NearbyDestinationSection> createState() =>
-      _NearbyDestinationSectionState();
-}
-
-class _NearbyDestinationSectionState
-    extends State<_NearbyDestinationSection> {
   static const _visibleSuggestionCount = 5;
-  static const _maxSuggestionCount = 10;
-
-  final _destinationSuggestionService = DestinationSuggestionService();
-  List<DestinationInfo> _destinations = [];
-  bool _loadingDest = true;
-  String? _destinationMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _muatDestinasiTerdekat();
-  }
-
-  @override
-  void didUpdateWidget(_NearbyDestinationSection old) {
-    super.didUpdateWidget(old);
-    // Reload jika koordinat rental berubah
-    if (old.rentalProfile?.lat != widget.rentalProfile?.lat ||
-        old.rentalProfile?.lng != widget.rentalProfile?.lng) {
-      _muatDestinasiTerdekat();
-    }
-  }
-
-  Future<void> _muatDestinasiTerdekat() async {
-    setState(() {
-      _loadingDest = true;
-      _destinationMessage = null;
-    });
-
-    final rental = widget.rentalProfile;
-    if (rental?.lat == null || rental?.lng == null) {
-      if (!mounted) return;
-      setState(() {
-        _destinations = [];
-        _destinationMessage =
-            'Tambahkan titik lokasi toko rental untuk melihat saran destinasi.';
-        _loadingDest = false;
-      });
-      return;
-    }
-
-    try {
-      // Jika rental punya koordinat → hitung Haversine dari data Supabase
-      final nearest = await _destinationSuggestionService.ambilSaranUntukRental(
-        rental,
-        limit: _maxSuggestionCount,
-      );
-      if (!mounted) return;
-      setState(() {
-        _destinations = nearest
-            .map((wd) => _destinationInfoFromWisata(
-                  wd.wisata,
-                  wd.jarakFormatted,
-                ))
-            .toList();
-        _destinationMessage = _destinations.isEmpty
-            ? 'Belum ada destinasi dengan data latitude dan longitude.'
-            : null;
-        _loadingDest = false;
-      });
-      return;
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _destinations = [];
-        _destinationMessage = 'Gagal memuat saran destinasi terdekat.';
-        _loadingDest = false;
-      });
-      return;
-    }
-  }
-
-  DestinationInfo _destinationInfoFromWisata(
-    WisataLocation wisata,
-    String jarakFormatted,
-  ) {
-    return DestinationInfo(
-      title: wisata.nama,
-      distance: jarakFormatted,
-      detailDistance: '$jarakFormatted dari rental',
-      icon: _iconForKategori(wisata.kategori),
-      color: _colorForKategori(wisata.kategori),
-      lat: wisata.lat,
-      lng: wisata.lng,
-    );
-  }
-
-  IconData _iconForKategori(String? kategori) {
-    return switch (kategori?.toLowerCase()) {
-      'gunung' => Icons.terrain_rounded,
-      'ranu' || 'danau' => Icons.water_rounded,
-      'hutan' => Icons.forest_rounded,
-      'pantai' => Icons.beach_access_rounded,
-      'air terjun' || 'curug' => Icons.waterfall_chart_rounded,
-      _ => Icons.landscape_rounded,
-    };
-  }
-
-  Color _colorForKategori(String? kategori) {
-    return switch (kategori?.toLowerCase()) {
-      'gunung' => const Color(0xFF336A77),
-      'ranu' || 'danau' => const Color(0xFF18743A),
-      'hutan' => const Color(0xFF18743A),
-      'pantai' => const Color(0xFF336A77),
-      'air terjun' || 'curug' => const Color(0xFF18743A),
-      _ => const Color(0xFF5A6B5D),
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingDest) {
-      return Container(
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F8F5),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: CircularProgressIndicator(
-              color: Color(0xFF18743A),
-              strokeWidth: 2,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final showSeeAll = _destinations.length > _visibleSuggestionCount;
+    final showSeeAll = destinations.length > _visibleSuggestionCount;
     final items = showSeeAll
-        ? _destinations.take(_visibleSuggestionCount).toList()
-        : _destinations;
+        ? destinations.take(_visibleSuggestionCount).toList()
+        : destinations;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
@@ -591,7 +437,7 @@ class _NearbyDestinationSectionState
                     context,
                     MaterialPageRoute(
                       builder: (_) => OwnerNearbyDestinationsPage(
-                        destinations: _destinations,
+                        destinations: destinations,
                       ),
                     ),
                   ),
@@ -607,13 +453,13 @@ class _NearbyDestinationSectionState
             ],
           ),
           const SizedBox(height: 22),
-          if (_destinations.isEmpty)
+          if (destinations.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                _destinationMessage ?? 'Belum ada saran destinasi terdekat.',
+                'Belum ada saran destinasi terdekat. Tambahkan melalui Ubah Detail.',
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textHint,
+                  color: const Color(0xFF7B8794),
                 ),
               ),
             )

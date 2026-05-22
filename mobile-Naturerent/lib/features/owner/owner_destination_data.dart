@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 /// [lat] dan [lng] bersifat opsional — destinasi tanpa koordinat
 /// tetap aman digunakan dan tidak menyebabkan error.
 class DestinationInfo {
+  final String? id;
   final String title;
   final String distance;
   final String detailDistance;
@@ -15,6 +16,7 @@ class DestinationInfo {
   final double? lng;
 
   const DestinationInfo({
+    this.id,
     required this.title,
     required this.distance,
     required this.detailDistance,
@@ -27,6 +29,7 @@ class DestinationInfo {
   /// Buat salinan dengan jarak yang sudah dihitung ulang
   DestinationInfo copyWithDistance(String dist, String detailDist) {
     return DestinationInfo(
+      id: id,
       title: title,
       distance: dist,
       detailDistance: detailDist,

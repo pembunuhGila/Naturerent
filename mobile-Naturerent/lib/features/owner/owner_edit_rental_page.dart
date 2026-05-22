@@ -5,6 +5,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/models/wisata_location.dart';
+import '../../core/services/destination_suggestion_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'owner_destination_data.dart';
@@ -13,8 +15,13 @@ import 'owner_map_picker_page.dart';
 class OwnerEditRentalPage extends StatefulWidget {
   /// Profil rental yang akan diedit. Boleh null jika rental belum dibuat.
   final RentalProfile? rentalProfile;
+  final List<DestinationInfo> suggestedDestinations;
 
-  const OwnerEditRentalPage({super.key, this.rentalProfile});
+  const OwnerEditRentalPage({
+    super.key,
+    this.rentalProfile,
+    this.suggestedDestinations = const [],
+  });
 
   @override
   State<OwnerEditRentalPage> createState() => _OwnerEditRentalPageState();
@@ -24,9 +31,12 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   late final TextEditingController _namaRentalController;
   late final TextEditingController _alamatController;
 
-  final Set<String> _nearbyTitles = {'Ranu Kumbolo', 'Gunung Semeru'};
-  final Set<String> _selected = {'Ranu Kumbolo', 'Gunung Semeru'};
   final _rentalService = RentalService();
+  final _destinationSuggestionService = DestinationSuggestionService();
+  late List<DestinationInfo> _suggestedDestinations;
+  List<DestinationInfo> _nearbyDestinations = [];
+  bool _loadingDestinations = true;
+  String? _destinationMessage;
 
   // ── State GPS
   double? _lat;
@@ -48,6 +58,12 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     // Muat koordinat yang sudah tersimpan sebelumnya
     _lat = rental?.lat;
     _lng = rental?.lng;
+    _suggestedDestinations = _uniqueDestinations(
+      widget.suggestedDestinations.isEmpty
+          ? ownerNearbyDestinations
+          : widget.suggestedDestinations,
+    );
+    _muatDestinasiDekat();
   }
 
   @override
@@ -109,9 +125,163 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
         _lat = result.latitude;
         _lng = result.longitude;
       });
+      _muatDestinasiDekat();
       _snackSuccess(
         'Lokasi disimpan: ${result.latitude.toStringAsFixed(6)}, ${result.longitude.toStringAsFixed(6)}',
       );
+    }
+  }
+
+  Future<void> _muatDestinasiDekat() async {
+    setState(() {
+      _loadingDestinations = true;
+      _destinationMessage = null;
+    });
+
+    if (_lat == null || _lng == null) {
+      setState(() {
+        _nearbyDestinations = _mergeNearbyWithSuggested(
+          ownerCandidateDestinations,
+        );
+        _destinationMessage =
+            'Pilih titik lokasi rental untuk melihat destinasi terdekat.';
+        _loadingDestinations = false;
+      });
+      return;
+    }
+
+    try {
+      final nearest =
+          await _destinationSuggestionService.ambilSaranDestinasiTerdekat(
+        rentalLat: _lat,
+        rentalLng: _lng,
+        limit: 10,
+      );
+      if (!mounted) return;
+      setState(() {
+        final nearestDestinations = nearest
+            .map(
+              (wd) => _destinationInfoFromWisata(
+                wd.wisata,
+                wd.jarakFormatted,
+              ),
+            )
+            .toList();
+        _nearbyDestinations = _mergeNearbyWithSuggested(nearestDestinations);
+        _destinationMessage = _nearbyDestinations.isEmpty
+            ? 'Belum ada destinasi terdekat dengan data koordinat.'
+            : null;
+        _loadingDestinations = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _nearbyDestinations = _mergeNearbyWithSuggested(
+          ownerCandidateDestinations,
+        );
+        _destinationMessage =
+            'Gagal memuat data terdekat. Menampilkan kandidat rekomendasi.';
+        _loadingDestinations = false;
+      });
+    }
+  }
+
+  DestinationInfo _destinationInfoFromWisata(
+    WisataLocation wisata,
+    String jarakFormatted,
+  ) {
+    return DestinationInfo(
+      id: wisata.id,
+      title: wisata.nama,
+      distance: jarakFormatted,
+      detailDistance: '$jarakFormatted dari rental',
+      icon: _iconForKategori(wisata.kategori),
+      color: _colorForKategori(wisata.kategori),
+      lat: wisata.lat,
+      lng: wisata.lng,
+    );
+  }
+
+  IconData _iconForKategori(String? kategori) {
+    return switch (kategori?.toLowerCase()) {
+      'gunung' => Icons.terrain_rounded,
+      'ranu' || 'danau' => Icons.water_rounded,
+      'hutan' => Icons.forest_rounded,
+      'pantai' => Icons.beach_access_rounded,
+      'air terjun' || 'curug' => Icons.waterfall_chart_rounded,
+      _ => Icons.landscape_rounded,
+    };
+  }
+
+  Color _colorForKategori(String? kategori) {
+    return switch (kategori?.toLowerCase()) {
+      'gunung' => const Color(0xFF336A77),
+      'pantai' => const Color(0xFF336A77),
+      _ => const Color(0xFF18743A),
+    };
+  }
+
+  String _destinationTitleKey(DestinationInfo item) {
+    return 'title:${item.title.trim().toLowerCase()}';
+  }
+
+  bool _isSameDestination(DestinationInfo a, DestinationInfo b) {
+    final aId = a.id?.trim();
+    final bId = b.id?.trim();
+    if (aId != null && aId.isNotEmpty && bId != null && bId.isNotEmpty) {
+      return aId == bId;
+    }
+    return _destinationTitleKey(a) == _destinationTitleKey(b);
+  }
+
+  bool _isDestinationAdded(DestinationInfo item) {
+    return _suggestedDestinations.any((dest) => _isSameDestination(dest, item));
+  }
+
+  List<DestinationInfo> _mergeNearbyWithSuggested(
+    List<DestinationInfo> nearby,
+  ) {
+    return _uniqueDestinations([
+      ..._suggestedDestinations,
+      ...nearby,
+    ]);
+  }
+
+  List<DestinationInfo> _uniqueDestinations(List<DestinationInfo> items) {
+    final result = <DestinationInfo>[];
+    for (final item in items) {
+      final exists = result.any((dest) => _isSameDestination(dest, item));
+      if (!exists) result.add(item);
+    }
+    return result;
+  }
+
+  void _tambahDestinasi(DestinationInfo item) {
+    if (_isDestinationAdded(item)) return;
+    setState(() {
+      _suggestedDestinations = _uniqueDestinations([
+        ..._suggestedDestinations,
+        item,
+      ]);
+    });
+    _snackSuccess('${item.title} ditambahkan ke Saran Destinasi Terdekat.');
+  }
+
+  void _hapusDestinasi(DestinationInfo item) {
+    if (!_isDestinationAdded(item)) return;
+    setState(() {
+      _suggestedDestinations = _suggestedDestinations
+          .where((dest) => !_isSameDestination(dest, item))
+          .toList();
+    });
+    _snackSuccess('${item.title} dihapus dari Saran Destinasi Terdekat.');
+  }
+
+  void _toggleDestinasi(DestinationInfo item) {
+    if (_isDestinationAdded(item)) {
+      _hapusDestinasi(item);
+    } else {
+      _tambahDestinasi(item);
     }
   }
 
@@ -133,7 +303,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     if (rentalId == null) {
       // Fallback: tampilkan snackbar saja (rental belum dibuat)
       _snackSuccess('Perubahan detail rental tersimpan (lokal).');
-      Navigator.pop(context, true);
+      Navigator.pop(context, _suggestedDestinations);
       return;
     }
 
@@ -149,7 +319,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
 
       if (!mounted) return;
       _snackSuccess('Perubahan detail rental berhasil disimpan.');
-      Navigator.pop(context, true);
+      Navigator.pop(context, _suggestedDestinations);
     } catch (e) {
       if (!mounted) return;
       _snackError('Gagal menyimpan: ${e.toString()}');
@@ -251,31 +421,53 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  ...ownerCandidateDestinations.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: _DestinationCard(
-                        item: item,
-                        selected: _selected.contains(item.title),
-                        disabled: _nearbyTitles.contains(item.title),
-                        onTap: () {
-                          if (_nearbyTitles.contains(item.title)) {
-                            _snackSuccess(
-                              '${item.title} sudah ada di destinasi terdekat.',
-                            );
-                            return;
-                          }
-                          setState(() {
-                            if (_selected.contains(item.title)) {
-                              _selected.remove(item.title);
-                            } else {
-                              _selected.add(item.title);
-                            }
-                          });
+                  if (_loadingDestinations)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 28),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF18743A),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    )
+                  else ...[
+                    if (_destinationMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 18),
+                        child: Text(
+                          _destinationMessage!,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: const Color(0xFF7B8794),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    if (_nearbyDestinations.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        child: Text(
+                          'Belum ada destinasi untuk ditampilkan.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: const Color(0xFF7B8794),
+                          ),
+                        ),
+                      )
+                    else
+                      ..._nearbyDestinations.map(
+                        (item) {
+                          final added = _isDestinationAdded(item);
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: _DestinationCard(
+                              item: item,
+                              added: added,
+                              onTap: () => _toggleDestinasi(item),
+                            ),
+                          );
                         },
                       ),
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -344,7 +536,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, _suggestedDestinations),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: Color(0xFF263229),
@@ -780,14 +972,12 @@ class _LabeledInput extends StatelessWidget {
 
 class _DestinationCard extends StatelessWidget {
   final DestinationInfo item;
-  final bool selected;
-  final bool disabled;
-  final VoidCallback onTap;
+  final bool added;
+  final VoidCallback? onTap;
 
   const _DestinationCard({
     required this.item,
-    required this.selected,
-    required this.disabled,
+    required this.added,
     required this.onTap,
   });
 
@@ -812,7 +1002,7 @@ class _DestinationCard extends StatelessWidget {
           Container(
             height: 178,
             decoration: BoxDecoration(
-              color: disabled ? item.color.withValues(alpha: 0.74) : item.color,
+              color: added ? item.color.withValues(alpha: 0.74) : item.color,
               borderRadius: BorderRadius.circular(2),
             ),
             child: Center(
@@ -879,23 +1069,40 @@ class _DestinationCard extends StatelessWidget {
               GestureDetector(
                 onTap: onTap,
                 child: Container(
-                  width: 38,
+                  width: added ? 38 : 92,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: disabled
+                    color: added
                         ? const Color(0xFFEAEAE7)
                         : const Color(0xFF18743A),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(19),
                   ),
-                  child: Icon(
-                    disabled
-                        ? Icons.check_rounded
-                        : selected
-                        ? Icons.check_rounded
-                        : Icons.add_rounded,
-                    color: disabled ? const Color(0xFFB7BDB5) : Colors.white,
-                    size: 24,
-                  ),
+                  child: added
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Color(0xFFB7BDB5),
+                          size: 24,
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.add_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Tambah',
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ],
