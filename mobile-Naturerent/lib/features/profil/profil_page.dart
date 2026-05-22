@@ -132,20 +132,20 @@ class _ProfilPageState extends State<ProfilPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Keluar Akun',
             style: AppTextStyles.headlineLarge
-                .copyWith(color: AppColors.textPrimary)),
+                .copyWith(color: const Color(0xFF202321))),
         content: Text('Apakah kamu yakin ingin keluar?',
             style:
-                AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF496171))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('Batal',
                 style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textSecondary)),
+                    .copyWith(color: const Color(0xFF496171))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -188,7 +188,7 @@ class _ProfilPageState extends State<ProfilPage> {
     ));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -259,7 +259,7 @@ class _ProfilPageState extends State<ProfilPage> {
         Text(
           'Profil Saya',
           style: AppTextStyles.headlineLarge.copyWith(
-            color: AppColors.textPrimary,
+            color: const Color(0xFF202321),
             fontSize: 20,
           ),
         ),
@@ -284,7 +284,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
+                        color: const Color(0xFF18743A).withValues(alpha: 0.3),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -295,7 +295,7 @@ class _ProfilPageState extends State<ProfilPage> {
                         ? Image.network(_avatarUrl!,
                             width: 90, height: 90, fit: BoxFit.cover)
                         : Container(
-                            color: AppColors.primaryDark,
+                            color: const Color(0xFF18743A),
                             child: Center(
                               child: Text(
                                 _inisial,
@@ -321,7 +321,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: const Color(0xFF18743A),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -337,14 +337,14 @@ class _ProfilPageState extends State<ProfilPage> {
             _namaLengkap,
             style: AppTextStyles.headlineLarge.copyWith(
               fontSize: 20,
-              color: AppColors.textPrimary,
+              color: const Color(0xFF202321),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             _email,
             style:
-                AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF496171)),
           ),
         ],
       ),
@@ -355,7 +355,7 @@ class _ProfilPageState extends State<ProfilPage> {
     return Text(
       label,
       style: AppTextStyles.caption.copyWith(
-        color: AppColors.textHint,
+        color: const Color(0xFF7B8794),
         fontWeight: FontWeight.w700,
         letterSpacing: 1.2,
         fontSize: 11,
@@ -366,9 +366,9 @@ class _ProfilPageState extends State<ProfilPage> {
   Widget _buildMenuCard({required List<_MenuItem> items}) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE0E5DE)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -400,18 +400,18 @@ class _ProfilPageState extends State<ProfilPage> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
+                          color: const Color(0xFFE4EFE7),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(item.icon,
-                            color: AppColors.primary, size: 18),
+                            color: Color(0xFF18743A), size: 18),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           item.label,
                           style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textPrimary,
+                            color: Color(0xFF202321),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -422,18 +422,18 @@ class _ProfilPageState extends State<ProfilPage> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: AppColors.primary,
+                            color: Color(0xFF18743A),
                           ),
                         )
                       else
                         const Icon(Icons.chevron_right_rounded,
-                            color: AppColors.textHint, size: 20),
+                            color: Color(0xFF7B8794), size: 20),
                     ],
                   ),
                 ),
               ),
               if (i < items.length - 1)
-                const Divider(height: 1, indent: 66, color: AppColors.border),
+                const Divider(height: 1, indent: 66, color: Color(0xFFE0E5DE)),
             ],
           );
         }).toList(),
@@ -445,9 +445,9 @@ class _ProfilPageState extends State<ProfilPage> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE0E5DE)),
       ),
       child: InkWell(
         onTap: _isLoggingOut ? null : _logout,
@@ -487,7 +487,7 @@ class _ProfilPageState extends State<ProfilPage> {
   void _snackComingSoon(String fitur) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('$fitur — Segera hadir!'),
-      backgroundColor: AppColors.primaryDark,
+      backgroundColor: const Color(0xFF18743A),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

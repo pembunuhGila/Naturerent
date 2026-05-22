@@ -72,7 +72,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
   void _showPilihFoto() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -87,7 +87,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: const Color(0xFFE0E5DE),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -95,15 +95,15 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: const Color(0xFFE4EFE7),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.camera_alt_rounded,
-                      color: AppColors.primary),
+                      color: Color(0xFF18743A)),
                 ),
                 title: Text('Ambil dari Kamera',
                     style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textPrimary)),
+                        .copyWith(color: Color(0xFF202321))),
                 onTap: () {
                   Navigator.pop(context);
                   _pilihGambar(ImageSource.camera);
@@ -113,15 +113,15 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: const Color(0xFFE4EFE7),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.photo_library_rounded,
-                      color: AppColors.primary),
+                      color: Color(0xFF18743A)),
                 ),
                 title: Text('Pilih dari Galeri',
                     style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textPrimary)),
+                        .copyWith(color: Color(0xFF202321))),
                 onTap: () {
                   Navigator.pop(context);
                   _pilihGambar(ImageSource.gallery);
@@ -153,11 +153,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Pangkas Foto Profil',
-            toolbarColor: AppColors.primaryDark,
+            toolbarColor: const Color(0xFF18743A),
             toolbarWidgetColor: Colors.white,
-            statusBarColor: AppColors.primaryDark, // ignore: deprecated_member_use
+            statusBarColor: const Color(0xFF18743A), // ignore: deprecated_member_use
             backgroundColor: Colors.black,
-            activeControlsWidgetColor: AppColors.primary,
+            activeControlsWidgetColor: const Color(0xFF18743A),
             initAspectRatio: CropAspectRatioPreset.square,
             lockAspectRatio: true,
             hideBottomControls: false,
@@ -303,7 +303,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(children: [
           const Icon(Icons.error_outline_rounded,
@@ -312,7 +312,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
           Expanded(
               child: Text(judul,
                   style: AppTextStyles.headlineMedium
-                      .copyWith(color: AppColors.textPrimary))),
+                      .copyWith(color: const Color(0xFF202321)))),
         ]),
         content: SingleChildScrollView(
           child: Column(
@@ -321,19 +321,19 @@ class _EditProfilPageState extends State<EditProfilPage> {
             children: [
               Text(pesan,
                   style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.textSecondary)),
+                      .copyWith(color: const Color(0xFF496171))),
               if (solusi.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
+                    color: const Color(0xFFE4EFE7),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '💡 Solusi:\n$solusi',
                     style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primaryDark,
+                        color: Color(0xFF18743A),
                         fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -349,7 +349,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
             },
             child: Text('Mengerti',
                 style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.primary, fontWeight: FontWeight.w700)),
+                    color: Color(0xFF18743A), fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -360,7 +360,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: AppColors.primaryDark,
+      backgroundColor: const Color(0xFF18743A),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -378,7 +378,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     ));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -419,7 +419,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
               const SizedBox(height: 4),
               Text(
                 'Diperlukan untuk verifikasi identitas penyewa.',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
+                style: AppTextStyles.caption.copyWith(color: const Color(0xFF7B8794)),
               ),
               const SizedBox(height: 10),
               _buildKtpSection(),
@@ -432,9 +432,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _simpan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryDark,
+                    backgroundColor: const Color(0xFF18743A),
                     disabledBackgroundColor:
-                        AppColors.primaryDark.withValues(alpha: 0.5),
+                        const Color(0xFF18743A).withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -466,7 +466,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   child: Text(
                     'Batal',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.primary,
+                      color: const Color(0xFF18743A),
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
                     ),
@@ -491,12 +491,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
         GestureDetector(
           onTap: () => Navigator.pop(context, false),
           child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary, size: 20),
+              color: Color(0xFF202321), size: 20),
         ),
         Text(
           'Edit Profil',
           style: AppTextStyles.headlineLarge.copyWith(
-            color: AppColors.textPrimary,
+            color: const Color(0xFF202321),
             fontSize: 20,
           ),
         ),
@@ -504,12 +504,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: const Color(0xFFE0E5DE)),
           ),
           child: const Icon(Icons.notifications_none_rounded,
-              color: AppColors.textPrimary, size: 18),
+              color: Color(0xFF202321), size: 18),
         ),
       ],
     );
@@ -541,7 +541,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.25),
+                        color: const Color(0xFF18743A).withValues(alpha: 0.25),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -558,7 +558,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                                 width: 100, height: 100, fit: BoxFit.cover)
                             // Fallback: inisial nama
                             : Container(
-                                color: AppColors.primaryDark,
+                                color: const Color(0xFF18743A),
                                 child: Center(
                                   child: Text(
                                     inisial,
@@ -584,7 +584,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: const Color(0xFF18743A),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -604,7 +604,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
           Text(
             widget.email,
             style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.textSecondary),
+                .copyWith(color: const Color(0xFF496171)),
           ),
         ],
       ),
@@ -615,7 +615,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     return Text(
       text,
       style: AppTextStyles.bodyMedium.copyWith(
-        color: AppColors.textSecondary,
+        color: const Color(0xFF496171),
         fontWeight: FontWeight.w500,
       ),
     );
@@ -628,22 +628,24 @@ class _EditProfilPageState extends State<EditProfilPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: enabled ? AppColors.surface : AppColors.background,
+        color: enabled ? Colors.white : const Color(0xFFF8F8F5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: enabled ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+          color: enabled
+              ? const Color(0xFFE0E5DE)
+              : const Color(0xFFE0E5DE).withValues(alpha: 0.5),
         ),
       ),
       child: TextField(
         controller: controller,
         enabled: enabled,
         style: AppTextStyles.bodyMedium.copyWith(
-          color: enabled ? AppColors.textPrimary : AppColors.textHint,
+          color: enabled ? const Color(0xFF202321) : const Color(0xFF7B8794),
         ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle:
-              AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+              AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF7B8794)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: InputBorder.none,
@@ -681,10 +683,10 @@ class _EditProfilPageState extends State<EditProfilPage> {
         width: double.infinity,
         height: 140,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasKtp ? AppColors.primary : AppColors.border,
+            color: hasKtp ? const Color(0xFF18743A) : const Color(0xFFE0E5DE),
             width: hasKtp ? 1.5 : 1,
           ),
         ),
@@ -699,7 +701,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                         : Image.network(_ktpUrl!, fit: BoxFit.cover,
                             errorBuilder: (ctx, err, stack) => const Icon(
                                 Icons.broken_image_rounded,
-                                color: AppColors.textHint)),
+                                color: Color(0xFF7B8794))),
                   ),
                   Positioned(
                     top: 8, right: 8,
@@ -707,7 +709,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryDark.withValues(alpha: 0.85),
+                        color: Color(0xFF18743A).withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -729,21 +731,21 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
+                      color: const Color(0xFFE4EFE7),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.badge_outlined,
-                        color: AppColors.primary, size: 28),
+                        color: Color(0xFF18743A), size: 28),
                   ),
                   const SizedBox(height: 10),
                   Text('Tap untuk upload foto KTP',
                       style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.primary,
+                          color: Color(0xFF18743A),
                           fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text('Format: JPG / PNG',
                       style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textHint)),
+                          .copyWith(color: Color(0xFF7B8794))),
                 ],
               ),
       ),
