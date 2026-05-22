@@ -19,7 +19,7 @@ class _OwnerShellState extends State<OwnerShell> {
     OwnerDashboardPage(),
     OwnerOrdersPage(),
     OwnerInventoryPage(),
-    ProfilPage(),
+    ProfilPage(forceMitra: true),
   ];
 
   @override

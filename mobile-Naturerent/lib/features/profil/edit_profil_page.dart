@@ -4,20 +4,28 @@ import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/models/rental_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/rental_service.dart';
 
 class EditProfilPage extends StatefulWidget {
   /// Nama & avatarUrl yang sudah ada (dari ProfilPage)
   final String namaAwal;
   final String email;
   final String? avatarUrlAwal;
+  final bool isMitra;
+  final String? namaTokoAwal;
+  final RentalProfile? rentalProfile;
 
   const EditProfilPage({
     super.key,
     required this.namaAwal,
     required this.email,
     this.avatarUrlAwal,
+    this.isMitra = false,
+    this.namaTokoAwal,
+    this.rentalProfile,
   });
 
   @override
@@ -26,11 +34,17 @@ class EditProfilPage extends StatefulWidget {
 
 class _EditProfilPageState extends State<EditProfilPage> {
   late final TextEditingController _namaCtrl;
+  late final TextEditingController _namaTokoCtrl;
+  late final TextEditingController _emailBisnisCtrl;
   final _client = AuthService.client;
+  final _rentalService = RentalService();
   final _picker = ImagePicker();
 
   File? _gambarBaru;        // file lokal foto profil
   String? _avatarUrl;       // URL avatar di Supabase
+  String? _fotoProfilTokoUrl;
+  File? _coverBaru;
+  String? _coverUrl;
   File? _ktpBaru;           // file lokal foto KTP
   String? _ktpUrl;          // URL KTP di Supabase
   bool _isSaving = false;
@@ -42,7 +56,13 @@ class _EditProfilPageState extends State<EditProfilPage> {
   void initState() {
     super.initState();
     _namaCtrl = TextEditingController(text: widget.namaAwal);
+    _namaTokoCtrl = TextEditingController(
+      text: widget.namaTokoAwal ?? widget.rentalProfile?.namaRental ?? '',
+    );
+    _emailBisnisCtrl = TextEditingController(text: widget.email);
     _avatarUrl = widget.avatarUrlAwal;
+    _fotoProfilTokoUrl = widget.rentalProfile?.fotoProfil ?? widget.avatarUrlAwal;
+    _coverUrl = widget.rentalProfile?.fotoBanner;
     _loadKtp(); // muat URL KTP dari DB
   }
 
@@ -63,6 +83,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
   @override
   void dispose() {
     _namaCtrl.dispose();
+    _namaTokoCtrl.dispose();
+    _emailBisnisCtrl.dispose();
     super.dispose();
   }
 
@@ -178,9 +200,159 @@ class _EditProfilPageState extends State<EditProfilPage> {
     }
   }
 
+  Future<void> _pilihFotoMitra({required bool cover}) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+      if (picked == null || !mounted) return;
+
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: cover
+            ? const CropAspectRatio(ratioX: 16, ratioY: 8)
+            : const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressQuality: 85,
+        compressFormat: ImageCompressFormat.jpg,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle:
+                cover ? 'Pangkas Foto Sampul' : 'Pangkas Foto Profil',
+            toolbarColor: const Color(0xFF18743A),
+            toolbarWidgetColor: Colors.white,
+            statusBarColor: const Color(0xFF18743A),
+            backgroundColor: Colors.black,
+            activeControlsWidgetColor: const Color(0xFF18743A),
+            initAspectRatio: cover
+                ? CropAspectRatioPreset.ratio16x9
+                : CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+            showCropGrid: true,
+          ),
+          IOSUiSettings(
+            title: cover ? 'Pangkas Foto Sampul' : 'Pangkas Foto Profil',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (cropped == null || !mounted) return;
+      setState(() {
+        if (cover) {
+          _coverBaru = File(cropped.path);
+        } else {
+          _gambarBaru = File(cropped.path);
+        }
+      });
+    } catch (e) {
+      _snack('Gagal memilih/memangkas foto: ${e.toString()}');
+    }
+  }
+
   // ──────────────────────────────────────────────────────────
   //  UPLOAD & SIMPAN
   // ──────────────────────────────────────────────────────────
+  Future<void> _simpanMitra() async {
+    final namaToko = _namaTokoCtrl.text.trim();
+    final namaPemilik = _namaCtrl.text.trim();
+    final emailBisnis = _emailBisnisCtrl.text.trim();
+
+    if (namaToko.isEmpty) {
+      _snack('Nama toko wajib diisi.');
+      return;
+    }
+    if (namaPemilik.isEmpty) {
+      _snack('Nama pemilik wajib diisi.');
+      return;
+    }
+    if (emailBisnis.isEmpty ||
+        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(emailBisnis)) {
+      _snack('Email bisnis tidak valid.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) throw Exception('Session habis.');
+
+      String? fotoProfilTokoUrl = _fotoProfilTokoUrl;
+      if (_gambarBaru != null) {
+        fotoProfilTokoUrl = await _uploadImage(
+          bucket: 'rental_avatar',
+          pathPrefix: 'rental-profiles',
+          userId: userId,
+          file: _gambarBaru!,
+        );
+      }
+
+      String? coverUrl = _coverUrl;
+      if (_coverBaru != null) {
+        coverUrl = await _uploadImage(
+          bucket: 'rental_avatar',
+          pathPrefix: 'rental-banners',
+          userId: userId,
+          file: _coverBaru!,
+        );
+      }
+
+      await _client.auth.updateUser(
+        UserAttributes(data: {'full_name': namaPemilik}),
+      );
+
+      final rental =
+          widget.rentalProfile ?? await _rentalService.pastikanRentalSayaAda();
+      final rentalPayload = <String, dynamic>{
+        'nama_rental': namaToko,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (fotoProfilTokoUrl != null) {
+        rentalPayload['foto_profil'] = fotoProfilTokoUrl;
+      }
+      if (coverUrl != null) {
+        rentalPayload['foto_banner'] = coverUrl;
+      }
+
+      await _client
+          .from('rental_profiles')
+          .update(rentalPayload)
+          .eq('id', rental.id)
+          .eq('owner_id', userId)
+          .select('id')
+          .single();
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Gagal menyimpan profil toko: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<String> _uploadImage({
+    required String bucket,
+    required String pathPrefix,
+    required String userId,
+    required File file,
+  }) async {
+    final ext = file.path.split('.').last.toLowerCase();
+    final path =
+        '$pathPrefix/$userId-${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final bytes = await file.readAsBytes();
+    await _client.storage.from(bucket).uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
+    return _client.storage.from(bucket).getPublicUrl(path);
+  }
+
   Future<void> _simpan() async {
     final nama = _namaCtrl.text.trim();
     if (nama.isEmpty) {
@@ -377,6 +549,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
+    if (widget.isMitra) return _buildMitraEditPage();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F5),
       body: SafeArea(
@@ -483,6 +657,405 @@ class _EditProfilPageState extends State<EditProfilPage> {
   // ──────────────────────────────────────────────────────────
   //  WIDGET HELPERS
   // ──────────────────────────────────────────────────────────
+
+  Widget _buildMitraEditPage() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      bottomNavigationBar: _buildMitraBottomNav(),
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 34),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMitraEditAppBar(),
+              const SizedBox(height: 26),
+              _buildMitraEditHero(),
+              const SizedBox(height: 48),
+              _buildMitraEditForm(),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _simpanMitra,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF123D1D),
+                    disabledBackgroundColor:
+                        const Color(0xFF123D1D).withValues(alpha: 0.45),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
+                          'Simpan Perubahan',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: TextButton(
+                  onPressed:
+                      _isSaving ? null : () => Navigator.pop(context, false),
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5F6F4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                  ),
+                  child: Text(
+                    'Batalkan',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: const Color(0xFF626A60),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMitraEditAppBar() {
+    return SizedBox(
+      height: 44,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context, false),
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: Color(0xFF626A60),
+                size: 25,
+              ),
+            ),
+          ),
+          Text(
+            'Edit Profil Toko',
+            style: AppTextStyles.headlineLarge.copyWith(
+              color: const Color(0xFF202321),
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMitraEditHero() {
+    return SizedBox(
+      height: 224,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          GestureDetector(
+            onTap: () => _pilihFotoMitra(cover: true),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 158,
+                child: _buildMitraCoverImage(),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 56,
+            child: _MitraCameraButton(
+              icon: Icons.camera_alt_outlined,
+              onTap: () => _pilihFotoMitra(cover: true),
+            ),
+          ),
+          Positioned(
+            top: 96,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 124,
+                  height: 124,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDEFEA),
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: Colors.white, width: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: _buildMitraProfileImage(),
+                  ),
+                ),
+                Positioned(
+                  right: -4,
+                  bottom: -3,
+                  child: _MitraCameraButton(
+                    icon: Icons.camera_alt_rounded,
+                    small: true,
+                    onTap: () => _pilihFotoMitra(cover: false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMitraCoverImage() {
+    if (_coverBaru != null) return Image.file(_coverBaru!, fit: BoxFit.cover);
+    if (_coverUrl != null && _coverUrl!.isNotEmpty) {
+      return Image.network(
+        _coverUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.asset(
+          'assets/images/loading_background.png',
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+    return Image.asset('assets/images/loading_background.png',
+        fit: BoxFit.cover);
+  }
+
+  Widget _buildMitraProfileImage() {
+    if (_gambarBaru != null) return Image.file(_gambarBaru!, fit: BoxFit.cover);
+    if (_fotoProfilTokoUrl != null && _fotoProfilTokoUrl!.isNotEmpty) {
+      return Image.network(
+        _fotoProfilTokoUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildMitraInitialAvatar(),
+      );
+    }
+    return _buildMitraInitialAvatar();
+  }
+
+  Widget _buildMitraInitialAvatar() {
+    final nama = _namaCtrl.text.trim().isNotEmpty ? _namaCtrl.text.trim() : 'N';
+    final words = nama.split(' ');
+    final initial =
+        words.length >= 2 ? '${words[0][0]}${words[1][0]}' : nama[0];
+    return Container(
+      color: const Color(0xFF18743A),
+      alignment: Alignment.center,
+      child: Text(
+        initial.toUpperCase(),
+        style: AppTextStyles.headlineLarge.copyWith(
+          color: Colors.white,
+          fontSize: 34,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMitraEditForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildMitraEditField(
+          label: 'NAMA TOKO',
+          controller: _namaTokoCtrl,
+          hint: 'Rimba Basecamp',
+        ),
+        const SizedBox(height: 24),
+        _buildMitraEditField(
+          label: 'NAMA PEMILIK',
+          controller: _namaCtrl,
+          hint: 'Andi Herlambang',
+        ),
+        const SizedBox(height: 24),
+        _buildMitraEditField(
+          label: 'EMAIL BISNIS',
+          controller: _emailBisnisCtrl,
+          hint: 'rimbasendang@gmail.com',
+          keyboardType: TextInputType.emailAddress,
+          readOnly: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMitraEditField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    int minLines = 1,
+    int maxLines = 1,
+    bool readOnly = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: const Color(0xFF727970),
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.3,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color:
+                readOnly ? const Color(0xFFF7F8F6) : const Color(0xFFF1F3F0),
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            minLines: minLines,
+            maxLines: maxLines,
+            readOnly: readOnly,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: readOnly
+                  ? const Color(0xFF626A60)
+                  : const Color(0xFF202321),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              height: 1.45,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF9BA19A),
+                fontWeight: FontWeight.w500,
+              ),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: minLines > 1 ? 18 : 17,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMitraBottomNav() {
+    final items = [
+      (Icons.dashboard_rounded, 'Dashboard'),
+      (Icons.receipt_long_rounded, 'Pesanan'),
+      (Icons.edit_note_rounded, 'Kelola'),
+      (Icons.person_outline_rounded, 'Profil'),
+    ];
+
+    return Container(
+      margin: EdgeInsets.fromLTRB(
+        24,
+        0,
+        24,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(9),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final isActive = index == 3;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: isActive ? null : () => Navigator.pop(context, false),
+                  behavior: HitTestBehavior.opaque,
+                  child: Center(
+                    child: Container(
+                      width: isActive ? 92 : null,
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? const Color(0xFF18743A)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            items[index].$1,
+                            size: 21,
+                            color: isActive
+                                ? Colors.white
+                                : const Color(0xFF817B72),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            items[index].$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              color: isActive
+                                  ? Colors.white
+                                  : const Color(0xFF817B72),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              letterSpacing: 0,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildAppBar(BuildContext context) {
     return Row(
@@ -748,6 +1321,47 @@ class _EditProfilPageState extends State<EditProfilPage> {
                           .copyWith(color: Color(0xFF7B8794))),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _MitraCameraButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool small;
+
+  const _MitraCameraButton({
+    required this.icon,
+    required this.onTap,
+    this.small = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final size = small ? 36.0 : 48.0;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: small ? const Color(0xFF123D1D) : Colors.white,
+          shape: BoxShape.circle,
+          border: small ? Border.all(color: Colors.white, width: 4) : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: small ? Colors.white : const Color(0xFF123D1D),
+          size: small ? 17 : 22,
+        ),
       ),
     );
   }

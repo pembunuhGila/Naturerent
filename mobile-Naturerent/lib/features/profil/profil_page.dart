@@ -3,13 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/rental_service.dart';
+import '../../core/models/rental_profile.dart';
 import '../auth/onboarding_page.dart';
 import '../home/aktivitas_page.dart';
 import '../owner/owner_activity_page.dart';
 import 'edit_profil_page.dart';
 
 class ProfilPage extends StatefulWidget {
-  const ProfilPage({super.key});
+  final bool forceMitra;
+
+  const ProfilPage({super.key, this.forceMitra = false});
 
   @override
   State<ProfilPage> createState() => _ProfilPageState();
@@ -17,24 +21,45 @@ class ProfilPage extends StatefulWidget {
 
 class _ProfilPageState extends State<ProfilPage> {
   final _client = AuthService.client;
+  final _rentalService = RentalService();
   bool _isLoggingOut = false;
   bool _openingActivity = false;
   String? _avatarUrl;
   String? _namaDB; // dari public.users table
   String? _roleDB;
+  RentalProfile? _rentalProfile;
 
   User? get _user => _client.auth.currentUser;
 
   String get _namaLengkap {
+    final meta = _user?.userMetadata;
+    if (_isMitra) {
+      final fromMeta = meta?['full_name'] as String?;
+      if (fromMeta != null && fromMeta.isNotEmpty) return fromMeta;
+    }
     // Prioritaskan data dari DB agar langsung reflect setelah edit
     if (_namaDB != null && _namaDB!.isNotEmpty) return _namaDB!;
-    final meta = _user?.userMetadata;
     final fromMeta = meta?['full_name'] as String?;
     if (fromMeta != null && fromMeta.isNotEmpty) return fromMeta;
     return _user?.email?.split('@').first ?? 'Pengguna';
   }
 
   String get _email => _user?.email ?? '-';
+  String? get _roleAktif {
+    final roleMeta = _user?.userMetadata?['role'];
+    return _roleDB ?? (roleMeta is String ? roleMeta : null);
+  }
+
+  bool get _isMitra => widget.forceMitra || _roleAktif == 'rental_owner';
+  String get _namaToko =>
+      _rentalProfile?.namaRental ??
+      (_user?.userMetadata?['store_name'] as String?) ??
+      'Rimba Basecamp';
+  String? get _fotoProfilToko => _rentalProfile?.fotoProfil ?? _avatarUrl;
+  String get _alamatToko =>
+      _rentalProfile?.alamat ??
+      'Jl. Raya Sendang No. 42, Tulungagung, Jawa Timur';
+  String get _jamOperasional => '08:00 - 20:00 WIB';
 
   @override
   void initState() {
@@ -59,6 +84,11 @@ class _ProfilPageState extends State<ProfilPage> {
         if (dbNama != null && dbNama.isNotEmpty) _namaDB = dbNama;
         _roleDB = data?['role'] as String?;
       });
+      if (_isMitra) {
+        final rental = await _rentalService.ambilRentalSaya();
+        if (!mounted) return;
+        setState(() => _rentalProfile = rental);
+      }
     } catch (_) {}
   }
 
@@ -78,12 +108,16 @@ class _ProfilPageState extends State<ProfilPage> {
           namaAwal: _namaLengkap,
           email: _email,
           avatarUrlAwal: _avatarUrl,
+          isMitra: _isMitra,
+          namaTokoAwal: _namaToko,
+          rentalProfile: _rentalProfile,
         ),
       ),
     );
     if (updated == true && mounted) {
       await _muatProfil(); // reload nama & avatar dari DB
       setState(() {}); // trigger rebuild
+      _snack('Profil toko berhasil diperbarui.');
     }
   }
 
@@ -186,6 +220,8 @@ class _ProfilPageState extends State<ProfilPage> {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ));
+
+    if (_isMitra) return _buildMitraProfile();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F5),
@@ -485,8 +521,12 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   void _snackComingSoon(String fitur) {
+    _snack('$fitur — Segera hadir!');
+  }
+
+  void _snack(String pesan) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('$fitur — Segera hadir!'),
+      content: Text(pesan),
       backgroundColor: const Color(0xFF18743A),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -494,11 +534,509 @@ class _ProfilPageState extends State<ProfilPage> {
       duration: const Duration(seconds: 2),
     ));
   }
+
+  Widget _buildMitraProfile() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 132),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMitraAppBar(),
+              const SizedBox(height: 26),
+              _buildMitraHero(),
+              const SizedBox(height: 26),
+              _buildMitraStats(),
+              const SizedBox(height: 28),
+              _buildMitraInfoList(),
+              const SizedBox(height: 34),
+              Text(
+                'Lainnya',
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: const Color(0xFF202321),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MitraMenuTile(
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Stok Alat',
+                      onTap: () => _snackComingSoon('Stok Alat'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _MitraMenuTile(
+                      icon: Icons.payments_outlined,
+                      label: 'Keuangan',
+                      onTap: () => _snackComingSoon('Keuangan'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 54),
+              _buildLogoutButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMitraAppBar() {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: () {
+            if (Navigator.canPop(context)) Navigator.pop(context);
+          },
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: Color(0xFF123D1D),
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 2),
+        Text(
+          'Profil Mitra',
+          style: AppTextStyles.headlineLarge.copyWith(
+            color: const Color(0xFF123D1D),
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMitraHero() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 238,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: _bukaEditProfil,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 176,
+                    child: _rentalProfile?.fotoBanner != null &&
+                            _rentalProfile!.fotoBanner!.isNotEmpty
+                        ? Image.network(
+                            _rentalProfile!.fotoBanner!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _buildMitraCoverPlaceholder(),
+                          )
+                        : _buildMitraCoverPlaceholder(),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                top: 0,
+                bottom: 62,
+                child: Center(
+                  child: _RoundActionIcon(
+                    icon: Icons.camera_alt_outlined,
+                    onTap: _bukaEditProfil,
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 14,
+                bottom: 74,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.34),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'FOTO SAMPUL',
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 12,
+                bottom: 16,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 78,
+                      height: 78,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDEFEA),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: _fotoProfilToko != null &&
+                                _fotoProfilToko!.isNotEmpty
+                            ? Image.network(
+                                _fotoProfilToko!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _buildInitialAvatar(),
+                              )
+                            : _buildInitialAvatar(),
+                      ),
+                    ),
+                    Positioned(
+                      right: -8,
+                      bottom: -3,
+                      child: _TinyEditButton(onTap: _bukaEditProfil),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 108,
+                right: 8,
+                bottom: 20,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _namaToko,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.headlineLarge.copyWith(
+                        color: const Color(0xFF202321),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'PARTNER TERVERIFIKASI',
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF9BA19A),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(color: Color(0xFFEAEDE7), height: 1),
+      ],
+    );
+  }
+
+  Widget _buildMitraCoverPlaceholder() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset('assets/images/loading_background.png', fit: BoxFit.cover),
+        DecoratedBox(
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.38)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInitialAvatar() {
+    return Container(
+      color: const Color(0xFF18743A),
+      alignment: Alignment.center,
+      child: Text(
+        _inisial,
+        style: AppTextStyles.headlineLarge.copyWith(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMitraStats() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEAEDE7))),
+      ),
+      child: Row(
+        children: const [
+          Expanded(child: _MitraStatItem(label: 'TOTAL SEWA', value: '124')),
+          _VerticalSoftDivider(),
+          Expanded(child: _MitraStatItem(label: 'RATING', value: '4.9')),
+          _VerticalSoftDivider(),
+          Expanded(
+            child: _MitraStatItem(
+              label: 'STATUS',
+              value: 'ONLINE',
+              valueColor: Color(0xFF18743A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMitraInfoList() {
+    return Column(
+      children: [
+        _MitraInfoItem(
+          icon: Icons.person_outline_rounded,
+          label: 'PEMILIK TOKO',
+          value: _namaLengkap,
+        ),
+        const SizedBox(height: 26),
+        _MitraInfoItem(
+          icon: Icons.mail_outline_rounded,
+          label: 'EMAIL',
+          value: _email,
+        ),
+        const SizedBox(height: 26),
+        _MitraInfoItem(
+          icon: Icons.access_time_rounded,
+          label: 'JAM OPERASIONAL',
+          value: _jamOperasional,
+        ),
+      ],
+    );
+  }
 }
 
 // ─────────────────────────────────────────────
 //  DATA MODEL
 // ─────────────────────────────────────────────
+class _MitraStatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  const _MitraStatItem({
+    required this.label,
+    required this.value,
+    this.valueColor = const Color(0xFF202321),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: const Color(0xFF7D847D),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          value,
+          style: AppTextStyles.headlineMedium.copyWith(
+            color: valueColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VerticalSoftDivider extends StatelessWidget {
+  const _VerticalSoftDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 32, color: const Color(0xFFEAEDE7));
+  }
+}
+
+class _MitraInfoItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _MitraInfoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F7F2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: const Color(0xFF315C3B), size: 21),
+        ),
+        const SizedBox(width: 24),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTextStyles.caption.copyWith(
+                  color: const Color(0xFF7D847D),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                value,
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: const Color(0xFF202321),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MitraMenuTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MitraMenuTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        height: 94,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F6F4),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: const Color(0xFF626A60), size: 24),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: const Color(0xFF626A60),
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundActionIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _RoundActionIcon({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: const Color(0xFF123D1D), size: 20),
+      ),
+    );
+  }
+}
+
+class _TinyEditButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _TinyEditButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 23,
+        height: 23,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFEAEDE7)),
+        ),
+        child: const Icon(
+          Icons.edit_rounded,
+          color: Color(0xFF123D1D),
+          size: 13,
+        ),
+      ),
+    );
+  }
+}
+
 class _MenuItem {
   final IconData icon;
   final String label;
