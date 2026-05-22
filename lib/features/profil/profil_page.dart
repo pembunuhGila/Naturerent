@@ -18,8 +18,10 @@ class ProfilPage extends StatefulWidget {
 class _ProfilPageState extends State<ProfilPage> {
   final _client = AuthService.client;
   bool _isLoggingOut = false;
+  bool _openingActivity = false;
   String? _avatarUrl;
-  String? _namaDB;  // dari public.users table
+  String? _namaDB; // dari public.users table
+  String? _roleDB;
 
   User? get _user => _client.auth.currentUser;
 
@@ -46,7 +48,7 @@ class _ProfilPageState extends State<ProfilPage> {
       if (uid == null) return;
       final data = await _client
           .from('users')
-          .select('avatar_url, nama_lengkap')
+          .select('avatar_url, nama_lengkap, role')
           .eq('id', uid)
           .maybeSingle();
       if (!mounted) return;
@@ -55,6 +57,7 @@ class _ProfilPageState extends State<ProfilPage> {
         // Simpan nama dari DB untuk refresh langsung setelah edit
         final dbNama = data?['nama_lengkap'] as String?;
         if (dbNama != null && dbNama.isNotEmpty) _namaDB = dbNama;
+        _roleDB = data?['role'] as String?;
       });
     } catch (_) {}
   }
@@ -87,8 +90,26 @@ class _ProfilPageState extends State<ProfilPage> {
   /// Navigasi ke halaman aktivitas yang sesuai dengan role user.
   /// Owner → OwnerActivityPage, Customer → AktivitasPage
   Future<void> _bukaAktivitas() async {
-    // Ambil role dari DB
-    final role = await AuthService().ambilRolePengguna();
+    if (_openingActivity) return;
+
+    setState(() => _openingActivity = true);
+
+    final roleMetadata = _user?.userMetadata?['role'];
+    String? role = _roleDB ?? (roleMetadata is String ? roleMetadata : null);
+    try {
+      final roleDariDb = await AuthService()
+          .ambilRolePengguna()
+          .timeout(const Duration(seconds: 5));
+      if (roleDariDb != null && roleDariDb.isNotEmpty) {
+        role = roleDariDb;
+        _roleDB = roleDariDb;
+      }
+    } catch (_) {
+      // Tetap lanjut pakai role dari profil/metadata.
+    } finally {
+      if (mounted) setState(() => _openingActivity = false);
+    }
+
     if (!mounted) return;
 
     if (role == 'rental_owner') {
@@ -191,6 +212,7 @@ class _ProfilPageState extends State<ProfilPage> {
                   icon: Icons.history_rounded,
                   label: 'Aktivitas Saya',
                   onTap: _bukaAktivitas,
+                  loading: _openingActivity,
                 ),
                 _MenuItem(
                   icon: Icons.receipt_long_rounded,
@@ -394,8 +416,18 @@ class _ProfilPageState extends State<ProfilPage> {
                           ),
                         ),
                       ),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textHint, size: 20),
+                      if (item.loading)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        )
+                      else
+                        const Icon(Icons.chevron_right_rounded,
+                            color: AppColors.textHint, size: 20),
                     ],
                   ),
                 ),
@@ -471,6 +503,12 @@ class _MenuItem {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _MenuItem(
-      {required this.icon, required this.label, required this.onTap});
+  final bool loading;
+
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.loading = false,
+  });
 }
