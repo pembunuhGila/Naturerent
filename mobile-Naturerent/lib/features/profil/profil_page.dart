@@ -70,9 +70,10 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   Future<void> _muatProfil() async {
+    final uid = _user?.id;
+    if (uid == null) return;
+
     try {
-      final uid = _user?.id;
-      if (uid == null) return;
       final data = await _client
           .from('users')
           .select('avatar_url, nama_lengkap, role')
@@ -86,12 +87,19 @@ class _ProfilPageState extends State<ProfilPage> {
         if (dbNama != null && dbNama.isNotEmpty) _namaDB = dbNama;
         _roleDB = data?['role'] as String?;
       });
-      if (_isMitra) {
+    } catch (_) {
+      // Profil mitra tetap harus memuat data toko meski tabel users dibatasi RLS.
+    }
+
+    if (_isMitra) {
+      try {
         final rental = await _rentalService.ambilRentalSaya();
         if (!mounted) return;
         setState(() => _rentalProfile = rental);
+      } catch (_) {
+        // Biarkan fallback UI tampil jika data rental belum bisa dimuat.
       }
-    } catch (_) {}
+    }
   }
 
   String get _inisial {
@@ -609,10 +617,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildMitraAppBar() {
     return const OwnerHeaderWidget(
-      showBackButton: true,
-      title: 'Profil Mitra',
-      showBrandIcon: false,
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.fromLTRB(8, 10, 0, 0),
     );
   }
 
@@ -621,39 +626,34 @@ class _ProfilPageState extends State<ProfilPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 238,
+          height: 260,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 176,
-                  child: _rentalProfile?.fotoBanner != null &&
-                          _rentalProfile!.fotoBanner!.isNotEmpty
-                      ? Image.network(
-                          _rentalProfile!.fotoBanner!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _buildMitraCoverPlaceholder(),
-                        )
-                      : _buildMitraCoverPlaceholder(),
-                ),
-              ),
-              Positioned.fill(
+              Positioned(
                 top: 0,
-                bottom: 62,
-                child: Center(
-                  child: _RoundActionIcon(
-                    icon: Icons.camera_alt_outlined,
-                    onTap: () {},
+                left: 0,
+                right: 0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 176,
+                    child: _rentalProfile?.fotoBanner != null &&
+                            _rentalProfile!.fotoBanner!.isNotEmpty
+                        ? Image.network(
+                            _rentalProfile!.fotoBanner!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _buildMitraCoverPlaceholder(),
+                          )
+                        : _buildMitraCoverPlaceholder(),
                   ),
                 ),
               ),
               Positioned(
                 right: 14,
-                bottom: 74,
+                top: 132,
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -674,7 +674,7 @@ class _ProfilPageState extends State<ProfilPage> {
               ),
               Positioned(
                 left: 12,
-                bottom: 16,
+                top: 136,
                 child: GestureDetector(
                   onTap: _bukaEditProfil,
                   child: Stack(
@@ -720,18 +720,19 @@ class _ProfilPageState extends State<ProfilPage> {
               Positioned(
                 left: 108,
                 right: 8,
-                bottom: 20,
+                top: 188,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _namaToko,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.headlineLarge.copyWith(
                         color: const Color(0xFF202321),
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
+                        height: 1.08,
                       ),
                     ),
                     const SizedBox(height: 2),
