@@ -11,7 +11,9 @@ import 'owner_edit_rental_page.dart';
 import 'widgets/owner_header_widget.dart';
 
 class OwnerInventoryPage extends StatefulWidget {
-  const OwnerInventoryPage({super.key});
+  final int initialTabIndex;
+
+  const OwnerInventoryPage({super.key, this.initialTabIndex = 0});
 
   @override
   State<OwnerInventoryPage> createState() => _OwnerInventoryPageState();
@@ -36,11 +38,25 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 1).toInt(),
+    );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging && mounted) setState(() {});
     });
     _muatAlat();
+  }
+
+  @override
+  void didUpdateWidget(covariant OwnerInventoryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextIndex = widget.initialTabIndex.clamp(0, 1).toInt();
+    if (oldWidget.initialTabIndex != widget.initialTabIndex &&
+        _tabController.index != nextIndex) {
+      _tabController.index = nextIndex;
+    }
   }
 
   @override
@@ -302,6 +318,7 @@ class _RentalManageTab extends StatelessWidget {
       ],
     );
   }
+
 }
 
 class _RentalProfileCard extends StatelessWidget {
