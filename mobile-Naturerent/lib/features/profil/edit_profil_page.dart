@@ -317,16 +317,17 @@ class _EditProfilPageState extends State<EditProfilPage> {
         rentalPayload['foto_banner'] = coverUrl;
       }
 
-      await _client
+      final updatedRentalData = await _client
           .from('rental_profiles')
           .update(rentalPayload)
           .eq('id', rental.id)
           .eq('owner_id', userId)
-          .select('id')
+          .select('*, rental_settings(*)')
           .single();
+      final updatedRental = RentalProfile.fromMap(updatedRentalData);
 
       if (!mounted) return;
-      Navigator.pop(context, true);
+      Navigator.pop(context, updatedRental);
     } catch (e) {
       if (!mounted) return;
       _snack('Gagal menyimpan profil toko: ${e.toString()}');
