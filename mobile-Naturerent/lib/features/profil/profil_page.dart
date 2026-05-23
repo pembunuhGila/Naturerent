@@ -8,12 +8,14 @@ import '../../core/models/rental_profile.dart';
 import '../auth/onboarding_page.dart';
 import '../home/aktivitas_page.dart';
 import '../owner/owner_activity_page.dart';
+import '../owner/widgets/owner_header_widget.dart';
 import 'edit_profil_page.dart';
 
 class ProfilPage extends StatefulWidget {
   final bool forceMitra;
+  final ValueChanged<int>? onOwnerNavTap;
 
-  const ProfilPage({super.key, this.forceMitra = false});
+  const ProfilPage({super.key, this.forceMitra = false, this.onOwnerNavTap});
 
   @override
   State<ProfilPage> createState() => _ProfilPageState();
@@ -101,7 +103,7 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   Future<void> _bukaEditProfil() async {
-    final updated = await Navigator.push<bool>(
+    final updated = await Navigator.push<Object?>(
       context,
       MaterialPageRoute(
         builder: (_) => EditProfilPage(
@@ -117,6 +119,12 @@ class _ProfilPageState extends State<ProfilPage> {
     if (updated == true && mounted) {
       await _muatProfil(); // reload nama & avatar dari DB
       setState(() {}); // trigger rebuild
+      _snack('Profil toko berhasil diperbarui.');
+    } else if (updated is RentalProfile && mounted) {
+      setState(() => _rentalProfile = updated);
+      await _muatProfil();
+      if (!mounted) return;
+      setState(() {});
       _snack('Profil toko berhasil diperbarui.');
     }
   }
@@ -535,6 +543,15 @@ class _ProfilPageState extends State<ProfilPage> {
     ));
   }
 
+  void _bukaOwnerTab(int index, String fallbackLabel) {
+    final onOwnerNavTap = widget.onOwnerNavTap;
+    if (onOwnerNavTap != null) {
+      onOwnerNavTap(index);
+      return;
+    }
+    _snackComingSoon(fallbackLabel);
+  }
+
   Widget _buildMitraProfile() {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -568,7 +585,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     child: _MitraMenuTile(
                       icon: Icons.inventory_2_outlined,
                       label: 'Stok Alat',
-                      onTap: () => _snackComingSoon('Stok Alat'),
+                      onTap: () => _bukaOwnerTab(2, 'Stok Alat'),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -576,7 +593,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     child: _MitraMenuTile(
                       icon: Icons.payments_outlined,
                       label: 'Keuangan',
-                      onTap: () => _snackComingSoon('Keuangan'),
+                      onTap: () => _bukaOwnerTab(0, 'Keuangan'),
                     ),
                   ),
                 ],
@@ -591,28 +608,11 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   Widget _buildMitraAppBar() {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.pop(context);
-          },
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: Color(0xFF123D1D),
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 2),
-        Text(
-          'Profil Mitra',
-          style: AppTextStyles.headlineLarge.copyWith(
-            color: const Color(0xFF123D1D),
-            fontSize: 21,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
+    return const OwnerHeaderWidget(
+      showBackButton: true,
+      title: 'Profil Mitra',
+      showBrandIcon: false,
+      padding: EdgeInsets.zero,
     );
   }
 
@@ -625,23 +625,20 @@ class _ProfilPageState extends State<ProfilPage> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              GestureDetector(
-                onTap: _bukaEditProfil,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 176,
-                    child: _rentalProfile?.fotoBanner != null &&
-                            _rentalProfile!.fotoBanner!.isNotEmpty
-                        ? Image.network(
-                            _rentalProfile!.fotoBanner!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildMitraCoverPlaceholder(),
-                          )
-                        : _buildMitraCoverPlaceholder(),
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 176,
+                  child: _rentalProfile?.fotoBanner != null &&
+                          _rentalProfile!.fotoBanner!.isNotEmpty
+                      ? Image.network(
+                          _rentalProfile!.fotoBanner!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _buildMitraCoverPlaceholder(),
+                        )
+                      : _buildMitraCoverPlaceholder(),
                 ),
               ),
               Positioned.fill(
@@ -650,7 +647,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 child: Center(
                   child: _RoundActionIcon(
                     icon: Icons.camera_alt_outlined,
-                    onTap: _bukaEditProfil,
+                    onTap: () {},
                   ),
                 ),
               ),
@@ -678,43 +675,46 @@ class _ProfilPageState extends State<ProfilPage> {
               Positioned(
                 left: 12,
                 bottom: 16,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 78,
-                      height: 78,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEDEFEA),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 12,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
+                child: GestureDetector(
+                  onTap: _bukaEditProfil,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 78,
+                        height: 78,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDEFEA),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(11),
+                          child: _fotoProfilToko != null &&
+                                  _fotoProfilToko!.isNotEmpty
+                              ? Image.network(
+                                  _fotoProfilToko!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _buildInitialAvatar(),
+                                )
+                              : _buildInitialAvatar(),
+                        ),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: _fotoProfilToko != null &&
-                                _fotoProfilToko!.isNotEmpty
-                            ? Image.network(
-                                _fotoProfilToko!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _buildInitialAvatar(),
-                              )
-                            : _buildInitialAvatar(),
+                      Positioned(
+                        right: -8,
+                        bottom: -3,
+                        child: _TinyEditButton(onTap: _bukaEditProfil),
                       ),
-                    ),
-                    Positioned(
-                      right: -8,
-                      bottom: -3,
-                      child: _TinyEditButton(onTap: _bukaEditProfil),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               Positioned(
@@ -792,12 +792,10 @@ class _ProfilPageState extends State<ProfilPage> {
         children: const [
           Expanded(child: _MitraStatItem(label: 'TOTAL SEWA', value: '124')),
           _VerticalSoftDivider(),
-          Expanded(child: _MitraStatItem(label: 'RATING', value: '4.9')),
-          _VerticalSoftDivider(),
           Expanded(
             child: _MitraStatItem(
               label: 'STATUS',
-              value: 'ONLINE',
+              value: 'AKTIF',
               valueColor: Color(0xFF18743A),
             ),
           ),
