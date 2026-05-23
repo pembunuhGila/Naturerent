@@ -9,17 +9,23 @@ class OwnerHeaderWidget extends StatelessWidget {
 
   /// [trailingWidget] — widget opsional di sisi kanan header
   final Widget? trailingWidget;
+  final String title;
+  final bool showBrandIcon;
+  final EdgeInsetsGeometry padding;
 
   const OwnerHeaderWidget({
     super.key,
     this.showBackButton = false,
     this.trailingWidget,
+    this.title = 'Mitra NatureRent',
+    this.showBrandIcon = true,
+    this.padding = const EdgeInsets.fromLTRB(32, 28, 24, 0),
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 28, 24, 0),
+      padding: padding,
       child: Row(
         children: [
           if (showBackButton) ...[
@@ -33,17 +39,19 @@ class OwnerHeaderWidget extends StatelessWidget {
             ),
             const SizedBox(width: 10),
           ],
-          const Icon(
-            Icons.park_rounded,
-            color: Color(0xFF18743A),
-            size: 24,
-          ),
-          const SizedBox(width: 7),
+          if (showBrandIcon) ...[
+            const Icon(
+              Icons.park_rounded,
+              color: Color(0xFF18743A),
+              size: 24,
+            ),
+            const SizedBox(width: 7),
+          ],
           Text(
-            'Mitra NatureRent',
+            title,
             style: AppTextStyles.headlineMedium.copyWith(
               color: const Color(0xFF18743A),
-              fontSize: 18,
+              fontSize: showBrandIcon ? 18 : 21,
               fontWeight: FontWeight.w900,
             ),
           ),
