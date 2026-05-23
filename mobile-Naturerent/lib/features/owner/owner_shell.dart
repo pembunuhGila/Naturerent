@@ -14,22 +14,35 @@ class OwnerShell extends StatefulWidget {
 
 class _OwnerShellState extends State<OwnerShell> {
   int _currentIndex = 0;
+  int _inventoryInitialTab = 0;
 
-  final List<Widget> _pages = const [
-    OwnerDashboardPage(),
-    OwnerOrdersPage(),
-    OwnerInventoryPage(),
-    ProfilPage(forceMitra: true),
-  ];
+  void _setTab(int index, {int? inventoryTab}) {
+    setState(() {
+      _currentIndex = index;
+      if (inventoryTab != null) _inventoryInitialTab = inventoryTab;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      const OwnerDashboardPage(),
+      const OwnerOrdersPage(),
+      OwnerInventoryPage(initialTabIndex: _inventoryInitialTab),
+      ProfilPage(
+        forceMitra: true,
+        onOwnerNavTap: (index) =>
+            _setTab(index, inventoryTab: index == 2 ? 1 : null),
+      ),
+    ];
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      backgroundColor:
+          _currentIndex == 3 ? Colors.white : const Color(0xFFF8F8F5),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: _OwnerBottomNav(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) => _setTab(i),
       ),
     );
   }
