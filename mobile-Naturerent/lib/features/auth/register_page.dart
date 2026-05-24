@@ -220,15 +220,12 @@ class _RegisterPageState extends State<RegisterPage>
   Future<void> _handleGoogleRegister() async {
     setState(() => _googleLoading = true);
     try {
-      await AuthService.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.naturerent://login-callback/',
-      );
       // Dengarkan perubahan auth setelah browser OAuth selesai
       _authSub?.cancel();
       _authSub = AuthService.client.auth.onAuthStateChange.listen((data) async {
         if (data.event == AuthChangeEvent.signedIn && mounted) {
           _authSub?.cancel();
+          await AuthService().pastikanProfilPenggunaAda();
           await AuthService().syncProfilSetelahLogin();
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
@@ -238,6 +235,7 @@ class _RegisterPageState extends State<RegisterPage>
           }
         }
       });
+      await AuthService().masukDenganGoogle();
     } catch (e) {
       if (mounted) _showError('Google gagal: ${e.toString()}');
     } finally {

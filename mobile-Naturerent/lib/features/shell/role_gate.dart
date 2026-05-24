@@ -29,7 +29,9 @@ class RoleGate extends StatelessWidget {
             AuthService().penggunaSaatIni?.userMetadata?['role'] as String?;
 
         if (role == 'rental_owner') return const OwnerShell();
-        if (role == null || role == 'customer') return const MainShell();
+        if (snapshot.hasError || role == null || role == 'customer') {
+          return const MainShell();
+        }
 
         return const _UnsupportedRoleLogout();
       },
