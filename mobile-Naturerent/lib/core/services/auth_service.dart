@@ -152,6 +152,7 @@ class AuthService {
     final launched = await client.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: oauthRedirectUrl,
+      queryParams: const {'prompt': 'select_account'},
     );
 
     if (!launched) {
