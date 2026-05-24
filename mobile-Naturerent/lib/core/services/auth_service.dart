@@ -285,12 +285,27 @@ class AuthService {
   //  INISIALISASI SUPABASE (dipanggil sekali di main)
   // ──────────────────────────────────────────────────────────
   static Future<void> initialize() async {
-    await Supabase.initialize(
-      url: SupabaseConfig.supabaseUrl,
-      anonKey: SupabaseConfig.supabaseAnonKey,
-      authOptions: const FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.pkce,
-      ),
+    final authOptions = FlutterAuthClientOptions(
+      authFlowType: kIsWeb ? AuthFlowType.implicit : AuthFlowType.pkce,
     );
+
+    try {
+      await Supabase.initialize(
+        url: SupabaseConfig.supabaseUrl,
+        anonKey: SupabaseConfig.supabaseAnonKey,
+        authOptions: authOptions,
+      );
+    } catch (_) {
+      if (!kIsWeb) rethrow;
+
+      await Supabase.initialize(
+        url: SupabaseConfig.supabaseUrl,
+        anonKey: SupabaseConfig.supabaseAnonKey,
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.implicit,
+          detectSessionInUri: false,
+        ),
+      );
+    }
   }
 }
