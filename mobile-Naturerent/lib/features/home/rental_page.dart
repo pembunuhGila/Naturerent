@@ -419,18 +419,18 @@ class _RentalCard extends StatelessWidget {
   });
 
   String get _jarakStr {
-    if (jarak == null) return rental.alamat?.split(',').first ?? '—';
+    if (jarak == null) return rental.alamat ?? 'Lokasi belum tersedia';
     return '${jarak!.toStringAsFixed(1)} km';
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
@@ -440,17 +440,16 @@ class _RentalCard extends StatelessWidget {
           ],
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: IntrinsicHeight(
-              child: Row(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
                 // ── Foto rental
                 NrImage(
                   imageUrl: rental.fotoBanner,
-                  width: 80, height: 92,
+                  width: 72, height: 72,
                   borderRadius: BorderRadius.circular(12),
                   placeholderColor: AppColors.primaryDark,
                   placeholderIcon: Icons.storefront_rounded,
@@ -463,70 +462,56 @@ class _RentalCard extends StatelessWidget {
                     children: [
                       Text(
                         rental.namaRental,
-                        style: AppTextStyles.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w700,
+                        style: AppTextStyles.headlineLarge.copyWith(
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
+                          fontSize: 19,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Icon(Icons.near_me_rounded,
-                              size: 13, color: AppColors.textHint),
-                          const SizedBox(width: 3),
-                          Flexible(
+                          Icon(
+                            jarak == null
+                                ? Icons.location_on_outlined
+                                : Icons.near_me_rounded,
+                            size: 16,
+                            color: AppColors.textHint,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
                             child: Text(
                               _jarakStr,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.bodySmall
-                                  .copyWith(color: AppColors.textHint),
-                            ),
-                          ),
-                          if (rental.noWa != null) ...[
-                            const SizedBox(width: 10),
-                            const Icon(Icons.access_time_rounded,
-                                size: 13, color: AppColors.textHint),
-                            const SizedBox(width: 3),
-                            Flexible(
-                              child: Text(
-                                'Buka 08:00',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTextStyles.bodySmall
-                                    .copyWith(color: AppColors.textHint),
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textHint,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 7),
-                      // Badge status
-                      Wrap(
-                        spacing: 6,
-                        children: [
-                          _Badge(
-                            label: rental.isActive ? 'AKTIF' : 'TUTUP',
-                            color: rental.isActive
-                                ? AppColors.primary
-                                : AppColors.error,
                           ),
-                          if (rental.deskripsi != null)
-                            _Badge(
-                              label: 'OUTDOOR',
-                              color: AppColors.primaryDark,
-                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textHint, size: 20),
+                const SizedBox(width: 12),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.primaryDark,
+                    size: 22,
+                  ),
+                ),
               ],
-              ),
             ),
           ),
         ),

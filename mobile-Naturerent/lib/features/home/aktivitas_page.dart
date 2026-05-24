@@ -324,6 +324,9 @@ class _OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = order.items.isNotEmpty ? order.items.first : null;
+    final rentalCount = _rentalCount(order);
+    final title = rentalCount > 1 ? '$rentalCount Toko Rental' : order.namaRental;
+    final subtitle = '${_itemCount(order)} item disewa';
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -346,21 +349,22 @@ class _OrderCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: item == null
+              borderRadius: BorderRadius.circular(14),
+              child: item == null || rentalCount > 1
                   ? Container(
-                      width: 74,
-                      height: 74,
-                      color: AppColors.surfaceVariant,
+                      width: 92,
+                      height: 92,
+                      color: AppColors.primary,
                       child: const Icon(
-                        Icons.inventory_2_outlined,
-                        color: AppColors.textHint,
+                        Icons.storefront_rounded,
+                        color: Colors.white,
+                        size: 34,
                       ),
                     )
                   : NrImage(
                       imageUrl: item.equipment.gambarprimaryUrl,
-                      width: 74,
-                      height: 74,
+                      width: 92,
+                      height: 92,
                       fit: BoxFit.cover,
                     ),
             ),
@@ -373,10 +377,10 @@ class _OrderCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          item?.equipment.nama ?? order.namaRental,
+                          title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodyMedium.copyWith(
+                          style: AppTextStyles.headlineMedium.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w800,
                           ),
@@ -388,18 +392,18 @@ class _OrderCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    order.namaRental,
+                    subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
+                    style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   Text(
                     '${_fmtTgl(order.tanggalMulai)} - ${_fmtTgl(order.tanggalSelesai)} - ${_durasi(order)} Hari',
-                    style: AppTextStyles.caption.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textHint,
                     ),
                   ),
@@ -409,7 +413,7 @@ class _OrderCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           _fmtRupiah(order.total),
-                          style: AppTextStyles.bodyMedium.copyWith(
+                          style: AppTextStyles.headlineMedium.copyWith(
                             color: AppColors.primaryDark,
                             fontWeight: FontWeight.w900,
                           ),
@@ -529,6 +533,14 @@ class _EmptyTab extends StatelessWidget {
       ),
     );
   }
+}
+
+int _rentalCount(ActivityOrder order) {
+  return order.items.map((item) => item.rental.id).toSet().length;
+}
+
+int _itemCount(ActivityOrder order) {
+  return order.items.fold<int>(0, (sum, item) => sum + item.qty);
 }
 
 void _openOrderDetail(BuildContext context, ActivityOrder order) {

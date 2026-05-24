@@ -115,7 +115,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (_, i) => _AlatCard(
+                    (_, i) => _AlatShowcaseCard(
                       alat: _alatFiltered[i],
                       namaRental: widget.rental.namaRental,
                       onTap: () => Navigator.push(
@@ -270,28 +270,15 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.rental.namaRental,
-                              style: AppTextStyles.headlineMedium
-                                  .copyWith(fontWeight: FontWeight.w700),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text('Buka Sekarang',
-                                style: AppTextStyles.caption.copyWith(
-                                    color: Colors.white, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
+                      Text(
+                        widget.rental.namaRental,
+                        style: AppTextStyles.headlineLarge.copyWith(
+                          color: AppColors.textPrimary,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -308,33 +295,6 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (widget.rental.noWa != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF25D366)
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.phone_rounded,
-                                      size: 10,
-                                      color: Color(0xFF25D366)),
-                                  const SizedBox(width: 3),
-                                  Text('WA',
-                                      style: AppTextStyles.caption.copyWith(
-                                        color: const Color(0xFF25D366),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 9,
-                                      )),
-                                ],
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ],
@@ -622,6 +582,190 @@ class _AlatCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AlatShowcaseCard extends StatelessWidget {
+  final Equipment alat;
+  final String namaRental;
+  final VoidCallback onTap;
+  final VoidCallback onSewa;
+
+  const _AlatShowcaseCard({
+    required this.alat,
+    required this.namaRental,
+    required this.onTap,
+    required this.onSewa,
+  });
+
+  String get _hargaFormatted {
+    final harga = alat.hargaPerHari.toInt();
+    final s = harga.toString();
+    final buf = StringBuffer('Rp ');
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                NrImage(
+                  imageUrl: alat.gambarprimaryUrl,
+                  width: double.infinity,
+                  height: 236,
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(18),
+                  placeholderColor: const Color(0xFF2D4A2D),
+                  placeholderIcon: Icons.inventory_2_outlined,
+                ),
+                Positioned(
+                  left: 10,
+                  top: 10,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: alat.stock > 0
+                          ? Colors.white.withValues(alpha: 0.9)
+                          : AppColors.error.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      alat.stock > 0 ? 'TERSEDIA' : 'STOK HABIS',
+                      style: AppTextStyles.caption.copyWith(
+                        color:
+                            alat.stock > 0 ? AppColors.primaryDark : Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        alat.nama,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        alat.deskripsi ?? namaRental,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _hargaFormatted,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      '/HARI',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textHint,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (alat.namaKategori != null)
+                  _SpecChip(label: alat.namaKategori!),
+                const SizedBox(width: 6),
+                _SpecChip(label: '${alat.stock} unit'),
+                const Spacer(),
+                GestureDetector(
+                  onTap: alat.stock > 0 ? onSewa : null,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color:
+                          alat.stock > 0 ? AppColors.primaryDark : AppColors.border,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.add_shopping_cart_rounded,
+                      color: alat.stock > 0 ? Colors.white : AppColors.textHint,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SpecChip extends StatelessWidget {
+  final String label;
+
+  const _SpecChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.caption.copyWith(
+          color: Colors.white,
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

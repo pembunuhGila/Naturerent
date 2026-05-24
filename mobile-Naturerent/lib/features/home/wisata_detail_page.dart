@@ -544,16 +544,6 @@ class _RentalBottomCard extends StatelessWidget {
                       Text(_jarakKm,
                           style: AppTextStyles.bodySmall
                               .copyWith(color: AppColors.textHint)),
-                      const SizedBox(width: 10),
-                      if (rental.noWa != null) ...[
-                        const Icon(Icons.phone_rounded,
-                            size: 12, color: Color(0xFF25D366)),
-                        const SizedBox(width: 3),
-                        Text('WA',
-                            style: AppTextStyles.bodySmall.copyWith(
-                                color: const Color(0xFF25D366),
-                                fontWeight: FontWeight.w600)),
-                      ],
                     ],
                   ),
                 ],
