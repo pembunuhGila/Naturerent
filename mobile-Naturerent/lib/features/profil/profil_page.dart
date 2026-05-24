@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/models/rental_profile.dart';
-import '../auth/onboarding_page.dart';
+import '../auth/login_page.dart';
 import '../home/aktivitas_page.dart';
 import '../owner/owner_activity_page.dart';
 import '../owner/widgets/owner_header_widget.dart';
@@ -211,10 +211,11 @@ class _ProfilPageState extends State<ProfilPage> {
 
     setState(() => _isLoggingOut = true);
     try {
+      final roleTujuan = _isMitra ? UserRole.pemilik : UserRole.penyewa;
       await AuthService().keluar();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const OnboardingPage()),
+        MaterialPageRoute(builder: (_) => LoginPage(role: roleTujuan)),
         (_) => false,
       );
     } catch (e) {

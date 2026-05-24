@@ -444,12 +444,13 @@ class _RentalCard extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
+            child: IntrinsicHeight(
+              child: Row(
               children: [
                 // ── Foto rental
                 NrImage(
                   imageUrl: rental.fotoBanner,
-                  width: 80, height: 80,
+                  width: 80, height: 92,
                   borderRadius: BorderRadius.circular(12),
                   placeholderColor: AppColors.primaryDark,
                   placeholderIcon: Icons.storefront_rounded,
@@ -475,17 +476,29 @@ class _RentalCard extends StatelessWidget {
                           const Icon(Icons.near_me_rounded,
                               size: 13, color: AppColors.textHint),
                           const SizedBox(width: 3),
-                          Text(_jarakStr,
+                          Flexible(
+                            child: Text(
+                              _jarakStr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.bodySmall
-                                  .copyWith(color: AppColors.textHint)),
+                                  .copyWith(color: AppColors.textHint),
+                            ),
+                          ),
                           if (rental.noWa != null) ...[
                             const SizedBox(width: 10),
                             const Icon(Icons.access_time_rounded,
                                 size: 13, color: AppColors.textHint),
                             const SizedBox(width: 3),
-                            Text('Buka 08:00',
+                            Flexible(
+                              child: Text(
+                                'Buka 08:00',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: AppTextStyles.bodySmall
-                                    .copyWith(color: AppColors.textHint)),
+                                    .copyWith(color: AppColors.textHint),
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -513,6 +526,7 @@ class _RentalCard extends StatelessWidget {
                 const Icon(Icons.chevron_right_rounded,
                     color: AppColors.textHint, size: 20),
               ],
+              ),
             ),
           ),
         ),
