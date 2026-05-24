@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'pesanan_detail_page.dart';
@@ -28,8 +29,23 @@ class QrisPage extends StatefulWidget {
 class _QrisPageState extends State<QrisPage> {
   // Countdown 15 menit
   static const _durasi = Duration(minutes: 15);
+  static const _nomorWaAdmin = '6281234567890';
+  static const _qrisImageUrl = '';
+  static const _tarifLayanan = 5000.0;
+  static const _tarifPajak = 0.11;
+  static const _tarifDp = 0.3;
   late int _sisaDetik;
   Timer? _timer;
+
+  double get _subtotalSewa => widget.total;
+  double get _dp => _subtotalSewa * _tarifDp;
+  double get _sisaSewa => _subtotalSewa * (1 - _tarifDp);
+  double get _pajak => _tarifLayanan * _tarifPajak;
+  double get _pelunasan => _sisaSewa + _tarifLayanan + _pajak;
+  double get _totalAkhir => _subtotalSewa + _tarifLayanan + _pajak;
+  int get _dpPercent => (_tarifDp * 100).round();
+  int get _sisaPercent => 100 - _dpPercent;
+  int get _taxPercent => (_tarifPajak * 100).round();
 
   @override
   void initState() {
@@ -79,10 +95,51 @@ class _QrisPageState extends State<QrisPage> {
     );
   }
 
-  void _konfirmasiPembayaran() {
+  Future<void> _kirimBuktiPembayaran() async {
     _timer?.cancel();
+
+    final ringkasanItem = widget.items
+        .map((item) => '- ${item.rental.namaRental}: ${item.equipment.nama} x${item.qty}')
+        .join('\n');
+    final pesan = Uri.encodeComponent(
+      'Halo Admin NatureRent, saya sudah membayar DP $_dpPercent% via QRIS.\n\n'
+      'Rental: ${widget.namaRental}\n'
+      'Periode: ${_fmtTgl(widget.tanggalMulai)} - ${_fmtTgl(widget.tanggalSelesai)}\n'
+      'Item:\n$ringkasanItem\n\n'
+      'Subtotal sewa: ${_fmtRupiah(_subtotalSewa)}\n'
+      'DP $_dpPercent% dibayar: ${_fmtRupiah(_dp)}\n'
+      'Sisa $_sisaPercent%: ${_fmtRupiah(_sisaSewa)}\n'
+      'Biaya layanan: ${_fmtRupiah(_tarifLayanan)}\n'
+      'Pajak layanan $_taxPercent%: ${_fmtRupiah(_pajak)}\n'
+      'Pelunasan saat pengembalian: ${_fmtRupiah(_pelunasan)}\n'
+      'Total akhir: ${_fmtRupiah(_totalAkhir)}\n\n'
+      'Saya akan kirim bukti pembayaran di chat ini.',
+    );
+    final uri = Uri.parse('https://wa.me/$_nomorWaAdmin?text=$pesan');
+
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) throw Exception('WhatsApp tidak bisa dibuka.');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'WhatsApp gagal dibuka. Hubungi admin: $_nomorWaAdmin',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    _bukaDetailPesanan();
+  }
+
+  void _bukaDetailPesanan() {
     // Hapus keranjang dulu
-    final items = List<CartItem>.from(CartService().items);
+    final items = List<CartItem>.from(widget.items);
     CartService().bersihkan();
 
     // Langsung navigate ke halaman detail pesanan
@@ -90,7 +147,7 @@ class _QrisPageState extends State<QrisPage> {
       MaterialPageRoute(
         builder: (_) => PesananDetailPage(
           namaRental: widget.namaRental,
-          total: widget.total,
+          total: _totalAkhir,
           tanggalMulai: widget.tanggalMulai,
           tanggalSelesai: widget.tanggalSelesai,
           items: items,
@@ -238,37 +295,7 @@ class _QrisPageState extends State<QrisPage> {
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: AppColors.border),
                             ),
-                            child: Image.network(
-                              'https://api.qrserver.com/v1/create-qr-code/'
-                              '?size=200x200'
-                              '&data=NatureRent-${widget.namaRental}-${widget.total.toInt()}'
-                              '&color=1B3A2D'
-                              '&bgcolor=FFFFFF',
-                              width: 200,
-                              height: 200,
-                              fit: BoxFit.contain,
-                              loadingBuilder: (_, child, progress) {
-                                if (progress == null) return child;
-                                return const SizedBox(
-                                  width: 200,
-                                  height: 200,
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                        color: AppColors.primary,
-                                        strokeWidth: 2),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stack) => Container(
-                                width: 200,
-                                height: 200,
-                                color: AppColors.background,
-                                child: const Center(
-                                  child: Icon(Icons.qr_code_2_rounded,
-                                      size: 100, color: AppColors.primaryDark),
-                                ),
-                              ),
-                            ),
+                            child: _buildQrisImage(),
                           ),
                           const SizedBox(height: 16),
 
@@ -292,14 +319,14 @@ class _QrisPageState extends State<QrisPage> {
                             ),
                             child: Column(
                               children: [
-                                Text('TOTAL PEMBAYARAN',
+                                Text('DP DIBAYAR SEKARANG',
                                     style: AppTextStyles.caption.copyWith(
                                         color: AppColors.textHint,
                                         letterSpacing: 0.8,
                                         fontSize: 10)),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _fmtRupiah(widget.total),
+                                  _fmtRupiah(_dp),
                                   style: AppTextStyles.displayLarge.copyWith(
                                     color: AppColors.primaryDark,
                                     fontWeight: FontWeight.w800,
@@ -309,6 +336,8 @@ class _QrisPageState extends State<QrisPage> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 14),
+                          _buildPaymentInfo(),
                         ],
                       ),
                     ),
@@ -328,8 +357,10 @@ class _QrisPageState extends State<QrisPage> {
                           ...[
                             '1. Buka aplikasi e-wallet atau m-banking',
                             '2. Pilih menu Scan QR / QRIS',
-                            '3. Arahkan kamera ke kode QR di atas',
-                            '4. Periksa detail transaksi & konfirmasi',
+                            '3. Bayar DP $_dpPercent% sebesar ${_fmtRupiah(_dp)}',
+                            '4. Screenshot atau simpan bukti pembayaran',
+                            '5. Kirim bukti ke admin lewat WhatsApp',
+                            '6. Tunggu admin verifikasi dan pemilik rental mengonfirmasi alat',
                           ].map((s) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
@@ -358,14 +389,14 @@ class _QrisPageState extends State<QrisPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _konfirmasiPembayaran,
+                  onPressed: _kirimBuktiPembayaran,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryDark,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
-                  child: Text('Saya Sudah Membayar',
+                  child: Text('Kirim Bukti via WhatsApp',
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -390,6 +421,119 @@ class _QrisPageState extends State<QrisPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildQrisImage() {
+    const imageUrl = _qrisImageUrl;
+    final url = imageUrl.isEmpty
+        ? 'https://api.qrserver.com/v1/create-qr-code/'
+            '?size=200x200'
+            '&data=NatureRent-DP-${widget.namaRental}-${_dp.toInt()}'
+            '&color=1B3A2D'
+            '&bgcolor=FFFFFF'
+        : imageUrl;
+
+    return Image.network(
+      url,
+      width: 200,
+      height: 200,
+      fit: BoxFit.contain,
+      loadingBuilder: (_, child, progress) {
+        if (progress == null) return child;
+        return const SizedBox(
+          width: 200,
+          height: 200,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stack) => Container(
+        width: 200,
+        height: 200,
+        color: AppColors.background,
+        child: const Center(
+          child: Icon(
+            Icons.qr_code_2_rounded,
+            size: 100,
+            color: AppColors.primaryDark,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentInfo() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          _InfoRow(label: 'Subtotal sewa', value: _fmtRupiah(_subtotalSewa)),
+          _InfoRow(label: 'DP $_dpPercent%', value: _fmtRupiah(_dp), isStrong: true),
+          _InfoRow(label: 'Sisa $_sisaPercent%', value: _fmtRupiah(_sisaSewa)),
+          const Divider(height: 18, color: AppColors.border),
+          _InfoRow(
+            label: 'Biaya layanan',
+            value: _fmtRupiah(_tarifLayanan),
+          ),
+          _InfoRow(label: 'Pajak layanan $_taxPercent%', value: _fmtRupiah(_pajak)),
+          const Divider(height: 18, color: AppColors.border),
+          _InfoRow(
+            label: 'Dibayar saat pengembalian',
+            value: _fmtRupiah(_pelunasan),
+            isStrong: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isStrong;
+
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.isStrong = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: isStrong ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: isStrong ? AppColors.primaryDark : AppColors.textPrimary,
+              fontWeight: isStrong ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

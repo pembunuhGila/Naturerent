@@ -384,7 +384,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _SectionLabel('Harga / Malam'),
+                        _SectionLabel('Harga / Hari'),
                         const SizedBox(height: 10),
                         _PriceBox(controller: _priceCtrl),
                       ],

@@ -19,7 +19,7 @@ class CartRentalGroup {
 
   const CartRentalGroup({required this.rental, required this.items});
 
-  double get subtotalPerMalam =>
+  double get subtotalPerHari =>
       items.fold(0.0, (sum, item) => sum + item.subtotal);
 }
 
@@ -90,12 +90,12 @@ class CartService {
     _updateCount();
   }
 
-  /// Total harga per malam (belum dikali durasi)
-  double get totalPerMalam =>
+  /// Total harga per hari (belum dikali durasi)
+  double get totalPerHari =>
       _items.fold(0.0, (sum, i) => sum + i.equipment.hargaPerHari * i.qty);
 
   /// Total harga dikali durasi
-  double totalBayar(int durasi) => totalPerMalam * durasi;
+  double totalBayar(int durasi) => totalPerHari * durasi;
 
   void _updateCount() {
     count.value = _items.fold(0, (sum, i) => sum + i.qty);

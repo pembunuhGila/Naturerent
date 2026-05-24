@@ -20,10 +20,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   DateTime? _tanggalSelesai;
   int _metodeAmbil = 0; // 0 = Self Pickup, 1 = Delivery
 
-  // ─── Durasi (malam)
+  // ─── Durasi (hari)
   int get _durasi {
     if (_tanggalMulai == null || _tanggalSelesai == null) return 0;
-    return _tanggalSelesai!.difference(_tanggalMulai!).inDays;
+    final hari = _tanggalSelesai!.difference(_tanggalMulai!).inDays;
+    return hari <= 0 ? 1 : hari;
   }
 
   // ─── Format helpers
@@ -280,7 +281,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         // Durasi
                         _BiayaRow(
                           label: 'Durasi Sewa',
-                          value: _durasi > 0 ? '$_durasi Malam' : '-',
+                          value: _durasi > 0 ? '$_durasi Hari' : '-',
                           isHighlight: false,
                         ),
                         const SizedBox(height: 8),
@@ -291,8 +292,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               label: group.rental.namaRental,
                               value: _durasi > 0
                                   ? _fmtRupiah(
-                                      group.subtotalPerMalam * _durasi)
-                                  : _fmtRupiah(group.subtotalPerMalam),
+                                      group.subtotalPerHari * _durasi)
+                                  : _fmtRupiah(group.subtotalPerHari),
                               isHighlight: true,
                             ),
                             ...group.items.map(
@@ -324,7 +325,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   ? _fmtRupiah(
                                       _cart.totalBayar(_durasi))
                                   : _fmtRupiah(
-                                      _cart.totalPerMalam),
+                                      _cart.totalPerHari),
                               style: AppTextStyles.displayLarge.copyWith(
                                 color: AppColors.primaryDark,
                                 fontWeight: FontWeight.w800,
@@ -524,7 +525,7 @@ class _RentalCartGroupView extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _fmtRupiah(group.subtotalPerMalam),
+                  _fmtRupiah(group.subtotalPerHari),
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.primaryDark,
                     fontWeight: FontWeight.w800,

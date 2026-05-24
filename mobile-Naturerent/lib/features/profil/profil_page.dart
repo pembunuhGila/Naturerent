@@ -6,6 +6,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/models/rental_profile.dart';
 import '../auth/login_page.dart';
+import '../auth/onboarding_page.dart';
 import '../home/aktivitas_page.dart';
 import '../owner/owner_activity_page.dart';
 import '../owner/widgets/owner_header_widget.dart';

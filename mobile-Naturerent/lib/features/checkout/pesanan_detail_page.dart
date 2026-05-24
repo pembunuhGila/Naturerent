@@ -193,7 +193,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                   color: AppColors.primaryDark,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('PROSES',
+                child: Text('MENUNGGU ADMIN',
                     style: AppTextStyles.caption.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -215,7 +215,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Total Pembayaran',
+                  Text('Total Akhir',
                       style: AppTextStyles.caption
                           .copyWith(color: AppColors.textHint)),
                   const SizedBox(height: 2),
@@ -352,29 +352,29 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     final steps = [
       _TimelineStep(
         icon: Icons.check_rounded,
-        title: 'Menunggu Konfirmasi',
-        subtitle: 'Permintaan kamu telah diterima. Tim kami sedang memverifikasi ketersediaan untuk tanggal yang kamu pilih.',
-        isDone: true,
-        isActive: false,
-      ),
-      _TimelineStep(
-        icon: Icons.sync_rounded,
-        title: 'Proses',
-        subtitle: 'Peralatan sedang disiapkan dan dibersihkan. Siap diambil besok.',
+        title: 'Bukti DP dikirim',
+        subtitle: 'Admin NatureRent memeriksa bukti pembayaran DP 30% yang kamu kirim lewat WhatsApp.',
         isDone: true,
         isActive: true,
       ),
       _TimelineStep(
-        icon: Icons.inventory_2_outlined,
-        title: 'Pesanan telah diambil',
-        subtitle: 'Estimasi: ${_fmtTgl(widget.tanggalMulai)}\nPerlengkapan ada di tangan kamu.',
+        icon: Icons.verified_rounded,
+        title: 'Menunggu ACC pemilik rental',
+        subtitle: 'Setelah admin validasi pembayaran, pemilik rental mengonfirmasi ketersediaan alat.',
         isDone: false,
         isActive: false,
       ),
       _TimelineStep(
-        icon: Icons.task_alt_rounded,
-        title: 'Selesai',
-        subtitle: 'Estimasi: ${_fmtTgl(widget.tanggalSelesai)}\nPeralatan dikembalikan dan diperiksa.',
+        icon: Icons.inventory_2_outlined,
+        title: 'Alat diproses',
+        subtitle: 'Peralatan disiapkan, dicek, dan siap diambil pada ${_fmtTgl(widget.tanggalMulai)}.',
+        isDone: false,
+        isActive: false,
+      ),
+      _TimelineStep(
+        icon: Icons.payments_rounded,
+        title: 'Pelunasan saat pengembalian',
+        subtitle: 'Bayar sisa 70% sewa beserta biaya layanan dan pajak aplikasi pada ${_fmtTgl(widget.tanggalSelesai)}.',
         isDone: false,
         isActive: false,
       ),
