@@ -76,7 +76,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       MaterialPageRoute(
         builder: (_) => QrisPage(
           total: _cart.totalBayar(_durasi),
-          namaRental: _cart.items.first.rental.namaRental,
+          namaRental: _cart.groupedByRental.length == 1
+              ? _cart.groupedByRental.first.rental.namaRental
+              : '${_cart.groupedByRental.length} Toko Rental',
           tanggalMulai: _tanggalMulai!,
           tanggalSelesai: _tanggalSelesai!,
           items: List<CartItem>.from(_cart.items),
@@ -167,13 +169,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       .copyWith(color: AppColors.textHint)),
                             ))
                         : Column(
-                            children: _cart.items.asMap().entries.map((e) {
-                              return _ItemSewaRow(
-                                item: e.value,
-                                onHapus: () => setState(
-                                    () => _cart.hapus(e.key)),
-                              );
-                            }).toList(),
+                            children: _cart.groupedByRental
+                                .map(
+                                  (group) => _RentalCartGroupView(
+                                    group: group,
+                                    onHapus: (item) => setState(
+                                      () => _cart.hapusItem(item),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                           ),
                   ),
                   const SizedBox(height: 12),
@@ -280,14 +285,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         ),
                         const SizedBox(height: 8),
                         // Item breakdown
-                        ..._cart.items.map((item) => _BiayaRow(
-                              label:
-                                  '${item.equipment.nama} (${_fmtRupiah(item.equipment.hargaPerHari)}×${item.qty}${_durasi > 0 ? '×$_durasi' : ''})',
+                        ..._cart.groupedByRental.expand(
+                          (group) => [
+                            _BiayaRow(
+                              label: group.rental.namaRental,
                               value: _durasi > 0
-                                  ? _fmtRupiah(item.subtotal * _durasi)
-                                  : _fmtRupiah(item.subtotal),
-                              isHighlight: false,
-                            )),
+                                  ? _fmtRupiah(
+                                      group.subtotalPerMalam * _durasi)
+                                  : _fmtRupiah(group.subtotalPerMalam),
+                              isHighlight: true,
+                            ),
+                            ...group.items.map(
+                              (item) => _BiayaRow(
+                                label:
+                                    '${item.equipment.nama} (${_fmtRupiah(item.equipment.hargaPerHari)}x${item.qty}${_durasi > 0 ? 'x$_durasi' : ''})',
+                                value: _durasi > 0
+                                    ? _fmtRupiah(item.subtotal * _durasi)
+                                    : _fmtRupiah(item.subtotal),
+                                isHighlight: false,
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         const Divider(height: 1, color: AppColors.border),
                         const SizedBox(height: 12),
@@ -455,6 +474,75 @@ class _CheckoutPageState extends State<CheckoutPage> {
 // ═══════════════════════════════════════════════════════
 //  WIDGETS
 // ═══════════════════════════════════════════════════════
+
+class _RentalCartGroupView extends StatelessWidget {
+  final CartRentalGroup group;
+  final ValueChanged<CartItem> onHapus;
+
+  const _RentalCartGroupView({required this.group, required this.onHapus});
+
+  String _fmtRupiah(double v) {
+    final s = v.toInt().toString();
+    final buf = StringBuffer('Rp');
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.storefront_rounded,
+                    color: AppColors.primary, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    group.rental.namaRental,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _fmtRupiah(group.subtotalPerMalam),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...group.items.map(
+            (item) => _ItemSewaRow(item: item, onHapus: () => onHapus(item)),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ItemSewaRow extends StatelessWidget {
   final CartItem item;

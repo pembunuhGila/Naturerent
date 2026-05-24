@@ -13,6 +13,16 @@ class CartItem {
   double get subtotal => equipment.hargaPerHari * qty;
 }
 
+class CartRentalGroup {
+  final RentalProfile rental;
+  final List<CartItem> items;
+
+  const CartRentalGroup({required this.rental, required this.items});
+
+  double get subtotalPerMalam =>
+      items.fold(0.0, (sum, item) => sum + item.subtotal);
+}
+
 /// Singleton sederhana untuk keranjang pesanan.
 /// Tidak butuh Provider/Riverpod — cukup import CartService() di mana saja.
 class CartService {
@@ -25,9 +35,34 @@ class CartService {
 
   List<CartItem> get items => List.unmodifiable(_items);
 
+  List<CartRentalGroup> get groupedByRental {
+    final map = <String, List<CartItem>>{};
+    final rentals = <String, RentalProfile>{};
+
+    for (final item in _items) {
+      final key = item.rental.id;
+      rentals[key] = item.rental;
+      map.putIfAbsent(key, () => []).add(item);
+    }
+
+    final groups = map.entries
+        .map(
+          (entry) => CartRentalGroup(
+            rental: rentals[entry.key]!,
+            items: List.unmodifiable(entry.value),
+          ),
+        )
+        .toList();
+
+    groups.sort((a, b) => a.rental.namaRental.compareTo(b.rental.namaRental));
+    return List.unmodifiable(groups);
+  }
+
   /// Tambah alat ke keranjang (qty +1 jika sudah ada)
   void tambah(Equipment equipment, RentalProfile rental) {
-    final idx = _items.indexWhere((i) => i.equipment.id == equipment.id);
+    final idx = _items.indexWhere(
+      (i) => i.equipment.id == equipment.id && i.rental.id == rental.id,
+    );
     if (idx >= 0) {
       _items[idx].qty++;
     } else {
@@ -42,6 +77,11 @@ class CartService {
       _items.removeAt(index);
       _updateCount();
     }
+  }
+
+  void hapusItem(CartItem item) {
+    _items.remove(item);
+    _updateCount();
   }
 
   /// Kosongkan keranjang

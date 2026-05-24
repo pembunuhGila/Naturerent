@@ -29,6 +29,28 @@ class PesananDetailPage extends StatefulWidget {
 class _PesananDetailPageState extends State<PesananDetailPage> {
   late final String _nomorPesanan;
 
+  List<CartRentalGroup> get _groups {
+    final map = <String, List<CartItem>>{};
+    final firstItems = <String, CartItem>{};
+
+    for (final item in widget.items) {
+      final key = item.rental.id;
+      firstItems[key] = item;
+      map.putIfAbsent(key, () => []).add(item);
+    }
+
+    final groups = map.entries
+        .map(
+          (entry) => CartRentalGroup(
+            rental: firstItems[entry.key]!.rental,
+            items: List.unmodifiable(entry.value),
+          ),
+        )
+        .toList();
+    groups.sort((a, b) => a.rental.namaRental.compareTo(b.rental.namaRental));
+    return groups;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -182,8 +204,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
           ),
           const SizedBox(height: 14),
 
-          // Items
-          ...widget.items.map((item) => _buildItemRow(item)),
+          ..._groups.map((group) => _buildRentalGroup(group)),
 
           const Divider(height: 24, color: AppColors.border),
 
@@ -221,6 +242,37 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRentalGroup(CartRentalGroup group) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.storefront_rounded,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  group.rental.namaRental,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...group.items.map(_buildItemRow),
         ],
       ),
     );
