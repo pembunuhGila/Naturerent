@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../../features/auth/onboarding_page.dart';
@@ -9,6 +10,14 @@ class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
+
+  static const String mobileOAuthRedirectUrl =
+      'io.supabase.naturerent://login-callback/';
+
+  static String get oauthRedirectUrl {
+    if (kIsWeb) return '${Uri.base.origin}/';
+    return mobileOAuthRedirectUrl;
+  }
 
   /// Akses cepat ke Supabase client
   static SupabaseClient get client => Supabase.instance.client;
@@ -95,6 +104,40 @@ class AuthService {
   // ──────────────────────────────────────────────────────────
   //  MASUK — signIn (Users.masuk)
   // ──────────────────────────────────────────────────────────
+  Future<void> pastikanProfilPenggunaAda({
+    String defaultRole = 'customer',
+  }) async {
+    final user = penggunaSaatIni;
+    if (user == null) return;
+
+    final meta = user.userMetadata ?? {};
+    final namaLengkap =
+        (meta['full_name'] as String?) ??
+        (meta['name'] as String?) ??
+        user.email?.split('@').first ??
+        'Pengguna';
+    final role = (meta['role'] as String?) ?? defaultRole;
+    final avatarUrl =
+        (meta['avatar_url'] as String?) ?? (meta['picture'] as String?);
+
+    final payload = <String, dynamic>{
+      'id': user.id,
+      'nama_lengkap': namaLengkap,
+      'role': role,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      payload['avatar_url'] = avatarUrl;
+    }
+
+    try {
+      await client.from('users').upsert(payload, onConflict: 'id');
+    } catch (_) {
+      // Jika RLS membatasi profil Google baru, app tetap lanjut
+      // memakai role dari metadata/default customer.
+    }
+  }
+
   Future<AuthResponse> masuk({
     required String email,
     required String password,
@@ -103,6 +146,17 @@ class AuthService {
       email: email,
       password: password,
     );
+  }
+
+  Future<void> masukDenganGoogle() async {
+    final launched = await client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: oauthRedirectUrl,
+    );
+
+    if (!launched) {
+      throw Exception('Tidak bisa membuka halaman login Google.');
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -204,12 +258,16 @@ class AuthService {
   /// Ambil role user yang sedang login dari `public.users`.
   Future<String?> ambilRolePengguna() async {
     if (penggunaSaatIni == null) return null;
-    final data = await client
-        .from('users')
-        .select('role')
-        .eq('id', penggunaSaatIni!.id)
-        .maybeSingle();
-    return data?['role'] as String?;
+    try {
+      final data = await client
+          .from('users')
+          .select('role')
+          .eq('id', penggunaSaatIni!.id)
+          .maybeSingle();
+      return data?['role'] as String?;
+    } catch (_) {
+      return penggunaSaatIni?.userMetadata?['role'] as String?;
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -229,6 +287,9 @@ class AuthService {
     await Supabase.initialize(
       url: SupabaseConfig.supabaseUrl,
       anonKey: SupabaseConfig.supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
     );
   }
 }

@@ -76,15 +76,12 @@ class _LoginPageState extends State<LoginPage>
   Future<void> _loginGoogle() async {
     setState(() => _googleLoading = true);
     try {
-      await AuthService.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.naturerent://login-callback/',
-      );
       // Dengarkan perubahan auth setelah browser OAuth selesai
       _authSub?.cancel();
       _authSub = AuthService.client.auth.onAuthStateChange.listen((data) async {
         if (data.event == AuthChangeEvent.signedIn && mounted) {
           _authSub?.cancel();
+          await AuthService().pastikanProfilPenggunaAda();
           await AuthService().syncProfilSetelahLogin();
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
@@ -94,6 +91,7 @@ class _LoginPageState extends State<LoginPage>
           }
         }
       });
+      await AuthService().masukDenganGoogle();
     } catch (e) {
       if (mounted) _showError('Login Google gagal: ${e.toString()}');
     } finally {

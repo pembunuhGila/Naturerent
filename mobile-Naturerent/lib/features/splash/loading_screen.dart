@@ -31,17 +31,18 @@ class _LoadingScreenState extends State<LoadingScreen>
     Future.delayed(const Duration(seconds: 3), _navigasiBerikutnya);
   }
 
-  void _navigasiBerikutnya() {
+  Future<void> _navigasiBerikutnya() async {
     if (!mounted) return;
 
     final sudahLogin = AuthService().sudahMasuk;
-    final halamanTujuan = sudahLogin
-        ? const RoleGate()
-        : const OnboardingPage();
 
     if (sudahLogin) {
-      AuthService().syncProfilSetelahLogin();
+      await AuthService().pastikanProfilPenggunaAda();
+      await AuthService().syncProfilSetelahLogin();
     }
+
+    if (!mounted) return;
+    final halamanTujuan = sudahLogin ? const RoleGate() : const OnboardingPage();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
