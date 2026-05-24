@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../core/services/order_activity_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/nr_image.dart';
+import '../checkout/pesanan_detail_page.dart';
 
 class AktivitasPage extends StatefulWidget {
-  /// Jika [initialTab] diset, langsung buka tab tersebut.
   /// 0 = Notifikasi, 1 = Pesanan Aktif, 2 = Riwayat
   final int initialTab;
+
   const AktivitasPage({super.key, this.initialTab = 0});
 
   @override
@@ -20,7 +24,10 @@ class _AktivitasPageState extends State<AktivitasPage>
   void initState() {
     super.initState();
     _tabCtrl = TabController(
-        length: 3, vsync: this, initialIndex: widget.initialTab);
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
@@ -42,7 +49,6 @@ class _AktivitasPageState extends State<AktivitasPage>
         bottom: false,
         child: Column(
           children: [
-            // ── App Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -52,12 +58,19 @@ class _AktivitasPageState extends State<AktivitasPage>
                     onTap: () {
                       if (Navigator.canPop(context)) Navigator.pop(context);
                     },
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 20),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary,
+                      size: 20,
+                    ),
                   ),
-                  Text('Aktivitas Saya',
-                      style: AppTextStyles.headlineLarge
-                          .copyWith(color: AppColors.textPrimary, fontSize: 20)),
+                  Text(
+                    'Aktivitas Saya',
+                    style: AppTextStyles.headlineLarge.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => _tabCtrl.animateTo(0),
                     child: Container(
@@ -68,16 +81,17 @@ class _AktivitasPageState extends State<AktivitasPage>
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: const Icon(Icons.notifications_none_rounded,
-                          color: AppColors.textPrimary, size: 18),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: AppColors.textPrimary,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // ── Tab Bar
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
@@ -89,14 +103,16 @@ class _AktivitasPageState extends State<AktivitasPage>
                 controller: _tabCtrl,
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.textSecondary,
-                labelStyle: AppTextStyles.bodySmall
-                    .copyWith(fontWeight: FontWeight.w700, fontSize: 12),
+                labelStyle: AppTextStyles.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
                 unselectedLabelStyle:
                     AppTextStyles.bodySmall.copyWith(fontSize: 12),
                 indicator: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border(
+                  border: const Border(
                     bottom: BorderSide(color: AppColors.primary, width: 2),
                   ),
                 ),
@@ -110,12 +126,10 @@ class _AktivitasPageState extends State<AktivitasPage>
               ),
             ),
             const SizedBox(height: 8),
-
-            // ── Tab Content
             Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
-                children: [
+                children: const [
                   _TabNotifikasi(),
                   _TabPesananAktif(),
                   _TabRiwayat(),
@@ -129,30 +143,354 @@ class _AktivitasPageState extends State<AktivitasPage>
   }
 }
 
-// ═══════════════════════════════════════════════════════
-//  TAB 1 — NOTIFIKASI
-// ═══════════════════════════════════════════════════════
 class _TabNotifikasi extends StatelessWidget {
   const _TabNotifikasi();
 
   @override
   Widget build(BuildContext context) {
-    return _EmptyTab(
-      icon: Icons.notifications_none_rounded,
-      judul: 'Belum ada notifikasi',
-      pesan: 'Notifikasi pesanan dan update aktivitas\nakan muncul di sini.',
+    return ValueListenableBuilder<List<ActivityOrder>>(
+      valueListenable: OrderActivityService().orders,
+      builder: (context, orders, _) {
+        if (orders.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.notifications_none_rounded,
+            judul: 'Belum ada notifikasi',
+            pesan: 'Notifikasi pesanan dan update aktivitas\nakan muncul di sini.',
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          itemCount: orders.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) =>
+              _NotificationCard(order: orders[index]),
+        );
+      },
     );
   }
 }
 
-// ═══════════════════════════════════════════════════════
-//  EMPTY STATE SHARED
-// ═══════════════════════════════════════════════════════
+class _TabPesananAktif extends StatelessWidget {
+  const _TabPesananAktif();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<ActivityOrder>>(
+      valueListenable: OrderActivityService().orders,
+      builder: (context, orders, _) {
+        final aktif = orders
+            .where((order) => order.status == ActivityOrderStatus.aktif)
+            .toList(growable: false);
+
+        if (aktif.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.shopping_bag_outlined,
+            judul: 'Tidak ada pesanan aktif',
+            pesan: 'Setelah pemilik rental ACC,\npesanan akan pindah ke sini.',
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          itemCount: aktif.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) => _OrderCard(order: aktif[index]),
+        );
+      },
+    );
+  }
+}
+
+class _TabRiwayat extends StatelessWidget {
+  const _TabRiwayat();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<ActivityOrder>>(
+      valueListenable: OrderActivityService().orders,
+      builder: (context, orders, _) {
+        if (orders.isEmpty) {
+          return const _EmptyTab(
+            icon: Icons.history_rounded,
+            judul: 'Belum ada riwayat',
+            pesan: 'Pesanan dari pembayaran QRIS\nakan tampil di sini.',
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          itemCount: orders.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) => _OrderCard(order: orders[index]),
+        );
+      },
+    );
+  }
+}
+
+class _NotificationCard extends StatelessWidget {
+  final ActivityOrder order;
+
+  const _NotificationCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final waiting = order.status == ActivityOrderStatus.menungguAcc;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _openOrderDetail(context, order),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: (waiting ? AppColors.primary : AppColors.success)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                waiting
+                    ? Icons.hourglass_top_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: waiting ? AppColors.primaryDark : AppColors.success,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    waiting ? 'Menunggu ACC Rental' : 'Pesanan Aktif',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pesanan #${order.nomorPesanan}',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    waiting
+                        ? 'Bukti DP sudah dikirim. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
+                        : 'Pemilik rental sudah ACC. Alat sedang diproses.',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${order.namaRental} - ${_fmtRupiah(order.total)}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textHint,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderCard extends StatelessWidget {
+  final ActivityOrder order;
+
+  const _OrderCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final item = order.items.isNotEmpty ? order.items.first : null;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _openOrderDetail(context, order),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: item == null
+                  ? Container(
+                      width: 74,
+                      height: 74,
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(
+                        Icons.inventory_2_outlined,
+                        color: AppColors.textHint,
+                      ),
+                    )
+                  : NrImage(
+                      imageUrl: item.equipment.gambarprimaryUrl,
+                      width: 74,
+                      height: 74,
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item?.equipment.nama ?? order.namaRental,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _StatusBadge(status: order.status),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    order.namaRental,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${_fmtTgl(order.tanggalMulai)} - ${_fmtTgl(order.tanggalSelesai)} - ${_durasi(order)} Hari',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textHint,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _fmtRupiah(order.total),
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          'Lihat',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final ActivityOrderStatus status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (status) {
+      ActivityOrderStatus.menungguAcc => 'MENUNGGU',
+      ActivityOrderStatus.aktif => 'AKTIF',
+      ActivityOrderStatus.selesai => 'SELESAI',
+    };
+    final color = switch (status) {
+      ActivityOrderStatus.menungguAcc => const Color(0xFFF59E0B),
+      ActivityOrderStatus.aktif => AppColors.primary,
+      ActivityOrderStatus.selesai => AppColors.success,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyTab extends StatelessWidget {
   final IconData icon;
   final String judul;
   final String pesan;
-  const _EmptyTab({required this.icon, required this.judul, required this.pesan});
+
+  const _EmptyTab({
+    required this.icon,
+    required this.judul,
+    required this.pesan,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -171,13 +509,21 @@ class _EmptyTab extends StatelessWidget {
               child: Icon(icon, size: 40, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
-            Text(judul,
-                style: AppTextStyles.headlineMedium
-                    .copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+            Text(
+              judul,
+              style: AppTextStyles.headlineMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(pesan,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint)),
+            Text(
+              pesan,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textHint,
+              ),
+            ),
           ],
         ),
       ),
@@ -185,36 +531,60 @@ class _EmptyTab extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-//  TAB 2 — PESANAN AKTIF
-// ═══════════════════════════════════════════════════════
-class _TabPesananAktif extends StatelessWidget {
-  const _TabPesananAktif();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _EmptyTab(
-      icon: Icons.shopping_bag_outlined,
-      judul: 'Tidak ada pesanan aktif',
-      pesan: 'Pesanan yang sedang berjalan\nakan tampil di sini.',
-    );
-  }
+void _openOrderDetail(BuildContext context, ActivityOrder order) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => PesananDetailPage(
+        namaRental: order.namaRental,
+        total: order.total,
+        tanggalMulai: order.tanggalMulai,
+        tanggalSelesai: order.tanggalSelesai,
+        items: order.items,
+        nomorPesanan: order.nomorPesanan,
+        statusLabel: _statusDetailLabel(order.status),
+      ),
+    ),
+  );
 }
 
-
-// ═══════════════════════════════════════════════════════
-//  TAB 3 — RIWAYAT
-// ═══════════════════════════════════════════════════════
-class _TabRiwayat extends StatelessWidget {
-  const _TabRiwayat();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _EmptyTab(
-      icon: Icons.history_rounded,
-      judul: 'Belum ada riwayat',
-      pesan: 'Riwayat sewa yang sudah selesai\nakan tampil di sini.',
-    );
-  }
+String _statusDetailLabel(ActivityOrderStatus status) {
+  return switch (status) {
+    ActivityOrderStatus.menungguAcc => 'MENUNGGU ADMIN',
+    ActivityOrderStatus.aktif => 'PESANAN AKTIF',
+    ActivityOrderStatus.selesai => 'SELESAI',
+  };
 }
 
+int _durasi(ActivityOrder order) {
+  final days = order.tanggalSelesai.difference(order.tanggalMulai).inDays;
+  return days <= 0 ? 1 : days;
+}
+
+String _fmtTgl(DateTime dt) {
+  const b = [
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
+  return '${dt.day} ${b[dt.month]} ${dt.year}';
+}
+
+String _fmtRupiah(double v) {
+  final s = v.toInt().toString();
+  final buf = StringBuffer('Rp ');
+  for (int i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+    buf.write(s[i]);
+  }
+  return buf.toString();
+}

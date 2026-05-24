@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/cart_service.dart';
+import '../../core/services/order_activity_service.dart';
 import '../../core/theme/app_theme.dart';
-import 'pesanan_detail_page.dart';
+import '../home/aktivitas_page.dart';
 
 class QrisPage extends StatefulWidget {
   final double total;
@@ -29,7 +30,7 @@ class QrisPage extends StatefulWidget {
 class _QrisPageState extends State<QrisPage> {
   // Countdown 15 menit
   static const _durasi = Duration(minutes: 15);
-  static const _nomorWaAdmin = '6281234567890';
+  static const _nomorWaAdmin = '6285334772234';
   static const _qrisImageUrl = '';
   static const _tarifLayanan = 5000.0;
   static const _tarifPajak = 0.11;
@@ -40,7 +41,7 @@ class _QrisPageState extends State<QrisPage> {
   double get _subtotalSewa => widget.total;
   double get _dp => _subtotalSewa * _tarifDp;
   double get _sisaSewa => _subtotalSewa * (1 - _tarifDp);
-  double get _pajak => _tarifLayanan * _tarifPajak;
+  double get _pajak => _subtotalSewa * _tarifPajak;
   double get _pelunasan => _sisaSewa + _tarifLayanan + _pajak;
   double get _totalAkhir => _subtotalSewa + _tarifLayanan + _pajak;
   int get _dpPercent => (_tarifDp * 100).round();
@@ -110,7 +111,7 @@ class _QrisPageState extends State<QrisPage> {
       'DP $_dpPercent% dibayar: ${_fmtRupiah(_dp)}\n'
       'Sisa $_sisaPercent%: ${_fmtRupiah(_sisaSewa)}\n'
       'Biaya layanan: ${_fmtRupiah(_tarifLayanan)}\n'
-      'Pajak layanan $_taxPercent%: ${_fmtRupiah(_pajak)}\n'
+      'Pajak total sewa $_taxPercent%: ${_fmtRupiah(_pajak)}\n'
       'Pelunasan saat pengembalian: ${_fmtRupiah(_pelunasan)}\n'
       'Total akhir: ${_fmtRupiah(_totalAkhir)}\n\n'
       'Saya akan kirim bukti pembayaran di chat ini.',
@@ -138,20 +139,19 @@ class _QrisPageState extends State<QrisPage> {
   }
 
   void _bukaDetailPesanan() {
-    // Hapus keranjang dulu
     final items = List<CartItem>.from(widget.items);
+    OrderActivityService().tambahMenungguAcc(
+      namaRental: widget.namaRental,
+      total: _totalAkhir,
+      tanggalMulai: widget.tanggalMulai,
+      tanggalSelesai: widget.tanggalSelesai,
+      items: items,
+    );
     CartService().bersihkan();
 
-    // Langsung navigate ke halaman detail pesanan
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => PesananDetailPage(
-          namaRental: widget.namaRental,
-          total: _totalAkhir,
-          tanggalMulai: widget.tanggalMulai,
-          tanggalSelesai: widget.tanggalSelesai,
-          items: items,
-        ),
+        builder: (_) => const AktivitasPage(initialTab: 0),
       ),
       (route) => route.isFirst,
     );
@@ -487,7 +487,7 @@ class _QrisPageState extends State<QrisPage> {
             label: 'Biaya layanan',
             value: _fmtRupiah(_tarifLayanan),
           ),
-          _InfoRow(label: 'Pajak layanan $_taxPercent%', value: _fmtRupiah(_pajak)),
+          _InfoRow(label: 'Pajak total sewa $_taxPercent%', value: _fmtRupiah(_pajak)),
           const Divider(height: 18, color: AppColors.border),
           _InfoRow(
             label: 'Dibayar saat pengembalian',

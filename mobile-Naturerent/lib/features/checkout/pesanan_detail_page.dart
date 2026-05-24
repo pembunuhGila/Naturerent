@@ -12,6 +12,8 @@ class PesananDetailPage extends StatefulWidget {
   final DateTime tanggalMulai;
   final DateTime tanggalSelesai;
   final List<CartItem> items;
+  final String? nomorPesanan;
+  final String? statusLabel;
 
   const PesananDetailPage({
     super.key,
@@ -20,6 +22,8 @@ class PesananDetailPage extends StatefulWidget {
     required this.tanggalMulai,
     required this.tanggalSelesai,
     required this.items,
+    this.nomorPesanan,
+    this.statusLabel,
   });
 
   @override
@@ -54,6 +58,10 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.nomorPesanan != null) {
+      _nomorPesanan = widget.nomorPesanan!;
+      return;
+    }
     // Generate nomor pesanan acak: e.g. #A7B2-XK
     final r = Random();
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -193,7 +201,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                   color: AppColors.primaryDark,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('MENUNGGU ADMIN',
+                child: Text(widget.statusLabel ?? 'MENUNGGU ADMIN',
                     style: AppTextStyles.caption.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
