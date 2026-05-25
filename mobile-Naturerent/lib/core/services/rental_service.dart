@@ -71,15 +71,19 @@ class RentalService {
         user.email?.split('@').first ??
         'Rental Baru';
     final noWa = meta['no_wa'] as String?;
+    final alamat = meta['store_address'] as String?;
+
+    final payload = <String, dynamic>{
+      'owner_id': user.id,
+      'nama_rental': namaRental,
+      'is_active': true,
+    };
+    if (noWa != null && noWa.isNotEmpty) payload['no_wa'] = noWa;
+    if (alamat != null && alamat.isNotEmpty) payload['alamat'] = alamat;
 
     final data = await client
         .from('rental_profiles')
-        .insert({
-          'owner_id': user.id,
-          'nama_rental': namaRental,
-          'no_wa': noWa,
-          'is_active': true,
-        })
+        .insert(payload)
         .select('*, rental_settings(*)')
         .single();
 
@@ -88,8 +92,53 @@ class RentalService {
 
   Future<RentalProfile> pastikanRentalSayaAda() async {
     final rental = await ambilRentalSaya();
-    if (rental != null) return rental;
+    if (rental != null) return _lengkapiRentalDariMetadata(rental);
     return buatRentalDasarSaya();
+  }
+
+  Future<RentalProfile> _lengkapiRentalDariMetadata(
+    RentalProfile rental,
+  ) async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) return rental;
+
+    final meta = user.userMetadata ?? {};
+    final storeName = meta['store_name'] as String?;
+    final alamat = meta['store_address'] as String?;
+    final noWa = meta['no_wa'] as String?;
+    final fallbackName = user.email?.split('@').first;
+
+    final payload = <String, dynamic>{
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (storeName != null &&
+        storeName.isNotEmpty &&
+        (rental.namaRental == 'Rental Baru' ||
+            rental.namaRental == fallbackName)) {
+      payload['nama_rental'] = storeName;
+    }
+    if (alamat != null &&
+        alamat.isNotEmpty &&
+        (rental.alamat == null || rental.alamat!.isEmpty)) {
+      payload['alamat'] = alamat;
+    }
+    if (noWa != null &&
+        noWa.isNotEmpty &&
+        (rental.noWa == null || rental.noWa!.isEmpty)) {
+      payload['no_wa'] = noWa;
+    }
+
+    if (payload.length == 1) return rental;
+
+    final data = await client
+        .from('rental_profiles')
+        .update(payload)
+        .eq('id', rental.id)
+        .eq('owner_id', user.id)
+        .select('*, rental_settings(*)')
+        .single();
+
+    return RentalProfile.fromMap(data);
   }
 
   /// Update detail rental milik owner yang sedang login (nama, alamat, lat, lng).

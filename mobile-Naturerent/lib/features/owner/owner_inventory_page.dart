@@ -72,13 +72,11 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
       _error = null;
     });
     try {
-      final rental = await _rentalService.ambilRentalSaya();
-      final alat = rental == null
-          ? <Equipment>[]
-          : await _equipmentService.ambilSemuaAlatByRental(rental.id);
+      final rental = await _rentalService.pastikanRentalSayaAda();
+      final alat = await _equipmentService.ambilSemuaAlatByRental(rental.id);
       if (!mounted) return;
       setState(() {
-        _rentalId = rental?.id;
+        _rentalId = rental.id;
         _rentalProfile = rental; // Simpan lengkap
         _alat = alat;
         _loading = false;

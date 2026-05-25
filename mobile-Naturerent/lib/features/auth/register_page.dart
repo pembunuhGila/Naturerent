@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_button.dart';
 import '../../core/widgets/nr_text_field.dart';
@@ -172,12 +173,23 @@ class _RegisterPageState extends State<RegisterPage>
         namaToko: widget.role == UserRole.pemilik
             ? _namaTokoController.text.trim()
             : null,
+        alamatToko: widget.role == UserRole.pemilik
+            ? _alamatController.text.trim()
+            : null,
+        kotaToko: widget.role == UserRole.pemilik ? _selectedKota : null,
+        namaBank: widget.role == UserRole.pemilik ? _selectedBank : null,
+        nomorRekening: widget.role == UserRole.pemilik
+            ? _rekeningController.text.trim()
+            : null,
         role: widget.role,
       );
 
       if (!mounted) return;
       if (widget.role == UserRole.pemilik) {
         if (response.session != null) {
+          await AuthService().syncProfilSetelahLogin();
+          final rental = await RentalService().pastikanRentalSayaAda();
+          await _uploadFotoProfilTokoSaatDaftar(rental.id);
           await AuthService().keluar();
         }
         if (!mounted) return;
@@ -247,6 +259,39 @@ class _RegisterPageState extends State<RegisterPage>
       if (mounted) _showError('Google gagal: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _googleLoading = false);
+    }
+  }
+
+  Future<void> _uploadFotoProfilTokoSaatDaftar(String rentalId) async {
+    final image = _fotoProfilTokoImage;
+    if (image == null) return;
+
+    try {
+      final userId = AuthService().penggunaSaatIni?.id;
+      if (userId == null) return;
+
+      final storagePath =
+          'rental-profiles/$userId-${DateTime.now().millisecondsSinceEpoch}.${image.extension}';
+      await AuthService.client.storage.from('rental_avatar').uploadBinary(
+            storagePath,
+            image.bytes,
+            fileOptions: FileOptions(
+              upsert: true,
+              contentType: image.contentType,
+            ),
+          );
+      final url =
+          AuthService.client.storage.from('rental_avatar').getPublicUrl(storagePath);
+      await AuthService.client
+          .from('rental_profiles')
+          .update({
+            'foto_profil': url,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', rentalId)
+          .eq('owner_id', userId);
+    } catch (_) {
+      // Foto toko bisa dilengkapi lagi dari Edit Profil jika bucket/policy belum siap.
     }
   }
 
@@ -1119,6 +1164,14 @@ class _PickedImage {
     if (parts.length < 2) return 'jpg';
     final ext = parts.last.toLowerCase();
     return ext.isEmpty ? 'jpg' : ext;
+  }
+
+  String get contentType {
+    return switch (extension) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
   }
 }
 
