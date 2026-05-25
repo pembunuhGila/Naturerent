@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
@@ -14,6 +15,8 @@ class PesananDetailPage extends StatefulWidget {
   final List<CartItem> items;
   final String? nomorPesanan;
   final String? statusLabel;
+  final String? paymentProofUrl;
+  final Uint8List? paymentProofBytes;
 
   const PesananDetailPage({
     super.key,
@@ -24,6 +27,8 @@ class PesananDetailPage extends StatefulWidget {
     required this.items,
     this.nomorPesanan,
     this.statusLabel,
+    this.paymentProofUrl,
+    this.paymentProofBytes,
   });
 
   @override
@@ -135,6 +140,8 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                   // ── Order card
                   _buildOrderCard(),
                   const SizedBox(height: 16),
+                  _buildPaymentProofCard(),
+                  const SizedBox(height: 16),
 
                   // ── Timeline
                   _buildTimeline(),
@@ -174,6 +181,109 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   }
 
   // ─── Order card
+  Widget _buildPaymentProofCard() {
+    final hasBytes = widget.paymentProofBytes != null;
+    final hasUrl = widget.paymentProofUrl != null &&
+        widget.paymentProofUrl!.trim().isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.primaryDark,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Bukti Pembayaran QRIS',
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 180, maxHeight: 360),
+              color: AppColors.surfaceVariant,
+              child: hasBytes
+                  ? Image.memory(
+                      widget.paymentProofBytes!,
+                      fit: BoxFit.cover,
+                    )
+                  : hasUrl
+                      ? Image.network(
+                          widget.paymentProofUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildProofPlaceholder(),
+                        )
+                      : _buildProofPlaceholder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Bukti ini akan dicek admin sebelum pemilik rental mengonfirmasi alat.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProofPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.image_not_supported_outlined,
+              color: AppColors.textHint,
+              size: 34,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bukti pembayaran belum tersedia.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -360,8 +470,8 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     final steps = [
       _TimelineStep(
         icon: Icons.check_rounded,
-        title: 'Bukti DP dikirim',
-        subtitle: 'Admin NatureRent memeriksa bukti pembayaran DP 30% yang kamu kirim lewat WhatsApp.',
+        title: 'Bukti DP diupload',
+        subtitle: 'Admin NatureRent memeriksa foto bukti pembayaran DP 30% yang kamu upload.',
         isDone: true,
         isActive: true,
       ),

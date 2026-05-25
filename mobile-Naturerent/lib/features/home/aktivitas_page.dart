@@ -292,7 +292,7 @@ class _NotificationCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     waiting
-                        ? 'Bukti DP sudah dikirim. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
+                        ? 'Bukti DP sudah diupload. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
                         : _statusDescription(order.status),
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
@@ -563,6 +563,8 @@ void _openOrderDetail(BuildContext context, ActivityOrder order) {
         items: order.items,
         nomorPesanan: order.nomorPesanan,
         statusLabel: _statusDetailLabel(order.status),
+        paymentProofUrl: order.paymentProofUrl,
+        paymentProofBytes: order.paymentProofBytes,
       ),
     ),
   );

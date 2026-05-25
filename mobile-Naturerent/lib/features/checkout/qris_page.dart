@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/services/order_activity_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -31,11 +32,11 @@ class QrisPage extends StatefulWidget {
 class _QrisPageState extends State<QrisPage> {
   // Countdown 15 menit
   static const _durasi = Duration(minutes: 15);
-  static const _nomorWaAdmin = '6285334772234';
   static const _qrisImageUrl = '';
   static const _tarifLayanan = 5000.0;
   static const _tarifPajak = 0.10;
   static const _tarifDp = 0.3;
+  final _picker = ImagePicker();
   late int _sisaDetik;
   Timer? _timer;
   bool _isMenyimpanBooking = false;
@@ -100,44 +101,39 @@ class _QrisPageState extends State<QrisPage> {
   }
 
   Future<void> _kirimBuktiPembayaran() async {
-    _timer?.cancel();
-
-    final ringkasanItem = widget.items
-        .map((item) => '- ${item.rental.namaRental}: ${item.equipment.nama} x${item.qty}')
-        .join('\n');
-    final pesan = Uri.encodeComponent(
-      'Halo Admin NatureRent, saya sudah membayar DP $_dpPercent% via QRIS.\n\n'
-      'Rental: ${widget.namaRental}\n'
-      'Periode: ${_fmtTgl(widget.tanggalMulai)} - ${_fmtTgl(widget.tanggalSelesai)}\n'
-      'Item:\n$ringkasanItem\n\n'
-      'Subtotal sewa: ${_fmtRupiah(_subtotalSewa)}\n'
-      'DP $_dpPercent% dibayar: ${_fmtRupiah(_dp)}\n'
-      'Sisa $_sisaPercent%: ${_fmtRupiah(_sisaSewa)}\n'
-      'Biaya aplikasi: ${_fmtRupiah(_biayaAplikasi)}\n'
-      'Pelunasan saat pengembalian: ${_fmtRupiah(_pelunasan)}\n'
-      'Total akhir: ${_fmtRupiah(_totalAkhir)}\n\n'
-      'Saya akan kirim bukti pembayaran di chat ini.',
-    );
-    final uri = Uri.parse('https://wa.me/$_nomorWaAdmin?text=$pesan');
-
     try {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!opened) throw Exception('WhatsApp tidak bisa dibuka.');
-    } catch (_) {
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 82,
+        maxWidth: 1600,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) throw Exception('File bukti pembayaran kosong.');
+
+      _timer?.cancel();
+      await _bukaDetailPesanan(
+        paymentProofBytes: bytes,
+        paymentProofExtension: _extensionFromName(picked.name),
+        paymentProofContentType: _contentTypeFromName(picked.name),
+      );
+    } catch (e) {
       if (!mounted) return;
       NrToast.show(
         context,
-        'WhatsApp gagal dibuka. Hubungi admin: $_nomorWaAdmin',
+        'Bukti pembayaran gagal dipilih. Coba upload ulang.',
         type: NrToastType.error,
       );
       return;
     }
-
-    if (!mounted) return;
-    await _bukaDetailPesanan();
   }
 
-  Future<void> _bukaDetailPesanan() async {
+  Future<void> _bukaDetailPesanan({
+    required Uint8List paymentProofBytes,
+    required String paymentProofExtension,
+    required String paymentProofContentType,
+  }) async {
     setState(() => _isMenyimpanBooking = true);
 
     try {
@@ -150,6 +146,9 @@ class _QrisPageState extends State<QrisPage> {
         biayaLayanan: _tarifLayanan,
         taxRate: _taxPercent.toDouble(),
         dpPercent: _dpPercent.toDouble(),
+        paymentProofBytes: paymentProofBytes,
+        paymentProofExtension: paymentProofExtension,
+        paymentProofContentType: paymentProofContentType,
       );
     } catch (e) {
       if (!mounted) return;
@@ -160,6 +159,7 @@ class _QrisPageState extends State<QrisPage> {
         tanggalMulai: widget.tanggalMulai,
         tanggalSelesai: widget.tanggalSelesai,
         items: List<CartItem>.from(widget.items),
+        paymentProofBytes: paymentProofBytes,
       );
       _showTopMessage(
         'Pesanan masuk Riwayat sementara. Policy Supabase bookings perlu dicek.',
@@ -209,6 +209,26 @@ class _QrisPageState extends State<QrisPage> {
       'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
     ];
     return '${dt.day} ${b[dt.month]} ${dt.year}';
+  }
+
+  String _extensionFromName(String name) {
+    final lower = name.toLowerCase();
+    final ext = lower.contains('.') ? lower.split('.').last : 'jpg';
+    return switch (ext) {
+      'png' => 'png',
+      'webp' => 'webp',
+      'jpeg' => 'jpg',
+      'jpg' => 'jpg',
+      _ => 'jpg',
+    };
+  }
+
+  String _contentTypeFromName(String name) {
+    return switch (_extensionFromName(name)) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
   }
 
   @override
@@ -383,8 +403,8 @@ class _QrisPageState extends State<QrisPage> {
                             '2. Pilih menu Scan QR / QRIS',
                             '3. Bayar DP $_dpPercent% sebesar ${_fmtRupiah(_dp)}',
                             '4. Screenshot atau simpan bukti pembayaran',
-                            '5. Kirim bukti ke admin lewat WhatsApp',
-                            '6. Tunggu admin verifikasi dan pemilik rental mengonfirmasi alat',
+                            '5. Upload foto bukti pembayaran lewat tombol bawah',
+                            '6. Pesanan masuk Riwayat untuk menunggu verifikasi admin',
                           ].map((s) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
@@ -430,7 +450,7 @@ class _QrisPageState extends State<QrisPage> {
                             strokeWidth: 2,
                           ),
                         )
-                      : Text('Kirim Bukti via WhatsApp',
+                      : Text('Upload Bukti Pembayaran',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,

@@ -1,6 +1,8 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/equipment.dart';
 import '../models/rental_profile.dart';
@@ -27,6 +29,8 @@ class ActivityOrder {
   final List<CartItem> items;
   final ActivityOrderStatus status;
   final DateTime createdAt;
+  final String? paymentProofUrl;
+  final Uint8List? paymentProofBytes;
 
   const ActivityOrder({
     required this.id,
@@ -38,6 +42,8 @@ class ActivityOrder {
     required this.items,
     required this.status,
     required this.createdAt,
+    this.paymentProofUrl,
+    this.paymentProofBytes,
   });
 
   ActivityOrder copyWith({
@@ -53,6 +59,8 @@ class ActivityOrder {
       items: items,
       status: status ?? this.status,
       createdAt: createdAt,
+      paymentProofUrl: paymentProofUrl,
+      paymentProofBytes: paymentProofBytes,
     );
   }
 }
@@ -76,6 +84,9 @@ class OrderActivityService {
     required double biayaLayanan,
     required double taxRate,
     required double dpPercent,
+    Uint8List? paymentProofBytes,
+    String paymentProofExtension = 'jpg',
+    String paymentProofContentType = 'image/jpeg',
   }) async {
     final user = AuthService().penggunaSaatIni;
     if (user == null) throw Exception('Silakan login ulang sebelum membayar.');
@@ -83,6 +94,15 @@ class OrderActivityService {
 
     final paymentGroupId = _buatUuidV4();
     final nomorPesanan = _buatNomorPesanan();
+    final proofUrl = paymentProofBytes == null
+        ? null
+        : await _uploadPaymentProof(
+            userId: user.id,
+            paymentGroupId: paymentGroupId,
+            bytes: paymentProofBytes,
+            extension: paymentProofExtension,
+            contentType: paymentProofContentType,
+          );
     final durasi = _durasi(tanggalMulai, tanggalSelesai);
     final grouped = _groupByRental(items);
     final insertedRows = <Map<String, dynamic>>[];
@@ -106,8 +126,9 @@ class OrderActivityService {
             'payment_group_id': paymentGroupId,
             'dp_percent': dpPercent,
             'payment_method': 'qris',
-            'payment_status': 'waiting_dp_proof',
-            'catatan': 'Bukti DP dikirim melalui WhatsApp admin NatureRent.',
+            'payment_status': 'dp_under_review',
+            'payment_proof_url': proofUrl,
+            'catatan': 'Bukti DP diupload melalui aplikasi NatureRent.',
           })
           .select('id, total_bayar')
           .single();
@@ -145,6 +166,8 @@ class OrderActivityService {
       items: List<CartItem>.unmodifiable(items),
       status: ActivityOrderStatus.pending,
       createdAt: DateTime.now(),
+      paymentProofUrl: proofUrl,
+      paymentProofBytes: paymentProofBytes,
     );
 
     orders.value = <ActivityOrder>[order, ...orders.value];
@@ -158,6 +181,8 @@ class OrderActivityService {
     required DateTime tanggalMulai,
     required DateTime tanggalSelesai,
     required List<CartItem> items,
+    Uint8List? paymentProofBytes,
+    String? paymentProofUrl,
   }) {
     final order = ActivityOrder(
       id: _buatUuidV4(),
@@ -169,6 +194,8 @@ class OrderActivityService {
       items: List<CartItem>.unmodifiable(items),
       status: ActivityOrderStatus.pending,
       createdAt: DateTime.now(),
+      paymentProofUrl: paymentProofUrl,
+      paymentProofBytes: paymentProofBytes,
     );
 
     orders.value = <ActivityOrder>[order, ...orders.value];
@@ -232,7 +259,7 @@ class OrderActivityService {
         'user_id': userId,
         'judul': 'Pesanan #$nomorPesanan menunggu verifikasi',
         'pesan':
-            'Bukti DP sudah dikirim. Admin akan cek pembayaran lalu pemilik rental melakukan ACC.',
+            'Bukti DP sudah diupload. Admin akan cek pembayaran lalu pemilik rental melakukan ACC.',
         'type': 'booking',
         'ref_id': refId,
       });
@@ -286,7 +313,30 @@ class OrderActivityService {
       items: List<CartItem>.unmodifiable(items),
       status: _statusGroup(rows),
       createdAt: DateTime.parse(first['created_at'] as String),
+      paymentProofUrl: first['payment_proof_url'] as String?,
     );
+  }
+
+  Future<String> _uploadPaymentProof({
+    required String userId,
+    required String paymentGroupId,
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    final safeExtension = switch (extension.toLowerCase()) {
+      'png' => 'png',
+      'webp' => 'webp',
+      'jpg' || 'jpeg' => 'jpg',
+      _ => 'jpg',
+    };
+    final path = '$userId/$paymentGroupId.$safeExtension';
+    await AuthService.client.storage.from('payment-proofs').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: true),
+        );
+    return AuthService.client.storage.from('payment-proofs').getPublicUrl(path);
   }
 
   RentalProfile _rentalFromMap(Map<String, dynamic>? map, String fallbackId) {
