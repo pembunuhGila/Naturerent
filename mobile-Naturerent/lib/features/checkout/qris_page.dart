@@ -154,8 +154,16 @@ class _QrisPageState extends State<QrisPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isMenyimpanBooking = false);
-      _showTopMessage('Booking gagal disimpan. Cek policy Supabase bookings.');
-      return;
+      OrderActivityService().tambahLokalPending(
+        namaRental: widget.namaRental,
+        total: _totalAkhir,
+        tanggalMulai: widget.tanggalMulai,
+        tanggalSelesai: widget.tanggalSelesai,
+        items: List<CartItem>.from(widget.items),
+      );
+      _showTopMessage(
+        'Pesanan masuk Riwayat sementara. Policy Supabase bookings perlu dicek.',
+      );
     }
 
     CartService().bersihkan();
