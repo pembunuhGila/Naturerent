@@ -35,6 +35,10 @@ class AuthService {
     required String namaLengkap,
     required String noWa,
     String? namaToko,
+    String? alamatToko,
+    String? kotaToko,
+    String? namaBank,
+    String? nomorRekening,
     required UserRole role,
   }) async {
     // 1. Daftarkan ke Supabase Auth
@@ -47,6 +51,10 @@ class AuthService {
         'no_wa': noWa,
         'role': _petaRole(role),
         'store_name': namaToko,
+        'store_address': alamatToko,
+        'store_city': kotaToko,
+        'bank_name': namaBank,
+        'bank_account': nomorRekening,
       },
     );
 

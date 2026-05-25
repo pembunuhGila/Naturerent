@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../shell/role_gate.dart';
@@ -60,6 +61,10 @@ class _LoginPageState extends State<LoginPage>
         password: _pwCtrl.text,
       );
       await AuthService().syncProfilSetelahLogin();
+      final role = await AuthService().ambilRolePengguna();
+      if (role == 'rental_owner') {
+        await RentalService().pastikanRentalSayaAda();
+      }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const RoleGate()),
