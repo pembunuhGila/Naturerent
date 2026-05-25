@@ -31,20 +31,32 @@ export default function EditPemilikRentalPage() {
       try {
         const { data: row, error: err } = await supabase
           .from('rental_profiles')
-          .select('*, users:owner_id(nama_lengkap, email, no_wa)')
-          .eq('id', id)
-          .single()
-        data = row
-        error = err
-      } catch (e) {
-        // Safe query in case relation structure is different
-        const { data: fallbackRow, error: fallbackErr } = await supabase
-          .from('rental_profiles')
           .select('*')
           .eq('id', id)
           .single()
-        data = fallbackRow
-        error = fallbackErr
+        
+        if (err || !row) {
+          error = err || new Error('Data tidak ditemukan.')
+        } else {
+          // Fetch user/owner info separately to avoid PostgREST join limitations
+          let userObj = null
+          if (row.owner_id) {
+            const { data: userData, error: userErr } = await supabase
+              .from('users')
+              .select('nama_lengkap, email, no_wa')
+              .eq('id', row.owner_id)
+              .maybeSingle()
+            if (!userErr && userData) {
+              userObj = userData
+            }
+          }
+          data = {
+            ...row,
+            users: userObj
+          }
+        }
+      } catch (e) {
+        error = e
       }
 
       if (error || !data) {
@@ -98,7 +110,6 @@ export default function EditPemilikRentalPage() {
       alamat: form.location.trim(),
       no_wa: form.phone.trim(),
       deskripsi: form.description.trim(),
-      commission_rate: form.commission_rate !== '' ? +form.commission_rate : null,
       is_active: form.is_active,
       updated_at: new Date().toISOString(),
     }).eq('id', id)

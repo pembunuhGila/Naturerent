@@ -36,7 +36,7 @@ export default function PemilikRentalPage() {
     try {
       let query = supabase
         .from('rental_profiles')
-        .select('*, users:owner_id(nama_lengkap, email, no_wa)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to)
 
@@ -46,27 +46,45 @@ export default function PemilikRentalPage() {
 
       const { data: rows, error, count } = await query
       if (error) {
-        // Fallback if join relation syntax differs
-        let simpleQuery = supabase
-          .from('rental_profiles')
-          .select('*', { count: 'exact' })
-          .order('created_at', { ascending: false })
-          .range(from, to)
-        if (searchTerm) {
-          simpleQuery = simpleQuery.or(`nama_rental.ilike.%${searchTerm}%,alamat.ilike.%${searchTerm}%`)
+        console.error('fetchData - rental_profiles error:', error)
+        addToast('Gagal memuat data: ' + error.message, 'error')
+      } else if (rows) {
+        console.log('fetchData - rows fetched:', rows)
+        // Fetch users/owners separately to ensure absolute robustness
+        const ownerIds = [...new Set(rows.map(r => r.owner_id).filter(Boolean))]
+        console.log('fetchData - extracted ownerIds:', ownerIds)
+        const userMap = {}
+        if (ownerIds.length > 0) {
+          const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, nama_lengkap, email, no_wa')
+            .in('id', ownerIds)
+          console.log('fetchData - usersData:', usersData)
+          if (usersError) {
+            console.error('fetchData - users query error:', usersError.message, usersError.code, usersError.details, usersError.hint)
+            addToast('Error Tabel Users: ' + usersError.message + ' (Code: ' + usersError.code + ')', 'error')
+          }
+          if (!usersError && usersData) {
+            usersData.forEach(u => {
+              userMap[u.id] = u
+            })
+          }
         }
-        const { data: simpleRows, error: simpleError, count: simpleCount } = await simpleQuery
-        if (simpleError) {
-          addToast('Gagal memuat data: ' + simpleError.message, 'error')
-        } else {
-          setData(simpleRows || [])
-          setTotalCount(simpleCount || 0)
-        }
-      } else {
-        setData(rows || [])
+
+        console.log('fetchData - userMap:', userMap)
+
+        const resolvedRows = rows.map(row => ({
+          ...row,
+          users: userMap[row.owner_id] || null
+        }))
+
+        console.log('fetchData - resolvedRows:', resolvedRows)
+
+        setData(resolvedRows)
         setTotalCount(count || 0)
       }
     } catch (e) {
+      console.error('fetchData - general catch error:', e)
       addToast('Gagal memuat data: ' + e.message, 'error')
     }
     setLoading(false)
@@ -165,12 +183,20 @@ export default function PemilikRentalPage() {
                      return (
                        <tr key={row.id}>
                          <td>
-                           <div className="rental-name">
-                             <div className={`rental-logo ${colorClasses[idx % colorClasses.length]}`}>
-                               {getInitials(rName)}
-                             </div>
-                             <span style={{ fontWeight: 600 }}>{rName}</span>
-                           </div>
+                            <div className="rental-name">
+                              <div className={`rental-logo ${colorClasses[idx % colorClasses.length]}`} style={{ overflow: 'hidden', padding: 0 }}>
+                                {row.foto_profil ? (
+                                  <img 
+                                    src={row.foto_profil} 
+                                    alt={rName} 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
+                                ) : (
+                                  getInitials(rName)
+                                )}
+                              </div>
+                              <span style={{ fontWeight: 600 }}>{rName}</span>
+                            </div>
                          </td>
                          <td>{oName}</td>
                          <td>
