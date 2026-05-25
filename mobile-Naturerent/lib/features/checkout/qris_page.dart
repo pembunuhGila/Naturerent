@@ -6,7 +6,7 @@ import '../../core/services/cart_service.dart';
 import '../../core/services/order_activity_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_toast.dart';
-import 'pesanan_detail_page.dart';
+import '../home/aktivitas_page.dart';
 
 class QrisPage extends StatefulWidget {
   final double total;
@@ -138,12 +138,10 @@ class _QrisPageState extends State<QrisPage> {
   }
 
   Future<void> _bukaDetailPesanan() async {
-    final items = List<CartItem>.from(widget.items);
-    String? nomorPesanan;
     setState(() => _isMenyimpanBooking = true);
 
     try {
-      final order = await OrderActivityService().buatBookingDariKeranjang(
+      await OrderActivityService().buatBookingDariKeranjang(
         namaRental: widget.namaRental,
         total: _totalAkhir,
         tanggalMulai: widget.tanggalMulai,
@@ -153,7 +151,6 @@ class _QrisPageState extends State<QrisPage> {
         taxRate: _taxPercent.toDouble(),
         dpPercent: _dpPercent.toDouble(),
       );
-      nomorPesanan = order.nomorPesanan;
     } catch (e) {
       if (!mounted) return;
       setState(() => _isMenyimpanBooking = false);
@@ -166,15 +163,7 @@ class _QrisPageState extends State<QrisPage> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => PesananDetailPage(
-          namaRental: widget.namaRental,
-          total: _totalAkhir,
-          tanggalMulai: widget.tanggalMulai,
-          tanggalSelesai: widget.tanggalSelesai,
-          items: items,
-          nomorPesanan: nomorPesanan,
-          statusLabel: 'MENUNGGU ADMIN',
-        ),
+        builder: (_) => const AktivitasPage(initialTab: 2),
       ),
       (route) => route.isFirst,
     );
