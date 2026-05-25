@@ -146,7 +146,7 @@ class _QrisPageState extends State<QrisPage> {
         total: _totalAkhir,
         tanggalMulai: widget.tanggalMulai,
         tanggalSelesai: widget.tanggalSelesai,
-        items: items,
+        items: List<CartItem>.from(widget.items),
         biayaLayanan: _tarifLayanan,
         taxRate: _taxPercent.toDouble(),
         dpPercent: _dpPercent.toDouble(),
