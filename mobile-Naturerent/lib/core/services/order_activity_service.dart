@@ -152,6 +152,29 @@ class OrderActivityService {
     return order;
   }
 
+  ActivityOrder tambahLokalPending({
+    required String namaRental,
+    required double total,
+    required DateTime tanggalMulai,
+    required DateTime tanggalSelesai,
+    required List<CartItem> items,
+  }) {
+    final order = ActivityOrder(
+      id: _buatUuidV4(),
+      nomorPesanan: _buatNomorPesanan(),
+      namaRental: namaRental,
+      total: total,
+      tanggalMulai: tanggalMulai,
+      tanggalSelesai: tanggalSelesai,
+      items: List<CartItem>.unmodifiable(items),
+      status: ActivityOrderStatus.pending,
+      createdAt: DateTime.now(),
+    );
+
+    orders.value = <ActivityOrder>[order, ...orders.value];
+    return order;
+  }
+
   Future<void> muatDariDatabase() async {
     final user = AuthService().penggunaSaatIni;
     if (user == null) {
