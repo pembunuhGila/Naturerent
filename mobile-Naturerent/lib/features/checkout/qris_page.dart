@@ -5,7 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/services/order_activity_service.dart';
 import '../../core/theme/app_theme.dart';
-import '../home/aktivitas_page.dart';
+import '../../core/widgets/nr_toast.dart';
+import 'pesanan_detail_page.dart';
 
 class QrisPage extends StatefulWidget {
   final double total;
@@ -124,13 +125,10 @@ class _QrisPageState extends State<QrisPage> {
       if (!opened) throw Exception('WhatsApp tidak bisa dibuka.');
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'WhatsApp gagal dibuka. Hubungi admin: $_nomorWaAdmin',
-          ),
-          backgroundColor: AppColors.error,
-        ),
+      NrToast.show(
+        context,
+        'WhatsApp gagal dibuka. Hubungi admin: $_nomorWaAdmin',
+        type: NrToastType.error,
       );
       return;
     }
@@ -141,10 +139,11 @@ class _QrisPageState extends State<QrisPage> {
 
   Future<void> _bukaDetailPesanan() async {
     final items = List<CartItem>.from(widget.items);
+    String? nomorPesanan;
     setState(() => _isMenyimpanBooking = true);
 
     try {
-      await OrderActivityService().buatBookingDariKeranjang(
+      final order = await OrderActivityService().buatBookingDariKeranjang(
         namaRental: widget.namaRental,
         total: _totalAkhir,
         tanggalMulai: widget.tanggalMulai,
@@ -154,15 +153,11 @@ class _QrisPageState extends State<QrisPage> {
         taxRate: _taxPercent.toDouble(),
         dpPercent: _dpPercent.toDouble(),
       );
+      nomorPesanan = order.nomorPesanan;
     } catch (e) {
       if (!mounted) return;
       setState(() => _isMenyimpanBooking = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Booking gagal disimpan: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      _showTopMessage('Booking gagal disimpan. Cek policy Supabase bookings.');
       return;
     }
 
@@ -171,10 +166,22 @@ class _QrisPageState extends State<QrisPage> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => const AktivitasPage(initialTab: 0),
+        builder: (_) => PesananDetailPage(
+          namaRental: widget.namaRental,
+          total: _totalAkhir,
+          tanggalMulai: widget.tanggalMulai,
+          tanggalSelesai: widget.tanggalSelesai,
+          items: items,
+          nomorPesanan: nomorPesanan,
+          statusLabel: 'MENUNGGU ADMIN',
+        ),
       ),
       (route) => route.isFirst,
     );
+  }
+
+  void _showTopMessage(String message) {
+    NrToast.show(context, message, type: NrToastType.error);
   }
 
   @override

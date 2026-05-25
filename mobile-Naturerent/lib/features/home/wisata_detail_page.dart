@@ -8,6 +8,7 @@ import '../../core/models/wisata_location.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../../core/widgets/nr_toast.dart';
 import '../equipment/equipment_list_page.dart';
 
 class WisataDetailPage extends StatefulWidget {
@@ -90,15 +91,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
+    NrToast.show(context, msg, type: NrToastType.info);
   }
 
   @override

@@ -8,6 +8,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_button.dart';
 import '../../core/widgets/nr_text_field.dart';
+import '../../core/widgets/nr_toast.dart';
 import '../shell/main_shell.dart';
 import 'login_page.dart';
 import 'onboarding_page.dart';
@@ -261,15 +262,7 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
+    NrToast.show(context, message, type: NrToastType.error);
   }
 
   void _showSuccessDialog() {

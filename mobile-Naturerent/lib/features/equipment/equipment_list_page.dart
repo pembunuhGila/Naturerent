@@ -6,6 +6,7 @@ import '../../core/models/rental_profile.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../../core/widgets/nr_toast.dart';
 import '../checkout/checkout_page.dart';
 import 'equipment_detail_page.dart';
 
@@ -129,25 +130,12 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                       ),
                       onSewa: () {
                         CartService().tambah(_alatFiltered[i], widget.rental);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('${_alatFiltered[i].nama} ditambahkan ke keranjang'),
-                          backgroundColor: AppColors.primaryDark,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                        NrToast.show(
+                          context,
+                          '${_alatFiltered[i].nama} ditambahkan ke keranjang',
+                          type: NrToastType.success,
                           duration: const Duration(seconds: 2),
-                          action: SnackBarAction(
-                            label: 'Lihat Keranjang',
-                            textColor: Colors.white,
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const CheckoutPage()),
-                            ),
-                          ),
-                        ));
+                        );
                       },
                     ),
                     childCount: _alatFiltered.length,

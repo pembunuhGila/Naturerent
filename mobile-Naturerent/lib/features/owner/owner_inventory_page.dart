@@ -5,6 +5,7 @@ import '../../core/models/rental_profile.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/nr_toast.dart';
 import 'owner_destination_data.dart';
 import 'owner_equipment_form_page.dart';
 import 'owner_edit_rental_page.dart';
@@ -92,15 +93,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   }
 
   void _comingSoon(String fitur) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$fitur segera hadir.'),
-        backgroundColor: const Color(0xFF18743A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
+    NrToast.show(context, '$fitur segera hadir.', type: NrToastType.info);
   }
 
   Future<void> _bukaTambahAlat() async {
@@ -115,12 +108,10 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
       } catch (e) {
         if (!mounted) return;
         setState(() => _preparingAdd = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyiapkan profil rental: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        NrToast.show(
+          context,
+          'Gagal menyiapkan profil rental: ${e.toString()}',
+          type: NrToastType.error,
         );
         return;
       }

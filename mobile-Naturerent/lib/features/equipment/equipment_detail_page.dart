@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/equipment.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../../core/widgets/nr_toast.dart';
 
 class EquipmentDetailPage extends StatefulWidget {
   final String equipmentId;
@@ -409,15 +410,10 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
             onPressed: bisa
                 ? () {
                     // TODO: navigasi ke halaman buat booking
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${alat.nama} ditambahkan ke pesanan'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
+                    NrToast.show(
+                      context,
+                      '${alat.nama} ditambahkan ke pesanan',
+                      type: NrToastType.success,
                     );
                   }
                 : null,

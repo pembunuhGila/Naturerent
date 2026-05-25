@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../../core/widgets/nr_toast.dart';
 import '../equipment/equipment_list_page.dart';
 import '../home/aktivitas_page.dart';
 
@@ -92,13 +93,7 @@ class _RentalPageState extends State<RentalPage> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: AppColors.primary,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    ));
+    NrToast.show(context, msg, type: NrToastType.info);
   }
 
   /// Hitung jarak km dari wisata ke rental (jika koordinat tersedia)

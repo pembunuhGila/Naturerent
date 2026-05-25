@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/models/equipment.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/nr_toast.dart';
 
 class OwnerEquipmentFormPage extends StatefulWidget {
   final Equipment? equipment;
@@ -127,12 +128,10 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal memilih/memangkas foto: ${e.toString()}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      NrToast.show(
+        context,
+        'Gagal memilih/memangkas foto: ${e.toString()}',
+        type: NrToastType.error,
       );
     }
   }
@@ -244,26 +243,20 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isEdit
-                ? 'Peralatan berhasil diperbarui.'
-                : 'Alat baru berhasil ditambahkan.',
-          ),
-          backgroundColor: _green,
-          behavior: SnackBarBehavior.floating,
-        ),
+      NrToast.show(
+        context,
+        widget.isEdit
+            ? 'Peralatan berhasil diperbarui.'
+            : 'Alat baru berhasil ditambahkan.',
+        type: NrToastType.success,
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menyimpan peralatan: ${e.toString()}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+      NrToast.show(
+        context,
+        'Gagal menyimpan peralatan: ${e.toString()}',
+        type: NrToastType.error,
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -296,12 +289,10 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
               } catch (e) {
                 if (!mounted) return;
                 setState(() => _isSaving = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Gagal menghapus peralatan: ${e.toString()}'),
-                    backgroundColor: AppColors.error,
-                    behavior: SnackBarBehavior.floating,
-                  ),
+                NrToast.show(
+                  context,
+                  'Gagal menghapus peralatan: ${e.toString()}',
+                  type: NrToastType.error,
                 );
               }
             },

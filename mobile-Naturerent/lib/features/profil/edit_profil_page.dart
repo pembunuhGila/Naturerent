@@ -8,6 +8,7 @@ import '../../core/models/rental_profile.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/rental_service.dart';
+import '../../core/widgets/nr_toast.dart';
 
 class EditProfilPage extends StatefulWidget {
   /// Nama & avatarUrl yang sudah ada (dari ProfilPage)
@@ -531,13 +532,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: const Color(0xFF18743A),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    ));
+    NrToast.show(context, msg, type: NrToastType.info);
   }
 
   // ──────────────────────────────────────────────────────────

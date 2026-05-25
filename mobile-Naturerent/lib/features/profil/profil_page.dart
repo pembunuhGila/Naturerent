@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/widgets/nr_toast.dart';
 import '../auth/login_page.dart';
 import '../auth/onboarding_page.dart';
 import '../home/aktivitas_page.dart';
@@ -222,13 +223,11 @@ class _ProfilPageState extends State<ProfilPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoggingOut = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Gagal logout: ${e.toString()}'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ));
+      NrToast.show(
+        context,
+        'Gagal logout: ${e.toString()}',
+        type: NrToastType.error,
+      );
     }
   }
 
@@ -543,14 +542,12 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   void _snack(String pesan) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(pesan),
-      backgroundColor: const Color(0xFF18743A),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    NrToast.show(
+      context,
+      pesan,
+      type: NrToastType.info,
       duration: const Duration(seconds: 2),
-    ));
+    );
   }
 
   void _bukaOwnerTab(int index, String fallbackLabel) {

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../../core/widgets/nr_toast.dart';
 import 'date_picker_sheet.dart';
 import 'qris_page.dart';
 
@@ -89,13 +90,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: AppColors.primaryDark,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    ));
+    NrToast.show(context, msg, type: NrToastType.info);
   }
 
   @override

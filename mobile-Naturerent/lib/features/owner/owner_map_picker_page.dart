@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/nr_toast.dart';
 
 /// Halaman peta interaktif untuk memilih titik lokasi rental.
 /// Mengembalikan [LatLng] yang dipilih user, atau null jika dibatalkan.
@@ -104,13 +105,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
 
   void _snackError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: AppColors.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    ));
+    NrToast.show(context, msg, type: NrToastType.error);
   }
 
   // ─────────────────────────────────────────────────────

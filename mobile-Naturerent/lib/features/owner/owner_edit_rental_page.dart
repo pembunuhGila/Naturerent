@@ -9,6 +9,7 @@ import '../../core/models/wisata_location.dart';
 import '../../core/services/destination_suggestion_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/nr_toast.dart';
 import 'owner_destination_data.dart';
 import 'owner_map_picker_page.dart';
 
@@ -334,28 +335,16 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
 
   void _snackSuccess(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: const Color(0xFF18743A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
+    NrToast.show(context, msg, type: NrToastType.success);
   }
 
   void _snackError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        duration: const Duration(seconds: 4),
-      ),
+    NrToast.show(
+      context,
+      msg,
+      type: NrToastType.error,
+      duration: const Duration(seconds: 4),
     );
   }
 
