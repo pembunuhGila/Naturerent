@@ -32,41 +32,73 @@ export default function TransaksiDetailPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setUserEmail(user?.email || '')
-      const { data: row } = await supabase.from('bookings').select('*').eq('id', id).single()
-      if (row) {
-        let userName = 'Pengguna'
-        let userEmailStr = '-'
-        let userPhoneStr = '-'
-        if (row.customer_id) {
-          try {
-            const { data: userData } = await supabase.from('users').select('nama_lengkap, email, no_wa').eq('id', row.customer_id).single()
-            if (userData) {
-              userName = userData.nama_lengkap || 'Pengguna'
-              userEmailStr = userData.email || '-'
-              userPhoneStr = userData.no_wa || '-'
-            }
-          } catch (_) {}
+      
+      let finalData = null
+      try {
+        const { data: row } = await supabase.from('bookings').select('*').eq('id', id).single()
+        if (row) {
+          let userName = 'Pengguna'
+          let userEmailStr = '-'
+          let userPhoneStr = '-'
+          if (row.customer_id) {
+            try {
+              const { data: userData } = await supabase.from('users').select('nama_lengkap, email, no_wa').eq('id', row.customer_id).single()
+              if (userData) {
+                userName = userData.nama_lengkap || 'Pengguna'
+                userEmailStr = userData.email || '-'
+                userPhoneStr = userData.no_wa || '-'
+              }
+            } catch (_) {}
+          }
+          finalData = {
+            ...row,
+            user_name: userName,
+            user_email: userEmailStr,
+            user_phone: userPhoneStr,
+            rental_name: row.rental_name || 'Peralatan Camping',
+            owner_name: row.owner_name || 'Mitra NatureRent',
+            total_amount: row.total || row.total_amount || 0,
+            payment_method: row.payment_method || 'QRIS',
+            start_date: row.start_date || row.created_at,
+            end_date: row.end_date || row.created_at,
+            notes: row.notes || '-'
+          }
         }
-        setData({
-          ...row,
-          user_name: userName,
-          user_email: userEmailStr,
-          user_phone: userPhoneStr,
-          rental_name: 'Peralatan Camping',
-          owner_name: 'Mitra NatureRent',
-          total_amount: row.total || row.total_amount || 0,
-          payment_method: row.payment_method || 'QRIS',
-          start_date: row.start_date || row.created_at,
-          end_date: row.end_date || row.created_at,
-          notes: row.notes || '-'
-        })
-      } else {
-        setData(null)
+      } catch (e) {
+        console.error('Database fetch error:', e)
       }
+
+      // Fallback to mock data if database is empty/not found
+      if (!finalData) {
+        const fallbackTransactions = [
+          { id: 'TRX-20250526-001', created_at: '2025-05-26T10:30:00Z', user_name: 'Budi Santoso', user_email: 'budi@gmail.com', user_phone: '081234567890', rental_name: 'Summit Gear Rental', total_amount: 250000, status: 'Selesai', payment_method: 'QRIS', start_date: '2025-05-27T08:00:00Z', end_date: '2025-05-29T17:00:00Z', notes: 'Minta tenda warna hijau' },
+          { id: 'TRX-20250526-002', created_at: '2025-05-26T09:15:00Z', user_name: 'Siti Aisyah', user_email: 'siti@gmail.com', user_phone: '081234567891', rental_name: 'Green Valley Glamping', total_amount: 350000, status: 'Selesai', payment_method: 'Transfer Bank', start_date: '2025-05-28T10:00:00Z', end_date: '2025-05-30T12:00:00Z', notes: 'Sewa matras ekstra' },
+          { id: 'TRX-20250525-003', created_at: '2025-05-25T16:45:00Z', user_name: 'Rizky Pratama', user_email: 'rizky@gmail.com', user_phone: '081234567892', rental_name: 'Lembah Pinus Outdoor', total_amount: 150000, status: 'Proses', payment_method: 'QRIS', start_date: '2025-05-26T07:00:00Z', end_date: '2025-05-27T18:00:00Z', notes: '-' },
+          { id: 'TRX-20250525-004', created_at: '2025-05-25T14:20:00Z', user_name: 'Dewi Lestari', user_email: 'dewi@gmail.com', user_phone: '081234567893', rental_name: 'Summit Gear Rental', total_amount: 450000, status: 'Selesai', payment_method: 'QRIS', start_date: '2025-05-26T09:00:00Z', end_date: '2025-05-29T12:00:00Z', notes: 'Tenda dipastikan bersih' },
+          { id: 'TRX-20250524-005', created_at: '2025-05-24T11:05:00Z', user_name: 'Andi Wijaya', user_email: 'andi@gmail.com', user_phone: '081234567894', rental_name: 'Setyawan Martin', total_amount: 300000, status: 'Bermasalah', payment_method: 'Transfer Bank', start_date: '2025-05-25T08:00:00Z', end_date: '2025-05-26T17:00:00Z', notes: 'Kompor lipat tidak nyala' },
+          { id: 'TRX-20250524-006', created_at: '2025-05-24T10:12:00Z', user_name: 'Nina Kartika', user_email: 'nina@gmail.com', user_phone: '081234567895', rental_name: 'Ijen Adventure', total_amount: 200000, status: 'Selesai', payment_method: 'QRIS', start_date: '2025-05-25T08:00:00Z', end_date: '2025-05-26T17:00:00Z', notes: '-' },
+          { id: 'TRX-20250523-007', created_at: '2025-05-23T17:30:00Z', user_name: 'Fajar Ramadhan', user_email: 'fajar@gmail.com', user_phone: '081234567896', rental_name: 'Lembah Pinus Outdoor', total_amount: 175000, status: 'Proses', payment_method: 'QRIS', start_date: '2025-05-24T08:00:00Z', end_date: '2025-05-26T12:00:00Z', notes: 'Butuh extra nesting' },
+          { id: 'TRX-20250523-008', created_at: '2025-05-23T09:45:00Z', user_name: 'Maya Sari', user_email: 'maya@gmail.com', user_phone: '081234567897', rental_name: 'Green Valley Glamping', total_amount: 275000, status: 'Selesai', payment_method: 'QRIS', start_date: '2025-05-24T08:00:00Z', end_date: '2025-05-26T17:00:00Z', notes: '-' }
+        ]
+        const matched = fallbackTransactions.find(t => t.id === id)
+        if (matched) {
+          finalData = {
+            ...matched,
+            owner_name: 'Mitra NatureRent'
+          }
+        }
+      }
+      
+      setData(finalData)
       setLoading(false)
     }
     fetch()
   }, [id])
+
+  const handleDownloadInvoice = () => {
+    if (!data) return
+    window.open(`/transaksi/${data.id}/invoice`, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <div className="dashboard-container">
@@ -127,7 +159,7 @@ export default function TransaksiDetailPage() {
                 <button className="btn btn-ghost" onClick={() => router.push('/transaksi')}>
                   <i className="fa-solid fa-arrow-left" /> Kembali
                 </button>
-                <button className="btn btn-primary" onClick={() => window.print()}>
+                <button className="btn btn-primary" onClick={handleDownloadInvoice}>
                   <i className="fa-solid fa-download" /> Download
                 </button>
               </div>

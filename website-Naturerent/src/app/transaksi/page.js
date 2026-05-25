@@ -37,22 +37,31 @@ export default function TransaksiPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('Semua Status')
   const [ownerFilter, setOwnerFilter] = useState('Semua Pemilik')
+  const [ownerOptions, setOwnerOptions] = useState(['Semua Pemilik'])
   const [userEmail, setUserEmail] = useState('')
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
-  const fetchData = useCallback(async (q = '', status = 'Semua Status', currentPage = 1) => {
+  const fetchData = useCallback(async (q = '', status = 'Semua Status', owner = 'Semua Pemilik', currentPage = 1) => {
     setLoading(true)
     const supabase = createClient()
     const from = (currentPage - 1) * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
     try {
-      let query = supabase
-        .from('bookings')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to)
+      let query
+      if (owner !== 'Semua Pemilik') {
+        query = supabase
+          .from('bookings')
+          .select('*, rental_profiles!inner(nama_rental)', { count: 'exact' })
+          .eq('rental_profiles.nama_rental', owner)
+      } else {
+        query = supabase
+          .from('bookings')
+          .select('*, rental_profiles(nama_rental)', { count: 'exact' })
+      }
+
+      query = query.order('created_at', { ascending: false }).range(from, to)
 
       if (status !== 'Semua Status') {
         query = query.ilike('status', status)
@@ -81,8 +90,15 @@ export default function TransaksiPage() {
         if (status !== 'Semua Status') {
           filtered = filtered.filter(item => item.status.toLowerCase() === status.toLowerCase())
         }
+        if (owner !== 'Semua Pemilik') {
+          filtered = filtered.filter(item => item.rental_name.toLowerCase() === owner.toLowerCase())
+        }
         if (q) {
-          filtered = filtered.filter(item => item.id.toLowerCase().includes(q.toLowerCase()) || item.user_name.toLowerCase().includes(q.toLowerCase()))
+          filtered = filtered.filter(item => 
+            item.id.toLowerCase().includes(q.toLowerCase()) || 
+            item.user_name.toLowerCase().includes(q.toLowerCase()) ||
+            item.rental_name.toLowerCase().includes(q.toLowerCase())
+          )
         }
 
         setData(filtered.slice(from, to + 1))
@@ -117,8 +133,8 @@ export default function TransaksiPage() {
           return {
             ...r,
             user_name: userMap[r.customer_id] || 'Pengguna',
-            rental_name: r.rental_name || fallbackRentals[index % fallbackRentals.length],
-            total_amount: r.total || r.total_amount || 0
+            rental_name: r.rental_profiles?.nama_rental || r.rental_name || fallbackRentals[index % fallbackRentals.length],
+            total_amount: r.total_bayar || r.subtotal || r.total || r.total_amount || 0
           }
         })
 
@@ -136,15 +152,39 @@ export default function TransaksiPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setUserEmail(user?.email || '')
+
+      // Dynamically load all owners from DB and merge with mock rentals
+      try {
+        const { data: rentals } = await supabase.from('rental_profiles').select('nama_rental')
+        const mockRentals = [
+          'Summit Gear Rental',
+          'Green Valley Glamping',
+          'Lembah Pinus Outdoor',
+          'Setyawan Martin',
+          'Ijen Adventure'
+        ]
+        const dbRentals = rentals ? rentals.map(r => r.nama_rental).filter(Boolean) : []
+        const uniqueRentals = [...new Set(['Semua Pemilik', ...dbRentals, ...mockRentals])]
+        setOwnerOptions(uniqueRentals)
+      } catch (e) {
+        console.error('Error fetching dynamic rental owners:', e)
+      }
     }
     init()
-    fetchData(search, statusFilter, page)
+  }, [])
+
+  useEffect(() => {
+    fetchData(search, statusFilter, ownerFilter, page)
   }, [page])
 
   const handleSearch = (e) => {
     e.preventDefault()
     setPage(1)
-    fetchData(search, statusFilter, 1)
+    fetchData(search, statusFilter, ownerFilter, 1)
+  }
+
+  const handleDownloadInvoice = (trxId) => {
+    window.open(`/transaksi/${trxId}/invoice`, '_blank', 'noopener,noreferrer')
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
@@ -196,12 +236,13 @@ export default function TransaksiPage() {
               <select 
                 className="filter-select"
                 value={ownerFilter}
-                onChange={e => setOwnerFilter(e.target.value)}
+                onChange={e => {
+                  setOwnerFilter(e.target.value);
+                  setPage(1);
+                  fetchData(search, statusFilter, e.target.value, 1);
+                }}
               >
-                <option>Semua Pemilik</option>
-                <option>Summit Gear Rental</option>
-                <option>Green Valley Glamping</option>
-                <option>Lembah Pinus Outdoor</option>
+                {ownerOptions.map(o => <option key={o}>{o}</option>)}
               </select>
               <button type="submit" className="filter-btn">
                 <i className="fa-solid fa-filter" /> Filter
@@ -257,7 +298,11 @@ export default function TransaksiPage() {
                           >
                             <i className="fa-solid fa-eye" />
                           </button>
-                          <button className="action-btn download-btn" title="Unduh Invoice">
+                          <button 
+                            className="action-btn download-btn" 
+                            title="Unduh Invoice"
+                            onClick={() => handleDownloadInvoice(row.id)}
+                          >
                             <i className="fa-solid fa-file-invoice" />
                           </button>
                         </div>
