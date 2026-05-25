@@ -124,13 +124,13 @@ export default function KomisiPage() {
           {/* Pengaturan Pengurangan Komisi Card */}
           <div className="form-section" style={{ maxWidth: '100%', padding: '28px', marginBottom: '8px' }}>
             <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1f2937', marginBottom: 6 }}>Pengaturan Pengurangan Komisi</h2>
-              <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>Konfigurasikan berapa banyak yang ditahan platform dari setiap transaksi penyewaan.</p>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Pengaturan Pengurangan Komisi</h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Konfigurasikan berapa banyak yang ditahan platform dari setiap transaksi penyewaan.</p>
             </div>
             
             <form onSubmit={handleSave}>
               <div className="form-group" style={{ marginBottom: 24 }}>
-                <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Persentase Komisi Standar</label>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Persentase Komisi Standar</label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <input
                     type="number"
@@ -141,13 +141,13 @@ export default function KomisiPage() {
                     required
                     style={{ paddingRight: '40px', fontWeight: 600 }}
                   />
-                  <span style={{ position: 'absolute', right: '16px', fontWeight: 700, color: '#9ca3af', pointerEvents: 'none' }}>%</span>
+                  <span style={{ position: 'absolute', right: '16px', fontWeight: 700, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
                 </div>
-                <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: 8 }}>Tarif ini berlaku untuk semua kategori penyewaan peralatan.</p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 8 }}>Tarif ini berlaku untuk semua kategori penyewaan peralatan.</p>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: 20 }}>
-                <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#0f5a33', padding: '12px 24px' }} disabled={saving}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: 20 }}>
+                <button type="submit" className="btn btn-primary" style={{ backgroundColor: 'var(--brand-green)', padding: '12px 24px' }} disabled={saving}>
                   {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>
@@ -158,10 +158,10 @@ export default function KomisiPage() {
           <div className="table-wrapper" style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '24px' }}>
               <div>
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1f2937', marginBottom: 6 }}>History Komisi</h2>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>Catatan waktu nyata dari semua potongan platform dan pembagian transaksi.</p>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>History Komisi</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Catatan waktu nyata dari semua potongan platform dan pembagian transaksi.</p>
               </div>
-              <button className="action-btn" style={{ border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8, color: '#374151', borderRadius: '6px' }}>
+              <button className="action-btn" style={{ border: '1px solid var(--border-color)', padding: '8px 12px', fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', backgroundColor: 'var(--bg-card)', borderRadius: '6px' }}>
                 <i className="fa-solid fa-filter" /> Filter
               </button>
             </div>
@@ -188,25 +188,25 @@ export default function KomisiPage() {
                   const comm = row.gross_amount * (commissionRate / 100)
                   return (
                     <tr key={row.id}>
-                      <td style={{ fontWeight: 700, color: '#0f7a3c' }}>#{row.id}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>#{row.id}</td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, color: '#111827' }}>
-                          <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#e8eef5', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
                             <i className="fa-solid fa-user" />
                           </div>
                           <span>{row.rental_name}</span>
                         </div>
                       </td>
                       <td>{formatCurrency(row.gross_amount)}</td>
-                      <td style={{ fontWeight: 700, color: '#0f7a3c' }}>{formatCurrency(comm)}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>{formatCurrency(comm)}</td>
                       <td>
                         <span className={`badge ${row.status === 'Lunas' ? 'badge-success' : 'badge-warning'}`}>
                           {row.status}
                         </span>
                       </td>
-                      <td style={{ fontSize: 13, lineHeight: '1.4', color: '#334155' }}>
+                      <td style={{ fontSize: 13, lineHeight: '1.4', color: 'var(--text-primary)' }}>
                         <div style={{ fontWeight: 500 }}>{formatDate(row.created_at)}</div>
-                        <div style={{ color: '#9ca3af', fontSize: 11 }}>{formatTime(row.created_at)}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{formatTime(row.created_at)}</div>
                       </td>
                     </tr>
                   )
@@ -216,8 +216,8 @@ export default function KomisiPage() {
 
             {/* Pagination */}
             {!loading && totalCount > 0 && (
-              <div className="pagination-section" style={{ backgroundColor: '#fbfcfe', borderTop: '1px solid #e5e7eb' }}>
-                <p className="pagination-info" style={{ color: '#64748b' }}>
+              <div className="pagination-section" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
+                <p className="pagination-info" style={{ color: 'var(--text-secondary)' }}>
                   Menampilkan 1-{data.length} dari {totalCount} transaksi
                 </p>
                 <div className="pagination">

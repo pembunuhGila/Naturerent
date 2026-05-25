@@ -279,7 +279,7 @@ export default function TransaksiPage() {
                 <tbody>
                   {data.map(row => (
                     <tr key={row.id}>
-                      <td className="transaction-id" style={{ fontWeight: 600, color: 'var(--brand-green)' }}>{row.id}</td>
+                      <td className="transaction-id" style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{row.id}</td>
                       <td style={{ fontSize: 13, lineHeight: '1.4' }}>
                         <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{formatDateOnly(row.created_at || row.transaction_date)}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{formatTimeOnly(row.created_at || row.transaction_date)}</div>
@@ -287,7 +287,7 @@ export default function TransaksiPage() {
                       <td style={{ fontWeight: 600 }}>{row.user_name || '-'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{row.rental_name || '-'}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(row.total_amount || row.total)}</td>
-                      <td style={{ fontWeight: 600, color: 'var(--brand-green)' }}>{formatCurrency((row.total_amount || row.total) * 0.1)}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{formatCurrency((row.total_amount || row.total) * 0.1)}</td>
                       <td>{statusBadge(row.status)}</td>
                       <td>
                         <div className="action-cell">
