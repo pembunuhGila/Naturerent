@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/services/order_activity_service.dart';
+import '../../core/services/payment_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../home/aktivitas_page.dart';
@@ -32,31 +32,43 @@ class QrisPage extends StatefulWidget {
 class _QrisPageState extends State<QrisPage> {
   // Countdown 15 menit
   static const _durasi = Duration(minutes: 15);
-  static const _qrisImageUrl = '';
-  static const _tarifLayanan = 5000.0;
-  static const _tarifPajak = 0.10;
   static const _tarifDp = 0.3;
+
   final _picker = ImagePicker();
   late int _sisaDetik;
   Timer? _timer;
   bool _isMenyimpanBooking = false;
+  PlatformSettings? _settings;
+  bool _loadingSettings = true;
 
+  // ── Kalkulasi harga ─────────────────────────────────────────────────────
+  double get _biayaLayanan => (_settings?.biayaLayanan ?? 2000).toDouble();
   double get _subtotalSewa => widget.total;
   double get _dp => _subtotalSewa * _tarifDp;
   double get _sisaSewa => _subtotalSewa * (1 - _tarifDp);
-  double get _pajak => _subtotalSewa * _tarifPajak;
-  double get _biayaAplikasi => _tarifLayanan + _pajak;
-  double get _pelunasan => _sisaSewa + _tarifLayanan + _pajak;
-  double get _totalAkhir => _subtotalSewa + _tarifLayanan + _pajak;
+  // Biaya layanan dibayar bersama DP
+  double get _dpDibayarSekarang => _dp + _biayaLayanan;
+  // Pelunasan saat pengembalian (biaya layanan sudah dibayar)
+  double get _pelunasan => _sisaSewa;
+  double get _totalAkhir => _subtotalSewa + _biayaLayanan;
   int get _dpPercent => (_tarifDp * 100).round();
   int get _sisaPercent => 100 - _dpPercent;
-  int get _taxPercent => (_tarifPajak * 100).round();
 
   @override
   void initState() {
     super.initState();
     _sisaDetik = _durasi.inSeconds;
     _mulaiTimer();
+    _muatPlatformSettings();
+  }
+
+  Future<void> _muatPlatformSettings() async {
+    try {
+      final s = await PaymentService().ambilPlatformSettings();
+      if (mounted) setState(() { _settings = s; _loadingSettings = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingSettings = false);
+    }
   }
 
   void _mulaiTimer() {
@@ -143,8 +155,8 @@ class _QrisPageState extends State<QrisPage> {
         tanggalMulai: widget.tanggalMulai,
         tanggalSelesai: widget.tanggalSelesai,
         items: List<CartItem>.from(widget.items),
-        biayaLayanan: _tarifLayanan,
-        taxRate: _taxPercent.toDouble(),
+        biayaLayanan: _biayaLayanan,
+        taxRate: 0,
         dpPercent: _dpPercent.toDouble(),
         paymentProofBytes: paymentProofBytes,
         paymentProofExtension: paymentProofExtension,
@@ -363,14 +375,14 @@ class _QrisPageState extends State<QrisPage> {
                             ),
                             child: Column(
                               children: [
-                                Text('DP DIBAYAR SEKARANG',
+                                Text('DIBAYAR SEKARANG (DP + Layanan)',
                                     style: AppTextStyles.caption.copyWith(
                                         color: AppColors.textHint,
                                         letterSpacing: 0.8,
                                         fontSize: 10)),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _fmtRupiah(_dp),
+                                  _loadingSettings ? '...' : _fmtRupiah(_dpDibayarSekarang),
                                   style: AppTextStyles.displayLarge.copyWith(
                                     color: AppColors.primaryDark,
                                     fontWeight: FontWeight.w800,
@@ -401,10 +413,10 @@ class _QrisPageState extends State<QrisPage> {
                           ...[
                             '1. Buka aplikasi e-wallet atau m-banking',
                             '2. Pilih menu Scan QR / QRIS',
-                            '3. Bayar DP $_dpPercent% sebesar ${_fmtRupiah(_dp)}',
+                            '3. Scan QR dan bayar ${_fmtRupiah(_dpDibayarSekarang)} (DP $_dpPercent% + biaya layanan)',
                             '4. Screenshot atau simpan bukti pembayaran',
-                            '5. Upload foto bukti pembayaran lewat tombol bawah',
-                            '6. Pesanan masuk Riwayat untuk menunggu verifikasi admin',
+                            '5. Upload foto bukti lewat tombol di bawah',
+                            '6. Pesanan masuk Riwayat menunggu verifikasi admin',
                           ].map((s) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
@@ -480,14 +492,14 @@ class _QrisPageState extends State<QrisPage> {
   }
 
   Widget _buildQrisImage() {
-    const imageUrl = _qrisImageUrl;
-    final url = imageUrl.isEmpty
+    final qrisUrl = _settings?.qrisImageUrl;
+    final url = (qrisUrl == null || qrisUrl.isEmpty)
         ? 'https://api.qrserver.com/v1/create-qr-code/'
             '?size=200x200'
-            '&data=NatureRent-DP-${widget.namaRental}-${_dp.toInt()}'
+            '&data=NatureRent-${widget.namaRental}-${_dpDibayarSekarang.toInt()}'
             '&color=1B3A2D'
             '&bgcolor=FFFFFF'
-        : imageUrl;
+        : qrisUrl;
 
     return Image.network(
       url,
@@ -534,18 +546,19 @@ class _QrisPageState extends State<QrisPage> {
       child: Column(
         children: [
           _InfoRow(label: 'Subtotal sewa', value: _fmtRupiah(_subtotalSewa)),
-          _InfoRow(label: 'DP $_dpPercent%', value: _fmtRupiah(_dp), isStrong: true),
-          _InfoRow(label: 'Sisa $_sisaPercent%', value: _fmtRupiah(_sisaSewa)),
-          const Divider(height: 18, color: AppColors.border),
+          _InfoRow(label: 'Biaya layanan', value: _loadingSettings ? '...' : _fmtRupiah(_biayaLayanan)),
+          const Divider(height: 14, color: AppColors.border),
+          _InfoRow(label: 'Total keseluruhan',
+              value: _loadingSettings ? '...' : _fmtRupiah(_totalAkhir), isStrong: true),
+          const Divider(height: 14, color: AppColors.border),
           _InfoRow(
-            label: 'Biaya aplikasi',
-            value: _fmtRupiah(_biayaAplikasi),
-          ),
-          const Divider(height: 18, color: AppColors.border),
-          _InfoRow(
-            label: 'Dibayar saat pengembalian',
-            value: _fmtRupiah(_pelunasan),
+            label: 'Bayar sekarang (DP $_dpPercent% + layanan)',
+            value: _loadingSettings ? '...' : _fmtRupiah(_dpDibayarSekarang),
             isStrong: true,
+          ),
+          _InfoRow(
+            label: 'Pelunasan $_sisaPercent% (saat pengembalian)',
+            value: _fmtRupiah(_pelunasan),
           ),
         ],
       ),
