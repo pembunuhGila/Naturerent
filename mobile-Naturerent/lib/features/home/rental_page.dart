@@ -7,8 +7,8 @@ import '../../core/models/rental_profile.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
+import '../checkout/checkout_page.dart';
 import '../equipment/equipment_list_page.dart';
-import '../home/aktivitas_page.dart';
 
 class RentalPage extends StatefulWidget {
   /// Jika [wisataId] diisi, hanya tampilkan rental dekat wisata tersebut.
@@ -197,25 +197,30 @@ class _RentalPageState extends State<RentalPage> {
           Expanded(
             child: Text(
               'Pilih Tempat Rental',
-              style: AppTextStyles.headlineLarge
-                  .copyWith(color: AppColors.textPrimary, fontSize: 20),
+              style: AppTextStyles.headlineLarge.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+              ),
             ),
           ),
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const AktivitasPage(initialTab: 0)),
+              MaterialPageRoute(builder: (_) => const CheckoutPage()),
             ),
             child: Container(
-              width: 38, height: 38,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Icon(Icons.notifications_none_rounded,
-                  color: AppColors.textPrimary, size: 18),
+              child: const Icon(
+                Icons.shopping_bag_outlined,
+                color: AppColors.textPrimary,
+                size: 18,
+              ),
             ),
           ),
         ],
