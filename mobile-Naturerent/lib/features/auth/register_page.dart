@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,11 +36,11 @@ class _RegisterPageState extends State<RegisterPage>
   bool _isLoading = false;
   bool _googleLoading = false;
   bool _agreedToTerms = false;
-  File? _ktpFile;
-  File? _fotoProfilTokoFile;
-  File? _fotoKtpOwnerFile;
-  File? _fotoNpwpFile;
-  File? _fotoNibFile;
+  _PickedImage? _ktpImage;
+  _PickedImage? _fotoProfilTokoImage;
+  _PickedImage? _fotoKtpOwnerImage;
+  _PickedImage? _fotoNpwpImage;
+  _PickedImage? _fotoNibImage;
   String? _selectedKota;
   String? _selectedBank;
   StreamSubscription? _authSub;
@@ -103,7 +103,9 @@ class _RegisterPageState extends State<RegisterPage>
   Future<void> _pilihKtp() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (picked != null) {
-      setState(() => _ktpFile = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() => _ktpImage = _PickedImage.fromXFile(picked, bytes));
     }
   }
 
@@ -114,20 +116,22 @@ class _RegisterPageState extends State<RegisterPage>
     );
     if (picked == null) return;
 
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    final image = _PickedImage.fromXFile(picked, bytes);
     setState(() {
-      final file = File(picked.path);
       switch (type) {
         case _OwnerUploadType.profile:
-          _fotoProfilTokoFile = file;
+          _fotoProfilTokoImage = image;
           break;
         case _OwnerUploadType.ktp:
-          _fotoKtpOwnerFile = file;
+          _fotoKtpOwnerImage = image;
           break;
         case _OwnerUploadType.npwp:
-          _fotoNpwpFile = file;
+          _fotoNpwpImage = image;
           break;
         case _OwnerUploadType.nib:
-          _fotoNibFile = file;
+          _fotoNibImage = image;
           break;
       }
     });
@@ -140,19 +144,19 @@ class _RegisterPageState extends State<RegisterPage>
       return;
     }
     if (widget.role == UserRole.pemilik) {
-      if (_fotoProfilTokoFile == null) {
+      if (_fotoProfilTokoImage == null) {
         _showError('Foto profil toko wajib diupload.');
         return;
       }
-      if (_fotoKtpOwnerFile == null) {
+      if (_fotoKtpOwnerImage == null) {
         _showError('Foto KTP wajib diupload.');
         return;
       }
-      if (_fotoNpwpFile == null) {
+      if (_fotoNpwpImage == null) {
         _showError('Foto NPWP wajib diupload.');
         return;
       }
-      if (_fotoNibFile == null) {
+      if (_fotoNibImage == null) {
         _showError('Foto NIB wajib diupload.');
         return;
       }
@@ -179,14 +183,16 @@ class _RegisterPageState extends State<RegisterPage>
         if (!mounted) return;
         _showMitraSuccessDialog();
       } else if (response.session != null) {
-        if (_ktpFile != null && response.user != null) {
+        if (_ktpImage != null && response.user != null) {
           try {
             final uid = response.user!.id;
-            final ext = _ktpFile!.path.split('.').last.toLowerCase();
+            final ext = _ktpImage!.extension;
             final path = 'ktp-docs/$uid.$ext';
-            final bytes = await _ktpFile!.readAsBytes();
             await AuthService.client.storage.from('ktp-docs').uploadBinary(
-                  path, bytes, fileOptions: const FileOptions(upsert: true));
+                  path,
+                  _ktpImage!.bytes,
+                  fileOptions: const FileOptions(upsert: true),
+                );
             final url = AuthService.client.storage
                 .from('ktp-docs')
                 .getPublicUrl(path);
@@ -394,11 +400,15 @@ class _RegisterPageState extends State<RegisterPage>
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
-        child: _ktpFile == null
+        child: _ktpImage == null
             ? const Center(child: Icon(Icons.add_a_photo_outlined, color: AppColors.textHint))
             : ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(_ktpFile!, fit: BoxFit.cover, width: double.infinity),
+                child: Image.memory(
+                  _ktpImage!.bytes,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
               ),
       ),
     );
@@ -611,7 +621,7 @@ class _RegisterPageState extends State<RegisterPage>
               _OwnerUploadButton(
                 label: 'Foto Profil Toko',
                 buttonText: 'Upload Foto Profil',
-                file: _fotoProfilTokoFile,
+                image: _fotoProfilTokoImage,
                 onTap: () => _pickOwnerImage(_OwnerUploadType.profile),
               ),
             ],
@@ -623,21 +633,21 @@ class _RegisterPageState extends State<RegisterPage>
               _OwnerUploadButton(
                 label: 'Foto KTP',
                 buttonText: 'Upload Foto KTP',
-                file: _fotoKtpOwnerFile,
+                image: _fotoKtpOwnerImage,
                 onTap: () => _pickOwnerImage(_OwnerUploadType.ktp),
               ),
               const SizedBox(height: 16),
               _OwnerUploadButton(
                 label: 'Foto NPWP',
                 buttonText: 'Upload Foto NPWP',
-                file: _fotoNpwpFile,
+                image: _fotoNpwpImage,
                 onTap: () => _pickOwnerImage(_OwnerUploadType.npwp),
               ),
               const SizedBox(height: 16),
               _OwnerUploadButton(
                 label: 'Foto NIB',
                 buttonText: 'Upload Foto NIB',
-                file: _fotoNibFile,
+                image: _fotoNibImage,
                 onTap: () => _pickOwnerImage(_OwnerUploadType.nib),
               ),
             ],
@@ -1087,6 +1097,31 @@ class _RegisterPageState extends State<RegisterPage>
 
 enum _OwnerUploadType { profile, ktp, npwp, nib }
 
+class _PickedImage {
+  final String name;
+  final Uint8List bytes;
+
+  const _PickedImage({
+    required this.name,
+    required this.bytes,
+  });
+
+  factory _PickedImage.fromXFile(XFile file, Uint8List bytes) {
+    final fallbackName = file.path.split('/').last.split(r'\').last;
+    return _PickedImage(
+      name: file.name.isNotEmpty ? file.name : fallbackName,
+      bytes: bytes,
+    );
+  }
+
+  String get extension {
+    final parts = name.split('.');
+    if (parts.length < 2) return 'jpg';
+    final ext = parts.last.toLowerCase();
+    return ext.isEmpty ? 'jpg' : ext;
+  }
+}
+
 class _BrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -1348,19 +1383,19 @@ class _MitraDropdownField extends StatelessWidget {
 class _OwnerUploadButton extends StatelessWidget {
   final String label;
   final String buttonText;
-  final File? file;
+  final _PickedImage? image;
   final VoidCallback onTap;
 
   const _OwnerUploadButton({
     required this.label,
     required this.buttonText,
-    required this.file,
+    required this.image,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fileName = file?.path.split(Platform.pathSeparator).last;
+    final fileName = image?.name;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1385,7 +1420,7 @@ class _OwnerUploadButton extends StatelessWidget {
               color: const Color(0xFFF2F4F1),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: file == null
+                color: image == null
                     ? const Color(0xFFE0E5DE)
                     : const Color(0xFF18743A),
               ),
@@ -1412,7 +1447,7 @@ class _OwnerUploadButton extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: file == null
+                      color: image == null
                           ? const Color(0xFF496171)
                           : const Color(0xFF25302A),
                       fontSize: 15,
@@ -1420,12 +1455,12 @@ class _OwnerUploadButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (file != null) ...[
+                if (image != null) ...[
                   const SizedBox(width: 10),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.file(
-                      file!,
+                    child: Image.memory(
+                      image!.bytes,
                       width: 42,
                       height: 42,
                       fit: BoxFit.cover,
