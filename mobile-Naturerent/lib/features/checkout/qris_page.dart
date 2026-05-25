@@ -34,7 +34,7 @@ class _QrisPageState extends State<QrisPage> {
   static const _nomorWaAdmin = '6285334772234';
   static const _qrisImageUrl = '';
   static const _tarifLayanan = 5000.0;
-  static const _tarifPajak = 0.11;
+  static const _tarifPajak = 0.10;
   static const _tarifDp = 0.3;
   late int _sisaDetik;
   Timer? _timer;
@@ -44,6 +44,7 @@ class _QrisPageState extends State<QrisPage> {
   double get _dp => _subtotalSewa * _tarifDp;
   double get _sisaSewa => _subtotalSewa * (1 - _tarifDp);
   double get _pajak => _subtotalSewa * _tarifPajak;
+  double get _biayaAplikasi => _tarifLayanan + _pajak;
   double get _pelunasan => _sisaSewa + _tarifLayanan + _pajak;
   double get _totalAkhir => _subtotalSewa + _tarifLayanan + _pajak;
   int get _dpPercent => (_tarifDp * 100).round();
@@ -112,8 +113,7 @@ class _QrisPageState extends State<QrisPage> {
       'Subtotal sewa: ${_fmtRupiah(_subtotalSewa)}\n'
       'DP $_dpPercent% dibayar: ${_fmtRupiah(_dp)}\n'
       'Sisa $_sisaPercent%: ${_fmtRupiah(_sisaSewa)}\n'
-      'Biaya layanan: ${_fmtRupiah(_tarifLayanan)}\n'
-      'Pajak total sewa $_taxPercent%: ${_fmtRupiah(_pajak)}\n'
+      'Biaya aplikasi: ${_fmtRupiah(_biayaAplikasi)}\n'
       'Pelunasan saat pengembalian: ${_fmtRupiah(_pelunasan)}\n'
       'Total akhir: ${_fmtRupiah(_totalAkhir)}\n\n'
       'Saya akan kirim bukti pembayaran di chat ini.',
@@ -521,10 +521,9 @@ class _QrisPageState extends State<QrisPage> {
           _InfoRow(label: 'Sisa $_sisaPercent%', value: _fmtRupiah(_sisaSewa)),
           const Divider(height: 18, color: AppColors.border),
           _InfoRow(
-            label: 'Biaya layanan',
-            value: _fmtRupiah(_tarifLayanan),
+            label: 'Biaya aplikasi',
+            value: _fmtRupiah(_biayaAplikasi),
           ),
-          _InfoRow(label: 'Pajak total sewa $_taxPercent%', value: _fmtRupiah(_pajak)),
           const Divider(height: 18, color: AppColors.border),
           _InfoRow(
             label: 'Dibayar saat pengembalian',

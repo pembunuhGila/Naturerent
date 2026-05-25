@@ -382,7 +382,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       _TimelineStep(
         icon: Icons.payments_rounded,
         title: 'Pelunasan saat pengembalian',
-        subtitle: 'Bayar sisa 70% sewa beserta biaya layanan dan pajak aplikasi pada ${_fmtTgl(widget.tanggalSelesai)}.',
+        subtitle: 'Bayar sisa 70% sewa beserta biaya aplikasi pada ${_fmtTgl(widget.tanggalSelesai)}.',
         isDone: false,
         isActive: false,
       ),
