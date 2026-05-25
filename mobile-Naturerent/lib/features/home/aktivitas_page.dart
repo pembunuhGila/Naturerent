@@ -28,6 +28,7 @@ class _AktivitasPageState extends State<AktivitasPage>
       vsync: this,
       initialIndex: widget.initialTab,
     );
+    OrderActivityService().muatDariDatabase();
   }
 
   @override
@@ -180,7 +181,7 @@ class _TabPesananAktif extends StatelessWidget {
       valueListenable: OrderActivityService().orders,
       builder: (context, orders, _) {
         final aktif = orders
-            .where((order) => order.status == ActivityOrderStatus.aktif)
+            .where(_isActiveOrder)
             .toList(growable: false);
 
         if (aktif.isEmpty) {
@@ -236,7 +237,7 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final waiting = order.status == ActivityOrderStatus.menungguAcc;
+    final waiting = order.status == ActivityOrderStatus.pending;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -273,7 +274,7 @@ class _NotificationCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    waiting ? 'Menunggu ACC Rental' : 'Pesanan Aktif',
+                    waiting ? 'Menunggu Verifikasi' : _statusDetailLabel(order.status),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w800,
@@ -292,7 +293,7 @@ class _NotificationCard extends StatelessWidget {
                   Text(
                     waiting
                         ? 'Bukti DP sudah dikirim. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
-                        : 'Pemilik rental sudah ACC. Alat sedang diproses.',
+                        : _statusDescription(order.status),
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.35,
@@ -456,14 +457,22 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = switch (status) {
-      ActivityOrderStatus.menungguAcc => 'MENUNGGU',
-      ActivityOrderStatus.aktif => 'AKTIF',
-      ActivityOrderStatus.selesai => 'SELESAI',
+      ActivityOrderStatus.pending => 'PENDING',
+      ActivityOrderStatus.confirmed => 'ACC',
+      ActivityOrderStatus.processing => 'PROSES',
+      ActivityOrderStatus.rented => 'AKTIF',
+      ActivityOrderStatus.returned => 'KEMBALI',
+      ActivityOrderStatus.completed => 'SELESAI',
+      ActivityOrderStatus.cancelled => 'BATAL',
     };
     final color = switch (status) {
-      ActivityOrderStatus.menungguAcc => const Color(0xFFF59E0B),
-      ActivityOrderStatus.aktif => AppColors.primary,
-      ActivityOrderStatus.selesai => AppColors.success,
+      ActivityOrderStatus.pending => const Color(0xFFF59E0B),
+      ActivityOrderStatus.confirmed => AppColors.primary,
+      ActivityOrderStatus.processing => AppColors.primary,
+      ActivityOrderStatus.rented => AppColors.primary,
+      ActivityOrderStatus.returned => AppColors.textSecondary,
+      ActivityOrderStatus.completed => AppColors.success,
+      ActivityOrderStatus.cancelled => AppColors.error,
     };
 
     return Container(
@@ -561,9 +570,39 @@ void _openOrderDetail(BuildContext context, ActivityOrder order) {
 
 String _statusDetailLabel(ActivityOrderStatus status) {
   return switch (status) {
-    ActivityOrderStatus.menungguAcc => 'MENUNGGU ADMIN',
-    ActivityOrderStatus.aktif => 'PESANAN AKTIF',
-    ActivityOrderStatus.selesai => 'SELESAI',
+    ActivityOrderStatus.pending => 'MENUNGGU ADMIN',
+    ActivityOrderStatus.confirmed => 'SUDAH ACC',
+    ActivityOrderStatus.processing => 'DIPROSES',
+    ActivityOrderStatus.rented => 'PESANAN AKTIF',
+    ActivityOrderStatus.returned => 'DIKEMBALIKAN',
+    ActivityOrderStatus.completed => 'SELESAI',
+    ActivityOrderStatus.cancelled => 'BATAL',
+  };
+}
+
+String _statusDescription(ActivityOrderStatus status) {
+  return switch (status) {
+    ActivityOrderStatus.pending =>
+      'Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.',
+    ActivityOrderStatus.confirmed =>
+      'Pemilik rental sudah ACC. Pesanan siap diproses.',
+    ActivityOrderStatus.processing =>
+      'Peralatan sedang disiapkan oleh pemilik rental.',
+    ActivityOrderStatus.rented =>
+      'Pesanan sedang aktif. Jangan lupa pelunasan saat pengembalian.',
+    ActivityOrderStatus.returned =>
+      'Alat sudah dikembalikan dan menunggu penyelesaian.',
+    ActivityOrderStatus.completed => 'Pesanan selesai.',
+    ActivityOrderStatus.cancelled => 'Pesanan dibatalkan.',
+  };
+}
+
+bool _isActiveOrder(ActivityOrder order) {
+  return switch (order.status) {
+    ActivityOrderStatus.confirmed ||
+    ActivityOrderStatus.processing ||
+    ActivityOrderStatus.rented => true,
+    _ => false,
   };
 }
 
