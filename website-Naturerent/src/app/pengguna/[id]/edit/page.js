@@ -7,11 +7,14 @@ import { createClient } from '@/lib/supabase'
 
 export default function EditPenggunaPage() {
   const router = useRouter()
-  const params = useParams()
-  const { id } = params
+  const { id } = useParams()
   const { toasts, addToast, removeToast } = useToast()
 
-  const [form, setForm] = useState({ name: '', email: '', phone: '', is_active: true })
+  const [form, setForm] = useState({
+    nama_lengkap: '',
+    email: '',
+    no_wa: '',
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
@@ -31,10 +34,9 @@ export default function EditPenggunaPage() {
         return
       }
       setForm({
-        name: data.nama_lengkap || data.name || '',
-        email: data.email || 'customer@naturerent.com',
-        phone: data.no_wa || data.phone || '',
-        is_active: data.is_active !== false
+        nama_lengkap: data.nama_lengkap || data.name || '',
+        email: data.email || '',
+        no_wa: data.no_wa || data.phone || '',
       })
       setLoading(false)
     }
@@ -43,9 +45,7 @@ export default function EditPenggunaPage() {
 
   const validate = () => {
     const e = {}
-    if (!form.name.trim()) e.name = 'Nama wajib diisi.'
-    if (!form.email.trim()) e.email = 'Email wajib diisi.'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Format email tidak valid.'
+    if (!form.nama_lengkap.trim()) e.nama_lengkap = 'Nama wajib diisi.'
     return e
   }
 
@@ -59,21 +59,28 @@ export default function EditPenggunaPage() {
     }
     setErrors({})
     setSaving(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('users').update({
-      nama_lengkap: form.name.trim(),
-      no_wa: form.phone.trim(),
-      is_active: form.is_active,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-    setSaving(false)
 
-    if (error) {
-      addToast('Gagal menyimpan perubahan: ' + error.message, 'error')
-    } else {
-      addToast('Data pengguna berhasil diperbarui!', 'success')
-      setTimeout(() => router.push('/pengguna'), 1200)
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nama_lengkap: form.nama_lengkap.trim(),
+          no_wa: form.no_wa.trim(),
+          updated_at: new Date().toISOString(),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        addToast('Gagal menyimpan perubahan: ' + (json.error || 'Unknown error'), 'error')
+      } else {
+        addToast('Data pengguna berhasil diperbarui!', 'success')
+        setTimeout(() => router.push('/pengguna'), 1200)
+      }
+    } catch (e) {
+      addToast('Gagal menyimpan perubahan: ' + e.message, 'error')
     }
+    setSaving(false)
   }
 
   if (loading) {
@@ -107,7 +114,7 @@ export default function EditPenggunaPage() {
         </header>
 
         <section className="content-section">
-          <form className="form-section" onSubmit={handleSubmit}>
+          <form className="form-section" onSubmit={handleSubmit} style={{ maxWidth: 640 }}>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Nama Lengkap <span style={{ color: 'var(--accent-red)' }}>*</span></label>
@@ -115,47 +122,35 @@ export default function EditPenggunaPage() {
                   className="form-input"
                   type="text"
                   placeholder="Nama lengkap pengguna"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  style={errors.name ? { borderColor: 'var(--accent-red)' } : {}}
+                  value={form.nama_lengkap}
+                  onChange={e => setForm({ ...form, nama_lengkap: e.target.value })}
+                  style={errors.nama_lengkap ? { borderColor: 'var(--accent-red)' } : {}}
                 />
-                {errors.name && <p style={{ color: 'var(--accent-red)', fontSize: 12, marginTop: 4 }}>{errors.name}</p>}
+                {errors.nama_lengkap && <p style={{ color: 'var(--accent-red)', fontSize: 12, marginTop: 4 }}>{errors.nama_lengkap}</p>}
               </div>
               <div className="form-group">
-                <label className="form-label">Alamat Email <span style={{ color: 'var(--accent-red)' }}>*</span></label>
+                <label className="form-label">Alamat Email</label>
                 <input
                   className="form-input"
                   type="email"
-                  placeholder="email@contoh.com"
                   value={form.email}
                   disabled
-                  style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                  style={{ opacity: 0.55, cursor: 'not-allowed', background: 'var(--bg-secondary)' }}
                 />
-                <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>Email tidak dapat diubah.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>Email tidak dapat diubah di sini.</p>
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Nomor HP</label>
+                <label className="form-label">Nomor HP / WhatsApp</label>
                 <input
                   className="form-input"
                   type="tel"
                   placeholder="08xxxxxxxxxx"
-                  value={form.phone}
-                  onChange={e => setForm({ ...form, phone: e.target.value })}
+                  value={form.no_wa}
+                  onChange={e => setForm({ ...form, no_wa: e.target.value })}
                 />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Status Akun</label>
-                <select
-                  className="form-select"
-                  value={form.is_active ? 'aktif' : 'nonaktif'}
-                  onChange={e => setForm({ ...form, is_active: e.target.value === 'aktif' })}
-                >
-                  <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </select>
               </div>
             </div>
 

@@ -7,6 +7,7 @@ const navItems = [
   { href: '/dashboard',       icon: 'fa-table-cells-large',  label: 'Dashboard' },
   { href: '/komisi',          icon: 'fa-cube',               label: 'Komisi' },
   { href: '/pemilik-rental',  icon: 'fa-user-group',         label: 'Pemilik Rental' },
+  { href: '/pengguna',        icon: 'fa-users',              label: 'Pengguna' },
   { href: '/transaksi',       icon: 'fa-chart-line',         label: 'Transaksi' },
   { href: '/settings',        icon: 'fa-gear',               label: 'System Settings' },
 ]
