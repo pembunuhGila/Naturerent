@@ -37,6 +37,7 @@ class _QrisPageState extends State<QrisPage> {
   static const _tarifDp = 0.3;
   late int _sisaDetik;
   Timer? _timer;
+  bool _isMenyimpanBooking = false;
 
   double get _subtotalSewa => widget.total;
   double get _dp => _subtotalSewa * _tarifDp;
@@ -135,20 +136,39 @@ class _QrisPageState extends State<QrisPage> {
     }
 
     if (!mounted) return;
-    _bukaDetailPesanan();
+    await _bukaDetailPesanan();
   }
 
-  void _bukaDetailPesanan() {
+  Future<void> _bukaDetailPesanan() async {
     final items = List<CartItem>.from(widget.items);
-    OrderActivityService().tambahMenungguAcc(
-      namaRental: widget.namaRental,
-      total: _totalAkhir,
-      tanggalMulai: widget.tanggalMulai,
-      tanggalSelesai: widget.tanggalSelesai,
-      items: items,
-    );
+    setState(() => _isMenyimpanBooking = true);
+
+    try {
+      await OrderActivityService().buatBookingDariKeranjang(
+        namaRental: widget.namaRental,
+        total: _totalAkhir,
+        tanggalMulai: widget.tanggalMulai,
+        tanggalSelesai: widget.tanggalSelesai,
+        items: items,
+        biayaLayanan: _tarifLayanan,
+        taxRate: _taxPercent.toDouble(),
+        dpPercent: _dpPercent.toDouble(),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isMenyimpanBooking = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Booking gagal disimpan: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     CartService().bersihkan();
 
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => const AktivitasPage(initialTab: 0),
@@ -389,19 +409,29 @@ class _QrisPageState extends State<QrisPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _kirimBuktiPembayaran,
+                  onPressed:
+                      _isMenyimpanBooking ? null : _kirimBuktiPembayaran,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryDark,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
-                  child: Text('Kirim Bukti via WhatsApp',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      )),
+                  child: _isMenyimpanBooking
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text('Kirim Bukti via WhatsApp',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          )),
                 ),
               ),
               const SizedBox(height: 12),
