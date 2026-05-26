@@ -87,6 +87,10 @@ class OrderActivityService {
     Uint8List? paymentProofBytes,
     String paymentProofExtension = 'jpg',
     String paymentProofContentType = 'image/jpeg',
+    bool isDelivery = false,
+    double deliveryFee = 0,
+    Map<String, double>? deliveryFeesByRentalId,
+    double? deliveryDistanceKm,
   }) async {
     final user = AuthService().penggunaSaatIni;
     if (user == null) throw Exception('Silakan login ulang sebelum membayar.');
@@ -110,6 +114,8 @@ class OrderActivityService {
     for (var i = 0; i < grouped.length; i++) {
       final group = grouped[i];
       final subtotal = group.subtotalPerHari * durasi;
+      final groupDeliveryFee = deliveryFeesByRentalId?[group.rental.id] ??
+          (i == 0 ? deliveryFee : 0);
       final data = await AuthService.client
           .from('bookings')
           .insert({
@@ -120,7 +126,8 @@ class OrderActivityService {
             'subtotal': subtotal,
             'tax_rate': taxRate,
             'biaya_layanan': i == 0 ? biayaLayanan : 0,
-            'biaya_kirim': 0,
+            'tipe_pengiriman': isDelivery ? 'delivery' : 'self_pickup',
+            'biaya_kirim': isDelivery ? groupDeliveryFee : 0,
             'status': 'pending',
             'booking_code': nomorPesanan,
             'payment_group_id': paymentGroupId,
@@ -128,7 +135,9 @@ class OrderActivityService {
             'payment_method': 'qris',
             'payment_status': 'dp_under_review',
             'payment_proof_url': proofUrl,
-            'catatan': 'Bukti DP diupload melalui aplikasi NatureRent.',
+            'catatan': isDelivery
+                ? 'Bukti DP diupload melalui aplikasi NatureRent. Delivery ${deliveryDistanceKm?.toStringAsFixed(1) ?? '-'} km.'
+                : 'Bukti DP diupload melalui aplikasi NatureRent.',
           })
           .select('id, total_bayar')
           .single();
