@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/cart_service.dart';
+import '../../core/services/payment_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 import 'date_picker_sheet.dart';
+import 'delivery_location_page.dart';
 import 'qris_page.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -20,12 +22,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
   DateTime? _tanggalMulai;
   DateTime? _tanggalSelesai;
   int _metodeAmbil = 0; // 0 = Self Pickup, 1 = Delivery
+  int _biayaLayanan = 2000; // default lokal, diupdate dari DB
+  DeliveryLocationResult? _deliveryResult;
 
   // ─── Durasi (hari)
   int get _durasi {
     if (_tanggalMulai == null || _tanggalSelesai == null) return 0;
     final hari = _tanggalSelesai!.difference(_tanggalMulai!).inDays;
     return hari <= 0 ? 1 : hari;
+  }
+
+  double get _biayaDelivery =>
+      _metodeAmbil == 1 ? (_deliveryResult?.totalFee ?? 0) : 0;
+
+  double get _totalCheckout {
+    final subtotal = _durasi > 0 ? _cart.totalBayar(_durasi) : _cart.totalPerHari;
+    return subtotal + _biayaLayanan + _biayaDelivery;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _muatBiayaLayanan();
+  }
+
+  Future<void> _muatBiayaLayanan() async {
+    try {
+      final s = await PaymentService().ambilPlatformSettings();
+      if (mounted) setState(() => _biayaLayanan = s.biayaLayanan);
+    } catch (_) {}
   }
 
   // ─── Format helpers
@@ -64,7 +89,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   // ─── Bayar
-  void _bayar() {
+  Future<void> _bayar() async {
     if (_cart.items.isEmpty) {
       _snack('Keranjang kosong. Tambah alat terlebih dahulu.');
       return;
@@ -73,10 +98,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _snack('Pilih rentang tanggal sewa terlebih dahulu.');
       return;
     }
+
+    DeliveryLocationResult? deliveryResult;
+    if (_metodeAmbil == 1) {
+      deliveryResult = await Navigator.push<DeliveryLocationResult>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DeliveryLocationPage(
+            groups: _cart.groupedByRental,
+          ),
+        ),
+      );
+      if (deliveryResult == null) return;
+      if (!mounted) return;
+      setState(() => _deliveryResult = deliveryResult);
+    }
+
+    if (!mounted) return;
+    _bukaQris(deliveryResult ?? _deliveryResult);
+  }
+
+  void _bukaQris(DeliveryLocationResult? deliveryResult) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => QrisPage(
+          // Kirim subtotal saja; QrisPage akan tambahkan biaya_layanan via PaymentService
           total: _cart.totalBayar(_durasi),
           namaRental: _cart.groupedByRental.length == 1
               ? _cart.groupedByRental.first.rental.namaRental
@@ -84,6 +131,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
           tanggalMulai: _tanggalMulai!,
           tanggalSelesai: _tanggalSelesai!,
           items: List<CartItem>.from(_cart.items),
+          isDelivery: _metodeAmbil == 1,
+          deliveryFee: _metodeAmbil == 1 ? (deliveryResult?.totalFee ?? 0) : 0,
+          deliveryDistanceKm:
+              _metodeAmbil == 1 ? deliveryResult?.totalDistanceKm : null,
+          deliveryFeesByRentalId:
+              _metodeAmbil == 1 ? deliveryResult?.feesByRentalId : null,
         ),
       ),
     );
@@ -226,18 +279,48 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           icon: Icons.store_rounded,
                           judul: 'Self Pickup',
                           subjudul: 'Ambil langsung di basecamp',
-                          onTap: () =>
-                              setState(() => _metodeAmbil = 0),
+                          onTap: () => setState(() {
+                            _metodeAmbil = 0;
+                            _deliveryResult = null;
+                          }),
                         ),
                         const Divider(height: 1, color: AppColors.border),
                         _MetodeRow(
                           isSelected: _metodeAmbil == 1,
                           icon: Icons.delivery_dining_rounded,
                           judul: 'Delivery',
-                          subjudul: 'Kirim ke lokasi Anda',
-                          onTap: () =>
-                              setState(() => _metodeAmbil = 1),
+                          subjudul:
+                              'Kirim ke lokasi Anda, ongkir Rp 2.000/km setelah 5 km',
+                          onTap: () => setState(() => _metodeAmbil = 1),
                         ),
+                        if (_metodeAmbil == 1 && _deliveryResult != null) ...[
+                          const Divider(height: 1, color: AppColors.border),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on_rounded,
+                                    color: AppColors.primary, size: 18),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Jarak dicek: ${_deliveryResult!.totalDistanceKm.toStringAsFixed(1)} km',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  _fmtRupiah(_deliveryResult!.totalFee),
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.primaryDark,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -245,7 +328,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                   // ── Metode Pembayaran
                   _buildSection(
-                    header: Text('Metode\nPembayaran',
+                    header: Text('Metode Pembayaran',
                         style: AppTextStyles.headlineMedium
                             .copyWith(fontWeight: FontWeight.w700)),
                     child: _MetodeRow(
@@ -277,14 +360,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           isHighlight: false,
                         ),
                         const SizedBox(height: 8),
-                        // Item breakdown
+                        // Item breakdown per rental
                         ..._cart.groupedByRental.expand(
                           (group) => [
                             _BiayaRow(
                               label: group.rental.namaRental,
                               value: _durasi > 0
-                                  ? _fmtRupiah(
-                                      group.subtotalPerHari * _durasi)
+                                  ? _fmtRupiah(group.subtotalPerHari * _durasi)
                                   : _fmtRupiah(group.subtotalPerHari),
                               isHighlight: true,
                             ),
@@ -300,6 +382,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        // Biaya layanan (dari platform_settings)
+                        _BiayaRow(
+                          label: 'Biaya layanan',
+                          value: _fmtRupiah(_biayaLayanan.toDouble()),
+                          isHighlight: false,
+                        ),
+                        if (_metodeAmbil == 1)
+                          _BiayaRow(
+                            label: _deliveryResult == null
+                                ? 'Delivery (cek lokasi saat pembayaran)'
+                                : 'Delivery (${_deliveryResult!.totalDistanceKm.toStringAsFixed(1)} km)',
+                            value: _deliveryResult == null
+                                ? 'Cek lokasi'
+                                : _fmtRupiah(_biayaDelivery),
+                            isHighlight: false,
+                          ),
                         const SizedBox(height: 12),
                         const Divider(height: 1, color: AppColors.border),
                         const SizedBox(height: 12),
@@ -313,11 +412,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.5)),
                             Text(
-                              _durasi > 0
-                                  ? _fmtRupiah(
-                                      _cart.totalBayar(_durasi))
-                                  : _fmtRupiah(
-                                      _cart.totalPerHari),
+                              _fmtRupiah(_totalCheckout),
                               style: AppTextStyles.displayLarge.copyWith(
                                 color: AppColors.primaryDark,
                                 fontWeight: FontWeight.w800,
@@ -573,8 +668,7 @@ class _ItemSewaRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.equipment.namaKategori?.toUpperCase() ??
-                      'TENTS',
+                  item.equipment.namaKategori?.toUpperCase() ?? 'ALAT',
                   style: AppTextStyles.caption.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w700,
@@ -634,8 +728,7 @@ class _MetodeRow extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color:
-                      isSelected ? AppColors.primary : AppColors.border,
+                  color: isSelected ? AppColors.primary : AppColors.border,
                   width: 2,
                 ),
               ),
@@ -655,18 +748,24 @@ class _MetodeRow extends StatelessWidget {
             const SizedBox(width: 12),
             Icon(icon, color: AppColors.primary, size: 20),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(judul,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary)),
-                if (subjudul != null)
-                  Text(subjudul!,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(judul,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                  if (subjudul != null)
+                    Text(
+                      subjudul!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textSecondary)),
-              ],
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
