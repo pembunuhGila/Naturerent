@@ -20,6 +20,7 @@ export default function PemilikRentalPage() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -49,17 +50,16 @@ export default function PemilikRentalPage() {
         console.error('fetchData - rental_profiles error:', error)
         addToast('Gagal memuat data: ' + error.message, 'error')
       } else if (rows) {
-        console.log('fetchData - rows fetched:', rows)
         // Fetch users/owners separately to ensure absolute robustness
         const ownerIds = [...new Set(rows.map(r => r.owner_id).filter(Boolean))]
-        console.log('fetchData - extracted ownerIds:', ownerIds)
+        const rentalIds = rows.map(r => r.id).filter(Boolean)
         const userMap = {}
+        const productCountMap = {}
         if (ownerIds.length > 0) {
           const { data: usersData, error: usersError } = await supabase
             .from('users')
             .select('id, nama_lengkap, email, no_wa')
             .in('id', ownerIds)
-          console.log('fetchData - usersData:', usersData)
           if (usersError) {
             console.error('fetchData - users query error:', usersError.message, usersError.code, usersError.details, usersError.hint)
             addToast('Error Tabel Users: ' + usersError.message + ' (Code: ' + usersError.code + ')', 'error')
@@ -71,14 +71,29 @@ export default function PemilikRentalPage() {
           }
         }
 
-        console.log('fetchData - userMap:', userMap)
+        if (rentalIds.length > 0) {
+          const { data: equipmentData, error: equipmentError } = await supabase
+            .from('equipment')
+            .select('rental_id')
+            .in('rental_id', rentalIds)
+
+          if (equipmentError) {
+            console.error('fetchData - equipment query error:', equipmentError.message, equipmentError.code, equipmentError.details, equipmentError.hint)
+            addToast('Error Tabel Equipment: ' + equipmentError.message + ' (Code: ' + equipmentError.code + ')', 'error')
+          }
+          if (!equipmentError && equipmentData) {
+            equipmentData.forEach(item => {
+              if (!item.rental_id) return
+              productCountMap[item.rental_id] = (productCountMap[item.rental_id] || 0) + 1
+            })
+          }
+        }
 
         const resolvedRows = rows.map(row => ({
           ...row,
-          users: userMap[row.owner_id] || null
+          users: userMap[row.owner_id] || null,
+          product_count: productCountMap[row.id] ?? row.product_count ?? 0
         }))
-
-        console.log('fetchData - resolvedRows:', resolvedRows)
 
         setData(resolvedRows)
         setTotalCount(count || 0)
@@ -88,7 +103,7 @@ export default function PemilikRentalPage() {
       addToast('Gagal memuat data: ' + e.message, 'error')
     }
     setLoading(false)
-  }, [])
+  }, [addToast])
 
   useEffect(() => {
     const init = async () => {
@@ -97,13 +112,16 @@ export default function PemilikRentalPage() {
       setUserEmail(user?.email || '')
     }
     init()
-    fetchData(search, page)
-  }, [page])
+    const timer = setTimeout(() => {
+      fetchData(appliedSearch, page)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [appliedSearch, fetchData, page])
 
   const handleSearch = (e) => {
     e.preventDefault()
     setPage(1)
-    fetchData(search, 1)
+    setAppliedSearch(search)
   }
 
   const handleDeleteConfirm = async () => {
