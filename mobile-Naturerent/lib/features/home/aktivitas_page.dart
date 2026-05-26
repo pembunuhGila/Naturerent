@@ -72,23 +72,7 @@ class _AktivitasPageState extends State<AktivitasPage>
                       fontSize: 20,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _tabCtrl.animateTo(0),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_none_rounded,
-                        color: AppColors.textPrimary,
-                        size: 18,
-                      ),
-                    ),
-                  ),
+                  const SizedBox(width: 20),
                 ],
               ),
             ),
