@@ -11,7 +11,7 @@ class NrToast {
     BuildContext context,
     String message, {
     NrToastType type = NrToastType.info,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(milliseconds: 1800),
   }) {
     final media = MediaQuery.of(context);
     final overlay = Overlay.of(context);
