@@ -124,6 +124,13 @@ class _LoginPageState extends State<LoginPage>
     NrToast.show(context, message, type: NrToastType.error);
   }
 
+  void _kembaliKeLoginAwal() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const OnboardingPage()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -157,6 +164,11 @@ class _LoginPageState extends State<LoginPage>
               key: _formKey,
               child: Column(
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildBackButton(),
+                  ),
+                  const SizedBox(height: 12),
                   _BrandMark(color: _config.accentColor, centered: true),
                   const SizedBox(height: 28),
                   Text(
@@ -315,7 +327,7 @@ class _LoginPageState extends State<LoginPage>
 
   Widget _buildBackButton() {
     return GestureDetector(
-      onTap: () => Navigator.pop(context),
+      onTap: _kembaliKeLoginAwal,
       child: Container(
         width: 38,
         height: 38,
