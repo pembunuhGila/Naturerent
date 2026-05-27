@@ -15,8 +15,31 @@ function formatDate(dateStr) {
 }
 
 const statusBadge = (status) => {
-  const map = { 'Selesai': 'badge-success', 'Proses': 'badge-warning', 'Ditolak': 'badge-danger' }
-  return <span className={`badge ${map[status] || 'badge-blue'}`}>{status}</span>
+  const labelMap = {
+    pending: 'Menunggu Verifikasi',
+    confirmed: 'ACC',
+    processing: 'Diproses',
+    rented: 'Aktif',
+    returned: 'Dikembalikan',
+    completed: 'Selesai',
+    cancelled: 'Batal',
+    Selesai: 'Selesai',
+    Proses: 'Diproses',
+    Ditolak: 'Ditolak',
+  }
+  const colorMap = {
+    pending: 'badge-warning',
+    confirmed: 'badge-success',
+    processing: 'badge-warning',
+    rented: 'badge-blue',
+    returned: 'badge-blue',
+    completed: 'badge-success',
+    cancelled: 'badge-danger',
+    Selesai: 'badge-success',
+    Proses: 'badge-warning',
+    Ditolak: 'badge-danger',
+  }
+  return <span className={`badge ${colorMap[status] || 'badge-blue'}`}>{labelMap[status] || status}</span>
 }
 
 export default function TransaksiDetailPage() {
@@ -24,6 +47,7 @@ export default function TransaksiDetailPage() {
   const { id } = useParams()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
@@ -35,7 +59,11 @@ export default function TransaksiDetailPage() {
       
       let finalData = null
       try {
-        const { data: row } = await supabase.from('bookings').select('*').eq('id', id).single()
+        const { data: row } = await supabase
+          .from('bookings')
+          .select('*, rental_profiles(nama_rental, owner_id, alamat)')
+          .eq('id', id)
+          .single()
         if (row) {
           let userName = 'Pengguna'
           let userEmailStr = '-'
@@ -55,13 +83,14 @@ export default function TransaksiDetailPage() {
             user_name: userName,
             user_email: userEmailStr,
             user_phone: userPhoneStr,
-            rental_name: row.rental_name || 'Peralatan Camping',
+            rental_name: row.rental_profiles?.nama_rental || row.rental_name || 'Peralatan Camping',
             owner_name: row.owner_name || 'Mitra NatureRent',
-            total_amount: row.total || row.total_amount || 0,
+            total_amount: row.total_bayar || row.total || row.total_amount || row.subtotal || 0,
             payment_method: row.payment_method || 'QRIS',
-            start_date: row.start_date || row.created_at,
-            end_date: row.end_date || row.created_at,
-            notes: row.notes || '-'
+            start_date: row.tgl_mulai || row.start_date || row.created_at,
+            end_date: row.tgl_selesai || row.end_date || row.created_at,
+            notes: row.catatan || row.notes || '-',
+            alamat: row.rental_profiles?.alamat || row.alamat || '-',
           }
         }
       } catch (e) {
@@ -98,6 +127,35 @@ export default function TransaksiDetailPage() {
   const handleDownloadInvoice = () => {
     if (!data) return
     window.open(`/transaksi/${data.id}/invoice`, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleUpdateStatus = async (nextStatus) => {
+    if (!data || saving) return
+    setSaving(true)
+    const supabase = createClient()
+    const payload = {
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (nextStatus === 'confirmed') {
+      payload.payment_status = 'dp_verified'
+    }
+    if (nextStatus === 'cancelled') {
+      payload.payment_status = 'rejected'
+    }
+
+    const { error } = await supabase
+      .from('bookings')
+      .update(payload)
+      .eq('id', data.id)
+
+    setSaving(false)
+    if (error) {
+      alert('Gagal update status: ' + error.message)
+      return
+    }
+    setData(prev => ({ ...prev, ...payload }))
   }
 
   return (
@@ -143,6 +201,7 @@ export default function TransaksiDetailPage() {
                   ['Pemilik Rental', data.owner_name || '-'],
                   ['Total Pembayaran', formatCurrency(data.total_amount || data.total)],
                   ['Metode Pembayaran', data.payment_method || '-'],
+                  ['Status Pembayaran', data.payment_status || '-'],
                   ['Tanggal Transaksi', formatDate(data.created_at || data.transaction_date)],
                   ['Tanggal Sewa Mulai', formatDate(data.start_date)],
                   ['Tanggal Sewa Selesai', formatDate(data.end_date)],
@@ -159,6 +218,21 @@ export default function TransaksiDetailPage() {
                 <button className="btn btn-ghost" onClick={() => router.push('/transaksi')}>
                   <i className="fa-solid fa-arrow-left" /> Kembali
                 </button>
+                {data.payment_proof_url && (
+                  <a className="btn btn-ghost" href={data.payment_proof_url} target="_blank" rel="noreferrer">
+                    <i className="fa-solid fa-image" /> Bukti DP
+                  </a>
+                )}
+                {data.status === 'pending' && (
+                  <>
+                    <button className="btn btn-primary" disabled={saving} onClick={() => handleUpdateStatus('confirmed')}>
+                      <i className="fa-solid fa-check" /> ACC
+                    </button>
+                    <button className="btn btn-danger" disabled={saving} onClick={() => handleUpdateStatus('cancelled')}>
+                      <i className="fa-solid fa-xmark" /> Tolak
+                    </button>
+                  </>
+                )}
                 <button className="btn btn-primary" onClick={handleDownloadInvoice}>
                   <i className="fa-solid fa-download" /> Download
                 </button>

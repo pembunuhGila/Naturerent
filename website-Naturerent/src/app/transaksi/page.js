@@ -6,7 +6,16 @@ import Toast, { useToast } from '@/components/Toast'
 import { createClient } from '@/lib/supabase'
 import AuthGuard from '@/components/AuthGuard'
 
-const STATUS_OPTIONS = ['Semua Status', 'Selesai', 'Proses', 'Bermasalah']
+const STATUS_OPTIONS = [
+  { value: 'Semua Status', label: 'Semua Status' },
+  { value: 'pending', label: 'Menunggu Verifikasi' },
+  { value: 'confirmed', label: 'ACC' },
+  { value: 'processing', label: 'Diproses' },
+  { value: 'rented', label: 'Aktif' },
+  { value: 'returned', label: 'Dikembalikan' },
+  { value: 'completed', label: 'Selesai' },
+  { value: 'cancelled', label: 'Batal' },
+]
 const PAGE_SIZE = 8
 
 function formatCurrency(amount) {
@@ -27,6 +36,22 @@ function formatTimeOnly(dateStr) {
   const hours = String(d.getHours()).padStart(2, '0')
   const minutes = String(d.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
+}
+
+function getStatusLabel(status) {
+  const map = {
+    pending: 'Menunggu Verifikasi',
+    confirmed: 'ACC',
+    processing: 'Diproses',
+    rented: 'Aktif',
+    returned: 'Dikembalikan',
+    completed: 'Selesai',
+    cancelled: 'Batal',
+    Selesai: 'Selesai',
+    Proses: 'Diproses',
+    Bermasalah: 'Bermasalah',
+  }
+  return map[status] || status || '-'
 }
 
 export default function TransaksiPage() {
@@ -64,45 +89,18 @@ export default function TransaksiPage() {
       query = query.order('created_at', { ascending: false }).range(from, to)
 
       if (status !== 'Semua Status') {
-        query = query.ilike('status', status)
+        query = query.eq('status', status)
       }
       if (q) {
-        query = query.or(`id.ilike.%${q}%`)
+        query = query.or(`id.ilike.%${q}%,booking_code.ilike.%${q}%`)
       }
 
       let { data: rows, error, count } = await query
       
-      // Fallback/Mock data if table doesn't exist, has no access, or is empty
-      if (error || !rows || rows.length === 0) {
-        const fallbackData = [
-          { id: 'TRX-20250526-001', created_at: '2025-05-26T10:30:00Z', user_name: 'Budi Santoso', rental_name: 'Summit Gear Rental', total_amount: 250000, status: 'Selesai' },
-          { id: 'TRX-20250526-002', created_at: '2025-05-26T09:15:00Z', user_name: 'Siti Aisyah', rental_name: 'Green Valley Glamping', total_amount: 350000, status: 'Selesai' },
-          { id: 'TRX-20250525-003', created_at: '2025-05-25T16:45:00Z', user_name: 'Rizky Pratama', rental_name: 'Lembah Pinus Outdoor', total_amount: 150000, status: 'Proses' },
-          { id: 'TRX-20250525-004', created_at: '2025-05-25T14:20:00Z', user_name: 'Dewi Lestari', rental_name: 'Summit Gear Rental', total_amount: 450000, status: 'Selesai' },
-          { id: 'TRX-20250524-005', created_at: '2025-05-24T11:05:00Z', user_name: 'Andi Wijaya', rental_name: 'Setyawan Martin', total_amount: 300000, status: 'Bermasalah' },
-          { id: 'TRX-20250524-006', created_at: '2025-05-24T10:12:00Z', user_name: 'Nina Kartika', rental_name: 'Ijen Adventure', total_amount: 200000, status: 'Selesai' },
-          { id: 'TRX-20250523-007', created_at: '2025-05-23T17:30:00Z', user_name: 'Fajar Ramadhan', rental_name: 'Lembah Pinus Outdoor', total_amount: 175000, status: 'Proses' },
-          { id: 'TRX-20250523-008', created_at: '2025-05-23T09:45:00Z', user_name: 'Maya Sari', rental_name: 'Green Valley Glamping', total_amount: 275000, status: 'Selesai' }
-        ]
-
-        // Client-side local filtering
-        let filtered = [...fallbackData]
-        if (status !== 'Semua Status') {
-          filtered = filtered.filter(item => item.status.toLowerCase() === status.toLowerCase())
-        }
-        if (owner !== 'Semua Pemilik') {
-          filtered = filtered.filter(item => item.rental_name.toLowerCase() === owner.toLowerCase())
-        }
-        if (q) {
-          filtered = filtered.filter(item => 
-            item.id.toLowerCase().includes(q.toLowerCase()) || 
-            item.user_name.toLowerCase().includes(q.toLowerCase()) ||
-            item.rental_name.toLowerCase().includes(q.toLowerCase())
-          )
-        }
-
-        setData(filtered.slice(from, to + 1))
-        setTotalCount(filtered.length)
+      if (error) {
+        addToast('Gagal memuat data transaksi: ' + error.message, 'error')
+        setData([])
+        setTotalCount(0)
       } else {
         const userIds = [...new Set(rows.map(r => r.customer_id).filter(Boolean))]
         const userMap = {}
@@ -118,25 +116,12 @@ export default function TransaksiPage() {
           }
         }
 
-        // Fetch owners/rental names if relation exists, else use fallback names
-        const resolvedRows = rows.map((r, index) => {
-          const fallbackRentals = [
-            'Summit Gear Rental',
-            'Green Valley Glamping',
-            'Lembah Pinus Outdoor',
-            'Summit Gear Rental',
-            'Setyawan Martin',
-            'Ijen Adventure',
-            'Lembah Pinus Outdoor',
-            'Green Valley Glamping'
-          ]
-          return {
-            ...r,
-            user_name: userMap[r.customer_id] || 'Pengguna',
-            rental_name: r.rental_profiles?.nama_rental || r.rental_name || fallbackRentals[index % fallbackRentals.length],
-            total_amount: r.total_bayar || r.subtotal || r.total || r.total_amount || 0
-          }
-        })
+        const resolvedRows = rows.map(r => ({
+          ...r,
+          user_name: userMap[r.customer_id] || 'Pengguna',
+          rental_name: r.rental_profiles?.nama_rental || r.rental_name || '-',
+          total_amount: r.total_bayar || r.subtotal || r.total || r.total_amount || 0
+        }))
 
         setData(resolvedRows)
         setTotalCount(count || resolvedRows.length)
@@ -145,7 +130,7 @@ export default function TransaksiPage() {
       addToast('Gagal memuat data transaksi: ' + e.message, 'error')
     }
     setLoading(false)
-  }, [])
+  }, [addToast])
 
   useEffect(() => {
     const init = async () => {
@@ -156,15 +141,8 @@ export default function TransaksiPage() {
       // Dynamically load all owners from DB and merge with mock rentals
       try {
         const { data: rentals } = await supabase.from('rental_profiles').select('nama_rental')
-        const mockRentals = [
-          'Summit Gear Rental',
-          'Green Valley Glamping',
-          'Lembah Pinus Outdoor',
-          'Setyawan Martin',
-          'Ijen Adventure'
-        ]
         const dbRentals = rentals ? rentals.map(r => r.nama_rental).filter(Boolean) : []
-        const uniqueRentals = [...new Set(['Semua Pemilik', ...dbRentals, ...mockRentals])]
+        const uniqueRentals = [...new Set(['Semua Pemilik', ...dbRentals])]
         setOwnerOptions(uniqueRentals)
       } catch (e) {
         console.error('Error fetching dynamic rental owners:', e)
@@ -174,8 +152,11 @@ export default function TransaksiPage() {
   }, [])
 
   useEffect(() => {
-    fetchData(search, statusFilter, ownerFilter, page)
-  }, [page])
+    const timer = setTimeout(() => {
+      fetchData(search, statusFilter, ownerFilter, page)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [fetchData, ownerFilter, page, search, statusFilter])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -191,12 +172,19 @@ export default function TransaksiPage() {
 
   const statusBadge = (status) => {
     const map = { 
+      'pending': 'badge-warning',
+      'confirmed': 'badge-success',
+      'processing': 'badge-warning',
+      'rented': 'badge-blue',
+      'returned': 'badge-blue',
+      'completed': 'badge-success',
+      'cancelled': 'badge-danger',
       'Selesai': 'badge-success', 
       'Proses': 'badge-warning', 
       'Bermasalah': 'badge-danger',
       'Ditolak': 'badge-danger' 
     }
-    return <span className={`badge ${map[status] || 'badge-blue'}`}>{status}</span>
+    return <span className={`badge ${map[status] || 'badge-blue'}`}>{getStatusLabel(status)}</span>
   }
 
   return (
@@ -228,10 +216,10 @@ export default function TransaksiPage() {
                 onChange={e => { 
                   setStatusFilter(e.target.value); 
                   setPage(1); 
-                  fetchData(search, e.target.value, 1) 
+                  fetchData(search, e.target.value, ownerFilter, 1) 
                 }}
               >
-                {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <select 
                 className="filter-select"
@@ -279,7 +267,7 @@ export default function TransaksiPage() {
                 <tbody>
                   {data.map(row => (
                     <tr key={row.id}>
-                      <td className="transaction-id" style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{row.id}</td>
+                      <td className="transaction-id" style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{row.booking_code || row.id}</td>
                       <td style={{ fontSize: 13, lineHeight: '1.4' }}>
                         <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{formatDateOnly(row.created_at || row.transaction_date)}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{formatTimeOnly(row.created_at || row.transaction_date)}</div>
