@@ -61,22 +61,40 @@ export default function EditPenggunaPage() {
     setSaving(true)
 
     try {
-      const res = await fetch(`/api/users/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const supabase = createClient()
+      
+      // Lakukan pembaruan langsung menggunakan client-side Supabase SDK (peran 'authenticated')
+      // karena peran ini terbukti memiliki hak akses UPDATE pada tabel users.
+      const { error: clientError } = await supabase
+        .from('users')
+        .update({
           nama_lengkap: form.nama_lengkap.trim(),
           no_wa: form.no_wa.trim(),
           updated_at: new Date().toISOString(),
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        addToast('Gagal menyimpan perubahan: ' + (json.error || 'Unknown error'), 'error')
-      } else {
-        addToast('Data pengguna berhasil diperbarui!', 'success')
-        setTimeout(() => router.push('/pengguna'), 1200)
+        })
+        .eq('id', id)
+
+      if (clientError) {
+        console.warn('Pembaruan client-side gagal, mencoba via API route fallback:', clientError.message)
+        
+        // Fallback: Panggil API route jika pembaruan langsung dibatasi atau gagal
+        const res = await fetch(`/api/users/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nama_lengkap: form.nama_lengkap.trim(),
+            no_wa: form.no_wa.trim(),
+            updated_at: new Date().toISOString(),
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok) {
+          throw new Error(json.error || 'Gagal menyimpan perubahan.')
+        }
       }
+
+      addToast('Data pengguna berhasil diperbarui!', 'success')
+      setTimeout(() => router.push('/pengguna'), 1200)
     } catch (e) {
       addToast('Gagal menyimpan perubahan: ' + e.message, 'error')
     }
