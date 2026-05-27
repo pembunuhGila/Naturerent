@@ -115,10 +115,16 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const MainShell()),
-                      (r) => false,
-                    ),
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                        return;
+                      }
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const MainShell()),
+                        (r) => false,
+                      );
+                    },
                     child: const Icon(Icons.arrow_back_ios_new_rounded,
                         color: AppColors.textPrimary, size: 20),
                   ),

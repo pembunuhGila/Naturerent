@@ -9,8 +9,13 @@ import '../checkout/pesanan_detail_page.dart';
 class AktivitasPage extends StatefulWidget {
   /// 0 = Notifikasi, 1 = Pesanan Aktif, 2 = Riwayat
   final int initialTab;
+  final bool showBackButton;
 
-  const AktivitasPage({super.key, this.initialTab = 0});
+  const AktivitasPage({
+    super.key,
+    this.initialTab = 0,
+    this.showBackButton = false,
+  });
 
   @override
   State<AktivitasPage> createState() => _AktivitasPageState();
@@ -54,7 +59,26 @@ class _AktivitasPageState extends State<AktivitasPage>
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  const SizedBox(width: 20),
+                  if (widget.showBackButton)
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: AppColors.textPrimary,
+                          size: 16,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 38),
                   const Spacer(),
                   Text(
                     'Aktivitas Saya',
@@ -64,7 +88,7 @@ class _AktivitasPageState extends State<AktivitasPage>
                     ),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 38),
                 ],
               ),
             ),
