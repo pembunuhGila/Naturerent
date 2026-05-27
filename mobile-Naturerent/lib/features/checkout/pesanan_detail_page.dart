@@ -497,8 +497,8 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       ),
       _TimelineStep(
         icon: Icons.verified_rounded,
-        title: 'Menunggu ACC pemilik rental',
-        subtitle: 'Setelah admin validasi pembayaran, pemilik rental mengonfirmasi ketersediaan alat.',
+        title: 'Menunggu ACC admin',
+        subtitle: 'Setelah admin validasi pembayaran, pesanan diteruskan ke pemilik rental.',
         isDone: false,
         isActive: false,
       ),

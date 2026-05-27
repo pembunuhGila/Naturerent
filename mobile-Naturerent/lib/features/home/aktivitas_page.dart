@@ -582,21 +582,21 @@ void _openOrderDetail(BuildContext context, ActivityOrder order) {
 String _statusDetailLabel(ActivityOrderStatus status) {
   return switch (status) {
     ActivityOrderStatus.pending => 'MENUNGGU ADMIN',
-    ActivityOrderStatus.confirmed => 'SUDAH ACC',
+    ActivityOrderStatus.confirmed => 'DISETUJUI ADMIN',
     ActivityOrderStatus.processing => 'DIPROSES',
     ActivityOrderStatus.rented => 'PESANAN AKTIF',
     ActivityOrderStatus.returned => 'DIKEMBALIKAN',
     ActivityOrderStatus.completed => 'SELESAI',
-    ActivityOrderStatus.cancelled => 'BATAL',
+    ActivityOrderStatus.cancelled => 'DIBATALKAN ADMIN',
   };
 }
 
 String _statusDescription(ActivityOrderStatus status) {
   return switch (status) {
     ActivityOrderStatus.pending =>
-      'Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.',
+      'Admin sedang mengecek pembayaran sebelum pesanan diteruskan ke pemilik rental.',
     ActivityOrderStatus.confirmed =>
-      'Pemilik rental sudah ACC. Pesanan siap diproses.',
+      'Admin sudah ACC. Pesanan sudah diteruskan ke pemilik rental.',
     ActivityOrderStatus.processing =>
       'Peralatan sedang disiapkan oleh pemilik rental.',
     ActivityOrderStatus.rented =>
@@ -604,7 +604,7 @@ String _statusDescription(ActivityOrderStatus status) {
     ActivityOrderStatus.returned =>
       'Alat sudah dikembalikan dan menunggu penyelesaian.',
     ActivityOrderStatus.completed => 'Pesanan selesai.',
-    ActivityOrderStatus.cancelled => 'Pesanan dibatalkan.',
+    ActivityOrderStatus.cancelled => 'Pesanan dibatalkan oleh admin.',
   };
 }
 
