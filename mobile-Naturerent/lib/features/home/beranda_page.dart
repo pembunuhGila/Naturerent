@@ -224,44 +224,74 @@ class _BerandaPageState extends State<BerandaPage> {
   }
 
   Widget _buildFilterChips() {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemCount: _filters.length,
-        itemBuilder: (context, i) {
-          final isSelected = i == _selectedFilter;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedFilter = i);
-              _filterWisata();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                ),
-              ),
-              child: Text(
-                _filters[i],
-                style: AppTextStyles.bodySmall.copyWith(
-                  color:
-                      isSelected ? AppColors.white : AppColors.textSecondary,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.w400,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          height: 56,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth - 40),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_filters.length, (i) {
+                  final isSelected = i == _selectedFilter;
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      right: i == _filters.length - 1 ? 0 : 10,
+                    ),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedFilter = i);
+                        _filterWisata();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.surface,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.border,
+                          ),
+                          boxShadow: [
+                            if (isSelected)
+                              BoxShadow(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.18),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                          ],
+                        ),
+                        child: Text(
+                          _filters[i],
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isSelected
+                                ? AppColors.white
+                                : AppColors.textSecondary,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ),
             ),
           );
-        },
-      ),
+        );
+      },
     );
   }
 

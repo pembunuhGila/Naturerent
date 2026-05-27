@@ -68,13 +68,23 @@ class _AktivitasPageState extends State<AktivitasPage>
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+            const _ActivitySummary(),
+            const SizedBox(height: 14),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
               child: TabBar(
                 controller: _tabCtrl,
@@ -88,10 +98,7 @@ class _AktivitasPageState extends State<AktivitasPage>
                     AppTextStyles.bodySmall.copyWith(fontSize: 12),
                 indicator: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: const Border(
-                    bottom: BorderSide(color: AppColors.primary, width: 2),
-                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
@@ -115,6 +122,126 @@ class _AktivitasPageState extends State<AktivitasPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ActivitySummary extends StatelessWidget {
+  const _ActivitySummary();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<ActivityOrder>>(
+      valueListenable: OrderActivityService().orders,
+      builder: (context, orders, _) {
+        final waiting = orders
+            .where((order) => order.status == ActivityOrderStatus.pending)
+            .length;
+        final active = orders.where(_isActiveOrder).length;
+        final done = orders
+            .where((order) =>
+                order.status == ActivityOrderStatus.completed ||
+                order.status == ActivityOrderStatus.returned)
+            .length;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: _SummaryTile(
+                  icon: Icons.hourglass_top_rounded,
+                  label: 'Menunggu',
+                  value: waiting,
+                  color: const Color(0xFFF59E0B),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SummaryTile(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Aktif',
+                  value: active,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SummaryTile(
+                  icon: Icons.check_circle_outline_rounded,
+                  label: 'Selesai',
+                  value: done,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int value;
+  final Color color;
+
+  const _SummaryTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 74,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const Spacer(),
+              Text(
+                '$value',
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
       ),
     );
   }

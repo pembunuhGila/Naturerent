@@ -1,30 +1,32 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary greens (nature-inspired)
-  static const Color primary = Color(0xFF18743A);
-  static const Color primaryDark = Color(0xFF18743A);
-  static const Color primaryLight = Color(0xFF18743A);
-  static const Color primaryMedium = Color(0xFF18743A);
+  // Primary greens
+  static const Color primary = Color(0xFF2A7D48);
+  static const Color primaryDark = Color(0xFF1F4D2A);
+  static const Color primaryLight = Color(0xFFE8F5E9);
+  static const Color primaryMedium = Color(0xFF1E5C30);
+  static const Color primaryHover = Color(0xFF266038);
 
   // Background
-  static const Color background = Color(0xFFF5F0E8);
+  static const Color background = Color(0xFFF8FAFC);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF9F6F0);
+  static const Color surfaceVariant = Color(0xFFF4FBF6);
+  static const Color surfaceSoft = Color(0xFFFAFAF9);
 
   // Text
-  static const Color textPrimary = Color(0xFF1A2E0A);
-  static const Color textSecondary = Color(0xFF5A6B47);
-  static const Color textHint = Color(0xFFADB8A0);
-  static const Color textLight = Color(0xFF8A9E78);
+  static const Color textPrimary = Color(0xFF1C1C1B);
+  static const Color textSecondary = Color(0xFF64748B);
+  static const Color textHint = Color(0xFF94A3B8);
+  static const Color textLight = Color(0xFF64748B);
 
   // Border
-  static const Color border = Color(0xFFD8E4C8);
-  static const Color borderFocus = Color(0xFF18743A);
+  static const Color border = Color(0xFFE2E8F0);
+  static const Color borderFocus = Color(0xFF2A7D48);
 
   // Others
   static const Color error = Color(0xFFD32F2F);
-  static const Color success = Color(0xFF18743A);
+  static const Color success = Color(0xFF2A7D48);
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
   static const Color overlay = Color(0x80000000);
@@ -115,9 +117,14 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       fontFamily: AppTextStyles.fontFamily,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
-        brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.primaryDark,
+        secondary: AppColors.primary,
+        surface: AppColors.surface,
+        error: AppColors.error,
+        onPrimary: AppColors.white,
+        onSecondary: AppColors.white,
+        onSurface: AppColors.textPrimary,
       ),
       scaffoldBackgroundColor: AppColors.background,
       inputDecorationTheme: InputDecorationTheme(
