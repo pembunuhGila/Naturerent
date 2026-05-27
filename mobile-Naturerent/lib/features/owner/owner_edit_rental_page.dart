@@ -2,7 +2,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/models/wisata_location.dart';
@@ -53,7 +52,8 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
       text: rental?.namaRental ?? 'Rimba Basecamp',
     );
     _alamatController = TextEditingController(
-      text: rental?.alamat ??
+      text:
+          rental?.alamat ??
           'Kaki Gunung Semeru, Desa Ranupani, Senduro, Lumajang, Jawa Timur',
     );
     // Muat koordinat yang sudah tersimpan sebelumnya
@@ -82,44 +82,15 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   Future<void> _ambilLokasiGps() async {
     setState(() => _loadingGps = true);
 
-    // Minta permission dulu sebelum buka peta
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _snackError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
-        setState(() => _loadingGps = false);
-        return;
-      }
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) {
-          _snackError('Izin lokasi ditolak.');
-          setState(() => _loadingGps = false);
-          return;
-        }
-      }
-      if (perm == LocationPermission.deniedForever) {
-        _snackError('Izin lokasi diblokir. Buka Pengaturan > Aplikasi.');
-        setState(() => _loadingGps = false);
-        return;
-      }
-    } catch (_) {}
-
-    if (!mounted) return;
-    setState(() => _loadingGps = false);
-
     // Buka halaman map picker
     final result = await Navigator.push<LatLng>(
       context,
       MaterialPageRoute(
-        builder: (_) => OwnerMapPickerPage(
-          initialLat: _lat,
-          initialLng: _lng,
-        ),
+        builder: (_) => OwnerMapPickerPage(initialLat: _lat, initialLng: _lng),
         fullscreenDialog: true,
       ),
     );
+    if (mounted) setState(() => _loadingGps = false);
 
     if (result != null && mounted) {
       setState(() {
@@ -152,20 +123,17 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     }
 
     try {
-      final nearest =
-          await _destinationSuggestionService.ambilSaranDestinasiTerdekat(
-        rentalLat: _lat,
-        rentalLng: _lng,
-        limit: 10,
-      );
+      final nearest = await _destinationSuggestionService
+          .ambilSaranDestinasiTerdekat(
+            rentalLat: _lat,
+            rentalLng: _lng,
+            limit: 10,
+          );
       if (!mounted) return;
       setState(() {
         final nearestDestinations = nearest
             .map(
-              (wd) => _destinationInfoFromWisata(
-                wd.wisata,
-                wd.jarakFormatted,
-              ),
+              (wd) => _destinationInfoFromWisata(wd.wisata, wd.jarakFormatted),
             )
             .toList();
         _nearbyDestinations = _mergeNearbyWithSuggested(nearestDestinations);
@@ -242,10 +210,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   List<DestinationInfo> _mergeNearbyWithSuggested(
     List<DestinationInfo> nearby,
   ) {
-    return _uniqueDestinations([
-      ..._suggestedDestinations,
-      ...nearby,
-    ]);
+    return _uniqueDestinations([..._suggestedDestinations, ...nearby]);
   }
 
   List<DestinationInfo> _uniqueDestinations(List<DestinationInfo> items) {
@@ -296,6 +261,10 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
 
     if (namaRental.isEmpty) {
       _snackError('Nama rental tidak boleh kosong.');
+      return;
+    }
+    if (_lat == null || _lng == null) {
+      _snackError('Silakan pilih lokasi toko rental terlebih dahulu');
       return;
     }
 
@@ -443,19 +412,17 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                         ),
                       )
                     else
-                      ..._nearbyDestinations.map(
-                        (item) {
-                          final added = _isDestinationAdded(item);
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: _DestinationCard(
-                              item: item,
-                              added: added,
-                              onTap: () => _toggleDestinasi(item),
-                            ),
-                          );
-                        },
-                      ),
+                      ..._nearbyDestinations.map((item) {
+                        final added = _isDestinationAdded(item);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: _DestinationCard(
+                            item: item,
+                            added: added,
+                            onTap: () => _toggleDestinasi(item),
+                          ),
+                        );
+                      }),
                   ],
                 ],
               ),
@@ -478,7 +445,9 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF18743A),
               foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFF18743A).withValues(alpha: 0.5),
+              disabledBackgroundColor: const Color(
+                0xFF18743A,
+              ).withValues(alpha: 0.5),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -589,7 +558,7 @@ class _LocationCard extends StatelessWidget {
     final hasLocation = lat != null && lng != null;
 
     return _EditSectionCard(
-      title: 'Lokasi & Alamat',
+      title: 'Lokasi Toko Rental',
       subtitle: 'Pastikan titik GPS akurat agar penyewa\ntidak tersesat.',
       child: Column(
         children: [
@@ -755,8 +724,8 @@ class _LocationCard extends StatelessWidget {
                               loadingGps
                                   ? 'Membuka...'
                                   : hasLocation
-                                      ? 'Ubah di Peta'
-                                      : 'Buka Peta GPS',
+                                  ? 'Ubah Lokasi'
+                                  : 'Pilih Lokasi',
                               style: AppTextStyles.caption.copyWith(
                                 color: const Color(0xFF18743A),
                                 fontSize: 11,
@@ -840,7 +809,6 @@ class _TrianglePainter extends CustomPainter {
   @override
   bool shouldRepaint(_TrianglePainter old) => old.color != color;
 }
-
 
 // ─────────────────────────────────────────────────────────────
 //  Shared Widgets
