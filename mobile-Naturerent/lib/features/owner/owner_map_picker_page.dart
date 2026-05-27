@@ -1,323 +1,313 @@
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_toast.dart';
 
-/// Halaman peta interaktif untuk memilih titik lokasi rental.
-/// Mengembalikan [LatLng] yang dipilih user, atau null jika dibatalkan.
 class OwnerMapPickerPage extends StatefulWidget {
-  /// Koordinat awal yang ditampilkan saat peta dibuka (opsional).
   final double? initialLat;
   final double? initialLng;
 
-  const OwnerMapPickerPage({
-    super.key,
-    this.initialLat,
-    this.initialLng,
-  });
+  const OwnerMapPickerPage({super.key, this.initialLat, this.initialLng});
 
   @override
   State<OwnerMapPickerPage> createState() => _OwnerMapPickerPageState();
 }
 
 class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
-  static const _defaultLat = -7.7956; // Default: Jawa Timur
+  static const _defaultLat = -7.7956;
   static const _defaultLng = 110.3695;
-  static const _zoomDefault = 13.0;
-  static const _zoomDetail = 15.5;
+  static const _defaultZoom = 13.0;
+  static const _detailZoom = 16.0;
 
   late final MapController _mapController;
-  late LatLng _markerPos;
+  late final TextEditingController _searchController;
+  late LatLng _selectedPoint;
   bool _loadingGps = false;
+  bool _searching = false;
   bool _mapReady = false;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
-    _markerPos = LatLng(
+    _searchController = TextEditingController();
+    _selectedPoint = LatLng(
       widget.initialLat ?? _defaultLat,
       widget.initialLng ?? _defaultLng,
     );
-    // Jika tidak ada koordinat awal, langsung ambil GPS
-    if (widget.initialLat == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _ambilGps());
+
+    if (widget.initialLat == null || widget.initialLng == null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _useCurrentLocation(),
+      );
     }
   }
 
   @override
   void dispose() {
     _mapController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────
-  //  GPS
-  // ─────────────────────────────────────────────────────
-  Future<void> _ambilGps() async {
+  Future<void> _useCurrentLocation() async {
     setState(() => _loadingGps = true);
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _snackError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
+        _showError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
         return;
       }
 
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) {
-          _snackError('Izin lokasi ditolak.');
-          return;
-        }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
       }
-      if (perm == LocationPermission.deniedForever) {
-        _snackError(
-            'Izin lokasi diblokir. Buka Pengaturan > Aplikasi untuk mengizinkan.');
+
+      if (permission == LocationPermission.denied) {
+        _showError(
+          'Izin lokasi ditolak. Anda tetap bisa memilih titik di peta.',
+        );
         return;
       }
 
-      final pos = await Geolocator.getCurrentPosition(
+      if (permission == LocationPermission.deniedForever) {
+        _showError(
+          'Izin lokasi diblokir. Buka pengaturan aplikasi untuk mengizinkan lokasi.',
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 15),
         ),
       );
-      if (!mounted) return;
-
-      final newPos = LatLng(pos.latitude, pos.longitude);
-      setState(() => _markerPos = newPos);
-      if (_mapReady) {
-        _mapController.move(newPos, _zoomDetail);
-      }
+      _moveTo(LatLng(position.latitude, position.longitude), _detailZoom);
     } on LocationServiceDisabledException {
-      _snackError('GPS tidak aktif.');
-    } catch (e) {
-      _snackError('Gagal ambil lokasi: ${e.toString()}');
+      _showError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
+    } catch (_) {
+      _showError('Lokasi saat ini belum bisa diambil. Coba lagi sebentar.');
     } finally {
       if (mounted) setState(() => _loadingGps = false);
     }
   }
 
-  void _snackError(String msg) {
-    if (!mounted) return;
-    NrToast.show(context, msg, type: NrToastType.error);
+  Future<void> _searchLocation() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _searching = true);
+    try {
+      final point = await _findLocation(query);
+      if (point == null) {
+        _showError(
+          'Lokasi tidak ditemukan. Coba nama tempat yang lebih spesifik.',
+        );
+        return;
+      }
+      _moveTo(point, _detailZoom);
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
   }
 
-  // ─────────────────────────────────────────────────────
-  //  Build
-  // ─────────────────────────────────────────────────────
+  Future<LatLng?> _findLocation(String query) async {
+    final coordinate = _parseCoordinate(query);
+    if (coordinate != null) return coordinate;
+
+    final normalized = query.toLowerCase();
+    final knownLocations = <String, LatLng>{
+      'ranupani': const LatLng(-8.0137, 112.9478),
+      'ranu pani': const LatLng(-8.0137, 112.9478),
+      'ranu kumbolo': const LatLng(-8.0559, 112.9653),
+      'gunung semeru': const LatLng(-8.1084, 112.9222),
+      'malang': const LatLng(-7.9666, 112.6326),
+      'lumajang': const LatLng(-8.1335, 113.2248),
+      'yogyakarta': const LatLng(-7.7956, 110.3695),
+    };
+
+    for (final entry in knownLocations.entries) {
+      if (normalized.contains(entry.key)) return entry.value;
+    }
+
+    // TODO: Sambungkan ke geocoding provider saat backend/API sudah tersedia.
+    // Contoh opsi: endpoint Supabase Edge Function, Nominatim, atau package
+    // geocoding jika nanti ditambahkan ke dependency project.
+    return null;
+  }
+
+  LatLng? _parseCoordinate(String value) {
+    final parts = value
+        .split(RegExp(r'[,;\s]+'))
+        .where((part) => part.trim().isNotEmpty)
+        .toList();
+    if (parts.length < 2) return null;
+
+    final lat = double.tryParse(parts[0]);
+    final lng = double.tryParse(parts[1]);
+    if (lat == null || lng == null) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    return LatLng(lat, lng);
+  }
+
+  void _moveTo(LatLng point, double zoom) {
+    if (!mounted) return;
+    setState(() => _selectedPoint = point);
+    if (_mapReady) _mapController.move(point, zoom);
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    NrToast.show(
+      context,
+      message,
+      type: NrToastType.error,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // ── PETA
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _markerPos,
-              initialZoom: widget.initialLat != null ? _zoomDetail : _zoomDefault,
-              onMapReady: () => setState(() => _mapReady = true),
-              // Tap pada peta → pindahkan marker
-              onTap: (_, point) => setState(() => _markerPos = point),
-            ),
-            children: [
-              // Tile layer OpenStreetMap (gratis, tanpa API key)
-              TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.naturerent.app',
-                maxZoom: 19,
-              ),
-              // Marker lokasi yang dipilih
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _markerPos,
-                    width: 48,
-                    height: 64,
-                    alignment: Alignment.topCenter,
-                    child: Column(
-                      children: [
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF18743A),
-                            shape: BoxShape.circle,
-                          ),
-                          padding: const EdgeInsets.all(6),
-                          child: const Icon(
-                            Icons.store_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        CustomPaint(
-                          size: const Size(12, 8),
-                          painter: _TrianglePainter(
-                            color: const Color(0xFF18743A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF202321),
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        titleSpacing: 0,
+        title: Text(
+          'Pilih Titik Lokasi',
+          style: AppTextStyles.headlineMedium.copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            color: const Color(0xFF202321),
           ),
-
-          // ── TOP BAR (transparan dengan tombol kembali)
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _selectedPoint,
+                  initialZoom: widget.initialLat != null
+                      ? _detailZoom
+                      : _defaultZoom,
+                  onMapReady: () => setState(() => _mapReady = true),
+                  onTap: (_, point) =>
+                      _moveTo(point, _mapController.camera.zoom),
+                  onPositionChanged: (camera, hasGesture) {
+                    if (!hasGesture) return;
+                    setState(() => _selectedPoint = camera.center);
+                  },
+                ),
                 children: [
-                  // Tombol kembali
-                  _MapButton(
-                    icon: Icons.arrow_back_rounded,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  const Spacer(),
-                  // Tombol ambil GPS
-                  _MapButton(
-                    icon: _loadingGps
-                        ? null
-                        : Icons.my_location_rounded,
-                    isLoading: _loadingGps,
-                    onTap: _loadingGps ? null : _ambilGps,
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.naturerent.app',
+                    maxZoom: 19,
                   ),
                 ],
               ),
             ),
-          ),
-
-          // ── HINT tap peta
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 72),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Tap pada peta untuk memindahkan titik lokasi',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+            const IgnorePointer(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 38),
+                  child: _StorePin(),
                 ),
               ),
             ),
-          ),
-
-          // ── BOTTOM CARD — koordinat + tombol konfirmasi
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x22000000),
-                    blurRadius: 24,
-                    offset: Offset(0, -6),
-                  ),
-                ],
+            Positioned(
+              left: 16,
+              right: 16,
+              top: 14,
+              child: _SearchBar(
+                controller: _searchController,
+                searching: _searching,
+                loadingGps: _loadingGps,
+                onSearch: _searchLocation,
+                onCurrentLocation: _loadingGps ? null : _useCurrentLocation,
               ),
-              padding: EdgeInsets.fromLTRB(
-                24,
-                20,
-                24,
-                MediaQuery.of(context).padding.bottom + 20,
-              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Label lokasi dipilih
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_rounded,
-                        color: Color(0xFF18743A),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Titik Lokasi Dipilih',
-                        style: AppTextStyles.headlineMedium.copyWith(
-                          color: const Color(0xFF202321),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Koordinat
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE4EFE7),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE0E5DE)),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x1F000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
                     ),
                     child: Text(
-                      'Lat: ${_markerPos.latitude.toStringAsFixed(6)}'
-                      '   •   '
-                      'Lng: ${_markerPos.longitude.toStringAsFixed(6)}',
+                      'Lat: ${_selectedPoint.latitude.toStringAsFixed(6)}  |  '
+                      'Lng: ${_selectedPoint.longitude.toStringAsFixed(6)}',
+                      textAlign: TextAlign.center,
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF18743A),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryDark,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: 0,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Tombol konfirmasi
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context, _markerPos),
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, _selectedPoint),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF18743A),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
-                      icon: const Icon(Icons.check_rounded, size: 20),
-                      label: Text(
-                        'GUNAKAN LOKASI INI',
-                        style: AppTextStyles.caption.copyWith(
+                      child: Text(
+                        'Pilih Lokasi Ini',
+                        style: AppTextStyles.labelLarge.copyWith(
                           color: Colors.white,
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
+                          letterSpacing: 0,
                         ),
                       ),
                     ),
@@ -325,6 +315,92 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final bool searching;
+  final bool loadingGps;
+  final VoidCallback onSearch;
+  final VoidCallback? onCurrentLocation;
+
+  const _SearchBar({
+    required this.controller,
+    required this.searching,
+    required this.loadingGps,
+    required this.onSearch,
+    required this.onCurrentLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(18),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          Icon(Icons.search_rounded, color: Colors.grey.shade600, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => onSearch(),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF202321),
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Cari lokasi toko rental',
+                hintStyle: AppTextStyles.bodyMedium.copyWith(
+                  color: const Color(0xFF8A948B),
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Cari lokasi',
+            onPressed: searching ? null : onSearch,
+            icon: searching
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : const Icon(Icons.arrow_forward_rounded),
+            color: AppColors.primary,
+          ),
+          IconButton(
+            tooltip: 'Gunakan lokasi saat ini',
+            onPressed: onCurrentLocation,
+            icon: loadingGps
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : const Icon(Icons.my_location_rounded),
+            color: AppColors.primary,
           ),
         ],
       ),
@@ -332,59 +408,43 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Helper Widgets
-// ─────────────────────────────────────────────────────────────
-
-class _MapButton extends StatelessWidget {
-  final IconData? icon;
-  final VoidCallback? onTap;
-  final bool isLoading;
-
-  const _MapButton({
-    this.icon,
-    this.onTap,
-    this.isLoading = false,
-  });
+class _StorePin extends StatelessWidget {
+  const _StorePin();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 12,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.store_rounded, color: Colors.white, size: 22),
         ),
-        child: Center(
-          child: isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFF18743A),
-                  ),
-                )
-              : Icon(icon, color: const Color(0xFF18743A), size: 22),
+        CustomPaint(
+          size: const Size(18, 12),
+          painter: _TrianglePainter(color: AppColors.primary),
         ),
-      ),
+      ],
     );
   }
 }
 
-/// Painter segitiga kecil di bawah ikon marker agar tampak seperti pin.
 class _TrianglePainter extends CustomPainter {
   final Color color;
+
   const _TrianglePainter({required this.color});
 
   @override
@@ -399,5 +459,6 @@ class _TrianglePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TrianglePainter old) => old.color != color;
+  bool shouldRepaint(_TrianglePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
