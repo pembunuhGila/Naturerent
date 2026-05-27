@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -47,6 +49,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
   File? _coverBaru;
   String? _coverUrl;
   File? _ktpBaru;           // file lokal foto KTP
+  Uint8List? _ktpBaruBytes; // preview/upload KTP untuk Flutter Web
+  String? _ktpBaruExt;
   String? _ktpUrl;          // URL KTP di Supabase
   bool _isSaving = false;
 
@@ -436,13 +440,13 @@ class _EditProfilPageState extends State<EditProfilPage> {
     }
 
     // ── 4. Upload foto KTP baru (jika ada)
-    if (_ktpBaru != null) {
+    if (_ktpBaru != null || _ktpBaruBytes != null) {
       try {
         final userId = _client.auth.currentUser?.id;
         if (userId == null) throw Exception('Session habis.');
-        final ext = _ktpBaru!.path.split('.').last.toLowerCase();
+        final ext = _ktpBaruExt ?? 'jpg';
         final storagePath = 'ktp-docs/$userId.$ext';
-        final bytes = await _ktpBaru!.readAsBytes();
+        final bytes = _ktpBaruBytes ?? await _ktpBaru!.readAsBytes();
         await _client.storage.from('ktp-docs').uploadBinary(
               storagePath, bytes,
               fileOptions: const FileOptions(upsert: true),
@@ -1235,7 +1239,17 @@ class _EditProfilPageState extends State<EditProfilPage> {
         maxWidth: 1600,
       );
       if (picked == null || !mounted) return;
-      setState(() => _ktpBaru = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      final rawExt = (picked.name.isNotEmpty ? picked.name : picked.path)
+          .split('.')
+          .last
+          .toLowerCase();
+      final ext = rawExt == 'png' ? 'png' : 'jpg';
+      setState(() {
+        _ktpBaru = kIsWeb ? null : File(picked.path);
+        _ktpBaruBytes = bytes;
+        _ktpBaruExt = ext;
+      });
     } catch (e) {
       _snack('Gagal memilih foto KTP: ${e.toString()}');
     }
@@ -1245,7 +1259,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
   void _showPilihKtp() => _pilihKtp(ImageSource.camera);
 
   Widget _buildKtpSection() {
-    final hasKtp = _ktpBaru != null || (_ktpUrl != null && _ktpUrl!.isNotEmpty);
+    final hasKtp = _ktpBaru != null ||
+        _ktpBaruBytes != null ||
+        (_ktpUrl != null && _ktpUrl!.isNotEmpty);
     return GestureDetector(
       onTap: _showPilihKtp,
       child: Container(
@@ -1265,12 +1281,14 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(11),
-                    child: _ktpBaru != null
-                        ? Image.file(_ktpBaru!, fit: BoxFit.cover)
-                        : Image.network(_ktpUrl!, fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => const Icon(
-                                Icons.broken_image_rounded,
-                                color: Color(0xFF7B8794))),
+                    child: _ktpBaruBytes != null
+                        ? Image.memory(_ktpBaruBytes!, fit: BoxFit.cover)
+                        : _ktpBaru != null
+                            ? Image.file(_ktpBaru!, fit: BoxFit.cover)
+                            : Image.network(_ktpUrl!, fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => const Icon(
+                                    Icons.broken_image_rounded,
+                                    color: Color(0xFF7B8794))),
                   ),
                   Positioned(
                     top: 8, right: 8,
@@ -1307,12 +1325,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
                         color: Color(0xFF18743A), size: 28),
                   ),
                   const SizedBox(height: 10),
-                  Text('Tap untuk upload foto KTP',
+                  Text('Tap untuk ambil foto KTP',
                       style: AppTextStyles.bodySmall.copyWith(
                           color: Color(0xFF18743A),
                           fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text('Format: JPG / PNG',
+                  Text('Gunakan kamera perangkat',
                       style: AppTextStyles.caption
                           .copyWith(color: Color(0xFF7B8794))),
                 ],
