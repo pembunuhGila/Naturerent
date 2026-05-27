@@ -289,7 +289,7 @@ class _BerandaPageState extends State<BerandaPage> {
                 }),
               ),
             ),
-          );
+          ),
         );
       },
     );
