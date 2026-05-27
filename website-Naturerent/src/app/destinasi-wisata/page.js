@@ -11,6 +11,9 @@ const PAGE_SIZE = 9
 const MAP_ZOOM = 12
 const TILE_SIZE = 256
 const DEFAULT_MAP_CENTER = { lat: -7.7972, lng: 110.3688 }
+const DESTINATION_IMAGE_ASPECT = 3 / 4
+const DESTINATION_IMAGE_WIDTH = 900
+const DESTINATION_IMAGE_HEIGHT = 1200
 
 function parseOptionalNumber(value) {
   if (value === '' || value === null || value === undefined) return null
@@ -31,6 +34,76 @@ function formatDate(value) {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+  })
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Gambar tidak bisa diproses.'))
+    }
+    image.src = url
+  })
+}
+
+async function createCroppedDestinationImage(file, crop) {
+  if (!file) return null
+
+  const image = await loadImageFromFile(file)
+  const imageAspect = image.naturalWidth / image.naturalHeight
+  let sourceWidth
+  let sourceHeight
+
+  if (imageAspect > DESTINATION_IMAGE_ASPECT) {
+    sourceHeight = image.naturalHeight
+    sourceWidth = sourceHeight * DESTINATION_IMAGE_ASPECT
+  } else {
+    sourceWidth = image.naturalWidth
+    sourceHeight = sourceWidth / DESTINATION_IMAGE_ASPECT
+  }
+
+  const zoom = clamp(Number(crop.zoom) || 1, 1, 3)
+  sourceWidth /= zoom
+  sourceHeight /= zoom
+
+  const centerX = image.naturalWidth * (clamp(Number(crop.x) || 50, 0, 100) / 100)
+  const centerY = image.naturalHeight * (clamp(Number(crop.y) || 50, 0, 100) / 100)
+  const sourceX = clamp(centerX - sourceWidth / 2, 0, image.naturalWidth - sourceWidth)
+  const sourceY = clamp(centerY - sourceHeight / 2, 0, image.naturalHeight - sourceHeight)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = DESTINATION_IMAGE_WIDTH
+  canvas.height = DESTINATION_IMAGE_HEIGHT
+  const context = canvas.getContext('2d')
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    DESTINATION_IMAGE_WIDTH,
+    DESTINATION_IMAGE_HEIGHT
+  )
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      result => result ? resolve(result) : reject(new Error('Gagal memangkas gambar.')),
+      'image/jpeg',
+      0.9
+    )
+  })
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '-3x4.jpg', {
+    type: 'image/jpeg',
   })
 }
 
@@ -212,6 +285,132 @@ function SimpleMapPicker({ lat, lng, onPick }) {
   )
 }
 
+function ImageCropper({ previewUrl, crop, onCropChange }) {
+  const [dragging, setDragging] = useState(false)
+  const dragRef = useRef(null)
+
+  const updateCrop = (nextCrop) => {
+    onCropChange({
+      zoom: clamp(nextCrop.zoom, 1, 3),
+      x: clamp(nextCrop.x, 0, 100),
+      y: clamp(nextCrop.y, 0, 100),
+    })
+  }
+
+  const handlePointerDown = (event) => {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      crop,
+    }
+    setDragging(true)
+  }
+
+  const handlePointerMove = (event) => {
+    if (!dragging || !dragRef.current) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const deltaX = event.clientX - dragRef.current.startX
+    const deltaY = event.clientY - dragRef.current.startY
+    const zoom = Math.max(dragRef.current.crop.zoom, 1)
+    updateCrop({
+      ...dragRef.current.crop,
+      x: dragRef.current.crop.x - (deltaX / rect.width) * (100 / zoom),
+      y: dragRef.current.crop.y - (deltaY / rect.height) * (100 / zoom),
+    })
+  }
+
+  const handlePointerUp = () => {
+    dragRef.current = null
+    setDragging(false)
+  }
+
+  const handleKeyDown = (event) => {
+    const step = event.shiftKey ? 5 : 1
+    if (event.key === 'ArrowLeft') updateCrop({ ...crop, x: crop.x - step })
+    if (event.key === 'ArrowRight') updateCrop({ ...crop, x: crop.x + step })
+    if (event.key === 'ArrowUp') updateCrop({ ...crop, y: crop.y - step })
+    if (event.key === 'ArrowDown') updateCrop({ ...crop, y: crop.y + step })
+  }
+
+  return (
+    <div
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label="Geser gambar untuk mengatur area pangkas"
+      style={{
+        width: 190,
+        aspectRatio: '3 / 4',
+        borderRadius: 12,
+        overflow: 'hidden',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-muted)',
+        position: 'relative',
+        cursor: dragging ? 'grabbing' : 'grab',
+        touchAction: 'none',
+        userSelect: 'none',
+      }}
+    >
+      {previewUrl ? (
+        <>
+          <img
+            src={previewUrl}
+            alt="Preview destinasi"
+            draggable={false}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: `${crop.x}% ${crop.y}%`,
+              transform: `scale(${crop.zoom})`,
+              transformOrigin: `${crop.x}% ${crop.y}%`,
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 10,
+              border: '1px solid rgba(255,255,255,0.72)',
+              boxShadow: '0 0 0 999px rgba(0,0,0,0.14)',
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: 10,
+              right: 10,
+              bottom: 10,
+              padding: '6px 8px',
+              borderRadius: 8,
+              background: 'rgba(0,0,0,0.58)',
+              color: '#fff',
+              fontSize: 10,
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            Geser foto untuk pangkas
+          </div>
+        </>
+      ) : (
+        <i className="fa-solid fa-image" style={{ fontSize: 28 }} />
+      )}
+    </div>
+  )
+}
+
 function DestinationFormModal({
   initialData,
   saving,
@@ -228,6 +427,7 @@ function DestinationFormModal({
   })
   const [imageFile, setImageFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(initialData?.foto_url || '')
+  const [crop, setCrop] = useState({ zoom: 1, x: 50, y: 50 })
   const [geocoding, setGeocoding] = useState(false)
   const [geocodeResult, setGeocodeResult] = useState('')
 
@@ -246,7 +446,16 @@ function DestinationFormModal({
     if (!file) return
     if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     setImageFile(file)
+    setCrop({ zoom: 1, x: 50, y: 50 })
     setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleCropChange = (field, value) => {
+    setCrop(prev => ({ ...prev, [field]: Number(value) }))
+  }
+
+  const handleCropDrag = (nextCrop) => {
+    setCrop(nextCrop)
   }
 
   const handleMapPick = (lat, lng) => {
@@ -299,9 +508,16 @@ function DestinationFormModal({
     }
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    onSubmit(form, imageFile)
+    try {
+      const croppedImage = imageFile
+        ? await createCroppedDestinationImage(imageFile, crop)
+        : null
+      await onSubmit(form, croppedImage)
+    } catch (error) {
+      setGeocodeResult('Gagal memangkas gambar: ' + error.message)
+    }
   }
 
   return (
@@ -384,35 +600,16 @@ function DestinationFormModal({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '180px 1fr',
+                gridTemplateColumns: '190px 1fr',
                 gap: 16,
-                alignItems: 'center',
+                alignItems: 'start',
               }}
             >
-              <div
-                style={{
-                  width: 180,
-                  aspectRatio: '16 / 10',
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-color)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Preview destinasi"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <i className="fa-solid fa-image" style={{ fontSize: 28 }} />
-                )}
-              </div>
+              <ImageCropper
+                previewUrl={previewUrl}
+                crop={crop}
+                onCropChange={handleCropDrag}
+              />
               <div>
                 <label className="btn btn-ghost" style={{ display: 'inline-flex' }}>
                   <i className="fa-solid fa-upload" />
@@ -425,8 +622,36 @@ function DestinationFormModal({
                   />
                 </label>
                 <p style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {imageFile ? imageFile.name : 'Gunakan gambar JPG, PNG, atau WebP.'}
+                  {imageFile ? imageFile.name : 'Gunakan gambar JPG, PNG, atau WebP. Semua gambar disimpan rasio 3:4.'}
                 </p>
+                {imageFile && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: 'grid',
+                      gap: 10,
+                      maxWidth: 360,
+                    }}
+                  >
+                    <div>
+                      <label className="form-label" style={{ marginBottom: 4 }}>
+                        Zoom Pangkas
+                      </label>
+                      <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.05"
+                        value={crop.zoom}
+                        onChange={e => handleCropChange('zoom', e.target.value)}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+                      Geser gambar pada preview untuk menentukan area pangkas.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -775,7 +1000,7 @@ export default function DestinasiWisataPage() {
                     >
                       <div
                         style={{
-                          aspectRatio: '16 / 10',
+                          aspectRatio: '3 / 4',
                           background: 'var(--bg-secondary)',
                           display: 'flex',
                           alignItems: 'center',
