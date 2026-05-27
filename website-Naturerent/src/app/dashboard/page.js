@@ -147,7 +147,12 @@ export default function DashboardPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [fetchData])
 
   return (
     <AuthGuard>
@@ -204,6 +209,7 @@ export default function DashboardPage() {
                   { href: '/transaksi', icon: 'fa-receipt', title: 'Transaksi', desc: 'Kelola dan monitor semua transaksi penyewaan' },
                   { href: '/pemilik-rental', icon: 'fa-person', title: 'Pemilik Rental', desc: 'Kelola data pemilik rental dengan mudah' },
                   { href: '/pengguna', icon: 'fa-users', title: 'Pengguna', desc: 'Kelola data akun pengguna aplikasi' },
+                  { href: '/destinasi-wisata', icon: 'fa-mountain-sun', title: 'Destinasi Wisata', desc: 'Kelola destinasi yang tampil di aplikasi user' },
                   { href: '/komisi', icon: 'fa-coins', title: 'Komisi', desc: 'Monitor komisi dan pembayaran pemilik rental' },
                   { href: '/settings', icon: 'fa-sliders', title: 'Pengaturan Sistem', desc: 'Kelola konfigurasi dan pengaturan sistem' },
                 ].map(item => (
