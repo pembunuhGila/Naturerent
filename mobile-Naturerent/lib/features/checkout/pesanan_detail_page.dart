@@ -125,9 +125,6 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                   Text('Riwayat Pesanan',
                       style: AppTextStyles.headlineLarge.copyWith(
                           color: AppColors.textPrimary, fontSize: 20)),
-                  const Spacer(),
-                  const Icon(Icons.notifications_none_rounded,
-                      color: AppColors.textPrimary, size: 22),
                 ],
               ),
             ),
