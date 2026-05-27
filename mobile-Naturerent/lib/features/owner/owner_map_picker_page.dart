@@ -26,17 +26,14 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
   static const _detailZoom = 16.0;
 
   late final MapController _mapController;
-  late final TextEditingController _searchController;
   late LatLng _selectedPoint;
   bool _loadingGps = false;
-  bool _searching = false;
   bool _mapReady = false;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
-    _searchController = TextEditingController();
     _selectedPoint = LatLng(
       widget.initialLat ?? _defaultLat,
       widget.initialLng ?? _defaultLng,
@@ -52,7 +49,6 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
   @override
   void dispose() {
     _mapController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -98,65 +94,6 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
     } finally {
       if (mounted) setState(() => _loadingGps = false);
     }
-  }
-
-  Future<void> _searchLocation() async {
-    final query = _searchController.text.trim();
-    if (query.isEmpty) return;
-
-    FocusScope.of(context).unfocus();
-    setState(() => _searching = true);
-    try {
-      final point = await _findLocation(query);
-      if (point == null) {
-        _showError(
-          'Lokasi tidak ditemukan. Coba nama tempat yang lebih spesifik.',
-        );
-        return;
-      }
-      _moveTo(point, _detailZoom);
-    } finally {
-      if (mounted) setState(() => _searching = false);
-    }
-  }
-
-  Future<LatLng?> _findLocation(String query) async {
-    final coordinate = _parseCoordinate(query);
-    if (coordinate != null) return coordinate;
-
-    final normalized = query.toLowerCase();
-    final knownLocations = <String, LatLng>{
-      'ranupani': const LatLng(-8.0137, 112.9478),
-      'ranu pani': const LatLng(-8.0137, 112.9478),
-      'ranu kumbolo': const LatLng(-8.0559, 112.9653),
-      'gunung semeru': const LatLng(-8.1084, 112.9222),
-      'malang': const LatLng(-7.9666, 112.6326),
-      'lumajang': const LatLng(-8.1335, 113.2248),
-      'yogyakarta': const LatLng(-7.7956, 110.3695),
-    };
-
-    for (final entry in knownLocations.entries) {
-      if (normalized.contains(entry.key)) return entry.value;
-    }
-
-    // TODO: Sambungkan ke geocoding provider saat backend/API sudah tersedia.
-    // Contoh opsi: endpoint Supabase Edge Function, Nominatim, atau package
-    // geocoding jika nanti ditambahkan ke dependency project.
-    return null;
-  }
-
-  LatLng? _parseCoordinate(String value) {
-    final parts = value
-        .split(RegExp(r'[,;\s]+'))
-        .where((part) => part.trim().isNotEmpty)
-        .toList();
-    if (parts.length < 2) return null;
-
-    final lat = double.tryParse(parts[0]);
-    final lng = double.tryParse(parts[1]);
-    if (lat == null || lng == null) return null;
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-    return LatLng(lat, lng);
   }
 
   void _moveTo(LatLng point, double zoom) {
@@ -243,11 +180,8 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
               left: 16,
               right: 16,
               top: 14,
-              child: _SearchBar(
-                controller: _searchController,
-                searching: _searching,
+              child: _GpsLocationButton(
                 loadingGps: _loadingGps,
-                onSearch: _searchLocation,
                 onCurrentLocation: _loadingGps ? null : _useCurrentLocation,
               ),
             ),
@@ -322,87 +256,61 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
   }
 }
 
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final bool searching;
+class _GpsLocationButton extends StatelessWidget {
   final bool loadingGps;
-  final VoidCallback onSearch;
   final VoidCallback? onCurrentLocation;
 
-  const _SearchBar({
-    required this.controller,
-    required this.searching,
+  const _GpsLocationButton({
     required this.loadingGps,
-    required this.onSearch,
     required this.onCurrentLocation,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(18),
-      child: Row(
-        children: [
-          const SizedBox(width: 12),
-          Icon(Icons.search_rounded, color: Colors.grey.shade600, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => onSearch(),
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: const Color(0xFF202321),
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Cari lokasi toko rental',
-                hintStyle: AppTextStyles.bodyMedium.copyWith(
-                  color: const Color(0xFF8A948B),
-                  fontWeight: FontWeight.w500,
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Material(
+        color: Colors.white,
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onCurrentLocation,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (loadingGps)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.my_location_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  loadingGps ? 'Mengecek GPS...' : 'Cek Lokasi Sesuai GPS',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primaryDark,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: const EdgeInsets.symmetric(vertical: 15),
-              ),
+              ],
             ),
           ),
-          IconButton(
-            tooltip: 'Cari lokasi',
-            onPressed: searching ? null : onSearch,
-            icon: searching
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
-                    ),
-                  )
-                : const Icon(Icons.arrow_forward_rounded),
-            color: AppColors.primary,
-          ),
-          IconButton(
-            tooltip: 'Gunakan lokasi saat ini',
-            onPressed: onCurrentLocation,
-            icon: loadingGps
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
-                    ),
-                  )
-                : const Icon(Icons.my_location_rounded),
-            color: AppColors.primary,
-          ),
-        ],
+        ),
       ),
     );
   }
