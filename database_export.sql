@@ -582,3 +582,54 @@ ALTER TABLE public.wisata_locations ENABLE ROW LEVEL SECURITY;
 INSERT INTO public.platform_settings (id, biaya_layanan, qris_image_url) VALUES (1, 2000, NULL) ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.commission_settings (percentage) VALUES (10.00);
 INSERT INTO public.equipment_categories (nama, icon) VALUES ('Tenda', 'tent'), ('Carrier', 'backpack'), ('Sleeping Bag', 'bed'), ('Matras', 'layers'), ('Kompor', 'local_fire_department'), ('Sepatu', 'hiking'), ('Jaket', 'jacket'), ('Lainnya', 'more_horiz') ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- KTP STORAGE AND PROFILE POLICIES
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ktp-docs', 'ktp-docs', true)
+ON CONFLICT (id) DO UPDATE
+SET public = true;
+
+GRANT SELECT ON public.users TO authenticated;
+GRANT UPDATE (nama_lengkap, no_wa, avatar_url, ktp_url, updated_at)
+ON public.users TO authenticated;
+
+DROP POLICY IF EXISTS "Users can read own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
+
+CREATE POLICY "Users can read own profile"
+ON public.users
+FOR SELECT
+TO authenticated
+USING (id = auth.uid());
+
+CREATE POLICY "Users can update own profile"
+ON public.users
+FOR UPDATE
+TO authenticated
+USING (id = auth.uid())
+WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "Authenticated can upload ktp" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can update ktp" ON storage.objects;
+DROP POLICY IF EXISTS "Public can read ktp" ON storage.objects;
+
+CREATE POLICY "Authenticated can upload ktp"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'ktp-docs');
+
+CREATE POLICY "Authenticated can update ktp"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (bucket_id = 'ktp-docs')
+WITH CHECK (bucket_id = 'ktp-docs');
+
+CREATE POLICY "Public can read ktp"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'ktp-docs');
