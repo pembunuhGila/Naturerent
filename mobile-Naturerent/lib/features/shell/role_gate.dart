@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../admin/admin_shell.dart';
 import '../auth/onboarding_page.dart';
 import '../owner/owner_shell.dart';
 import 'main_shell.dart';
@@ -29,6 +30,7 @@ class RoleGate extends StatelessWidget {
             AuthService().penggunaSaatIni?.userMetadata?['role'] as String?;
 
         if (role == 'rental_owner') return const OwnerShell();
+        if (role == 'admin') return const AdminShell();
         if (snapshot.hasError || role == null || role == 'customer') {
           return const MainShell();
         }
