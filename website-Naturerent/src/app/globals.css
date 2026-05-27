@@ -364,7 +364,7 @@ input, select, textarea { font-family: inherit; }
 
 .quick-card .card-content h3 { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .quick-card .card-content p { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-.quick-card .card-arrow { margin-left: auto; color: var(--text-muted); font-size: 13px; transition: var(--transition); }
+.quick-card .card-arrow { margin-left: auto; color: var(--text-muted); font-size: 13px; transition: var(--transition); display: flex; align-items: center; justify-content: center; }
 .quick-card:hover .card-arrow { color: var(--brand-emerald); transform: translateX(3px); }
 
 /* ===================== ACTIVITY SECTION ===================== */
@@ -1361,6 +1361,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   background-color: var(--bg-secondary) !important;
   color: var(--brand-green) !important;
   font-size: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: auto !important;
 }
 
 .quick-card:hover .card-arrow {

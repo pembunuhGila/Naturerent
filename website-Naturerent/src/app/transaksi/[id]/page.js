@@ -14,6 +14,15 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function getFullProofUrl(url) {
+  if (!url) return '#'
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hctdfnwfigcjycemacif.supabase.co'
+  return `${baseUrl.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`
+}
+
 const statusBadge = (status) => {
   const labelMap = {
     pending: 'Menunggu Verifikasi',
@@ -49,6 +58,7 @@ export default function TransaksiDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [userEmail, setUserEmail] = useState('')
+  const [showProofModal, setShowProofModal] = useState(false)
 
   useEffect(() => {
     const fetch = async () => {
@@ -233,9 +243,9 @@ export default function TransaksiDetailPage() {
                   <i className="fa-solid fa-arrow-left" /> Kembali
                 </button>
                 {data.payment_proof_url && (
-                  <a className="btn btn-ghost" href={data.payment_proof_url} target="_blank" rel="noreferrer">
+                  <button type="button" className="btn btn-ghost" onClick={() => setShowProofModal(true)}>
                     <i className="fa-solid fa-image" /> Bukti DP
-                  </a>
+                  </button>
                 )}
                 {data.status === 'pending' && (
                   <>
@@ -255,6 +265,30 @@ export default function TransaksiDetailPage() {
           )}
         </section>
       </main>
+
+      {/* Bukti DP Modal Overlay */}
+      {showProofModal && data?.payment_proof_url && (
+        <div className="modal-overlay" onClick={() => setShowProofModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 32, width: '100%', maxWidth: 540, border: '1px solid var(--border-color)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Detail Bukti Transfer DP</h2>
+              <button onClick={() => setShowProofModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 22, padding: 4 }}>
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+            <div style={{ width: '100%', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-color)', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', maxHeight: '60vh' }}>
+              <img src={getFullProofUrl(data.payment_proof_url)} alt="Bukti Transfer DP" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+              <button className="btn btn-ghost" onClick={() => setShowProofModal(false)} style={{ flex: 1 }}>Tutup</button>
+              <a className="btn btn-primary" href={getFullProofUrl(data.payment_proof_url)} download="bukti-dp.jpg" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <i className="fa-solid fa-download" /> Download Asli
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
