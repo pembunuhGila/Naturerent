@@ -5,7 +5,7 @@ import Toast, { useToast } from '@/components/Toast'
 import { createClient } from '@/lib/supabase'
 import AuthGuard from '@/components/AuthGuard'
 
-const PAGE_SIZE = 4
+const PAGE_SIZE = 5
 
 function formatCurrency(amount) {
   if (amount === undefined || amount === null) return '-'
@@ -36,6 +36,7 @@ export default function KomisiPage() {
   const [saving, setSaving] = useState(false)
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+  const [statusFilter, setStatusFilter] = useState('Semua')
 
   // Fetch or setup commission rate and transactions
   const fetchData = useCallback(async (rate) => {
@@ -52,10 +53,10 @@ export default function KomisiPage() {
       // Fallback/Mock transactions matching Figma exactly
       if (error || !bookings || bookings.length === 0) {
         const fallbackTransactions = [
-          { id: 'TRX-99210', created_at: '2026-10-12T14:30:00Z', rental_name: 'Summit Peak Gear', gross_amount: 700000, status: 'Lunas' },
-          { id: 'TRX-99208', created_at: '2026-10-12T12:15:00Z', rental_name: 'River Runner Rentals', gross_amount: 250000, status: 'Lunas' },
+          { id: 'TRX-99210', created_at: '2026-10-12T14:30:00Z', rental_name: 'Summit Peak Gear', gross_amount: 700000, status: 'Selesai' },
+          { id: 'TRX-99208', created_at: '2026-10-12T12:15:00Z', rental_name: 'River Runner Rentals', gross_amount: 250000, status: 'Selesai' },
           { id: 'TRX-99194', created_at: '2026-10-12T11:45:00Z', rental_name: 'Forest Bound Hub', gross_amount: 150000, status: 'Proses' },
-          { id: 'TRX-99182', created_at: '2026-10-11T18:20:00Z', rental_name: 'Trail Blazers Co.', gross_amount: 300000, status: 'Lunas' }
+          { id: 'TRX-99182', created_at: '2026-10-11T18:20:00Z', rental_name: 'Trail Blazers Co.', gross_amount: 300000, status: 'Selesai' }
         ]
         
         setData(fallbackTransactions)
@@ -68,7 +69,7 @@ export default function KomisiPage() {
             created_at: b.created_at,
             rental_name: b.rental_name || fallbackRentals[index % fallbackRentals.length],
             gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 300000,
-            status: (b.status === 'completed' || b.status === 'Selesai') ? 'Lunas' : 
+            status: (b.status === 'completed' || b.status === 'Selesai') ? 'Selesai' : 
                     (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
           }
         })
@@ -109,7 +110,12 @@ export default function KomisiPage() {
     addToast('Tarif komisi standar berhasil diperbarui!', 'success')
   }
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const filteredData = statusFilter === 'Semua' 
+    ? data 
+    : data.filter(row => row.status === statusFilter)
+
+  const totalCountFiltered = filteredData.length
+  const totalPages = Math.ceil(totalCountFiltered / PAGE_SIZE)
 
   return (
     <AuthGuard>
@@ -157,14 +163,34 @@ export default function KomisiPage() {
 
           {/* History Komisi Card */}
           <div className="table-wrapper" style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px' }}>
               <div>
                 <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>History Komisi</h2>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Catatan waktu nyata dari semua potongan platform dan pembagian transaksi.</p>
               </div>
-              <button className="action-btn" style={{ border: '1px solid var(--border-color)', padding: '8px 12px', fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', backgroundColor: 'var(--bg-card)', borderRadius: '6px' }}>
-                <i className="fa-solid fa-filter" /> Filter
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <i className="fa-solid fa-filter" style={{ color: 'var(--text-muted)', fontSize: 13 }} />
+                <select 
+                  className="filter-select" 
+                  value={statusFilter} 
+                  onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                  style={{ 
+                    padding: '8px 32px 8px 14px', 
+                    borderRadius: '6px', 
+                    fontSize: '13px', 
+                    fontWeight: 700, 
+                    border: '1px solid var(--border-color)', 
+                    backgroundColor: 'var(--bg-card)', 
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="Semua">Semua Status</option>
+                  <option value="Proses">Proses</option>
+                  <option value="Batal">Batal</option>
+                  <option value="Selesai">Selesai</option>
+                </select>
+              </div>
             </div>
 
             <table>
@@ -185,7 +211,7 @@ export default function KomisiPage() {
                       <div className="loading-spinner" style={{ margin: 'auto' }} />
                     </td>
                   </tr>
-                ) : data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(row => {
+                ) : filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(row => {
                   const comm = row.status === 'Batal' ? 0 : row.gross_amount * (commissionRate / 100)
                   return (
                     <tr key={row.id}>
@@ -201,7 +227,7 @@ export default function KomisiPage() {
                       <td>{formatCurrency(row.gross_amount)}</td>
                       <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>{formatCurrency(comm)}</td>
                       <td>
-                        <span className={`badge ${row.status === 'Lunas' ? 'badge-success' : row.status === 'Batal' ? 'badge-danger' : 'badge-warning'}`}>
+                        <span className={`badge ${row.status === 'Selesai' ? 'badge-success' : row.status === 'Batal' ? 'badge-danger' : 'badge-warning'}`}>
                           {row.status}
                         </span>
                       </td>
@@ -216,10 +242,10 @@ export default function KomisiPage() {
             </table>
 
             {/* Pagination */}
-            {!loading && totalCount > 0 && (
+            {!loading && totalCountFiltered > 0 && (
               <div className="pagination-section" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
                 <p className="pagination-info" style={{ color: 'var(--text-secondary)' }}>
-                  Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalCount)} dari {totalCount} transaksi
+                  Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalCountFiltered)} dari {totalCountFiltered} transaksi
                 </p>
                 <div className="pagination">
                   <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>

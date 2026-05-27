@@ -925,10 +925,106 @@ export default function DestinasiWisataPage() {
 
   return (
     <AuthGuard>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .destination-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+        }
+        .destination-card:hover {
+          transform: translateY(-6px);
+          border-color: var(--brand-green);
+          box-shadow: 0 16px 36px rgba(31, 90, 63, 0.08);
+        }
+        .destination-img-container {
+          position: relative;
+          aspect-ratio: 16 / 11;
+          background: var(--bg-secondary);
+          overflow: hidden;
+          border-bottom: 1px solid var(--border-color-light);
+        }
+        .destination-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.5s ease;
+        }
+        .destination-card:hover .destination-img {
+          transform: scale(1.06);
+        }
+        .destination-category-badge {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          padding: 6px 14px;
+          border-radius: 20px;
+          background: var(--brand-green);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 700;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          z-index: 5;
+          letter-spacing: 0.3px;
+        }
+        .destination-content {
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          flex: 1;
+        }
+        .destination-title {
+          font-size: 15px;
+          font-weight: 700;
+          margin: 0;
+          color: var(--text-primary);
+          line-height: 1.35;
+        }
+        .destination-desc {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.6;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          min-height: 3.9rem;
+        }
+        .destination-meta-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: var(--text-secondary);
+          background: var(--bg-secondary);
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--border-color-light);
+        }
+        .destination-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-top: auto;
+          padding-top: 14px;
+          border-top: 1px solid var(--border-color-light);
+        }
+      `}} />
+
       <div className="dashboard-container">
         <Sidebar userEmail={userEmail} />
         <main className="main-content">
-          <header className="top-header">
+          <header className="top-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
             <div>
               <h1>Destinasi Wisata</h1>
               <p className="header-subtitle">Kelola destinasi wisata yang tampil di aplikasi user NatureRent.</p>
@@ -944,7 +1040,7 @@ export default function DestinasiWisataPage() {
               </button>
             </div>
           </header>
-
+ 
           <section className="content-section">
             <form className="filter-bar" onSubmit={handleSearch}>
               <div className="search-box">
@@ -962,7 +1058,7 @@ export default function DestinasiWisataPage() {
                 </button>
               </div>
             </form>
-
+ 
             {loading ? (
               <div className="table-wrapper">
                 <div className="loading-state">
@@ -982,127 +1078,77 @@ export default function DestinasiWisataPage() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                    gap: 16,
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+                    gap: 20,
                   }}
                 >
-                  {destinations.map(destination => (
-                    <article
-                      key={destination.id}
-                      style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--border-radius)',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      <div
-                        style={{
-                          aspectRatio: '3 / 4',
-                          background: 'var(--bg-secondary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        {destination.foto_url ? (
-                          <img
-                            src={destination.foto_url}
-                            alt={destination.nama}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <i className="fa-solid fa-image" style={{ fontSize: 30 }} />
-                        )}
-                      </div>
-                      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-                        <div>
-                          <h3 style={{ fontSize: 16, margin: 0, color: 'var(--text-primary)' }}>
-                            {destination.nama}
-                          </h3>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <i className="fa-solid fa-location-dot" style={{ color: 'var(--accent-red)' }} />
-                            {destination.kategori || '-'}
+                  {destinations.map(destination => {
+                    const isGunung = (destination.kategori || '').toLowerCase().includes('gunung');
+                    const isPantai = (destination.kategori || '').toLowerCase().includes('pantai');
+                    const categoryIcon = isGunung ? 'fa-mountain' : isPantai ? 'fa-umbrella-beach' : 'fa-map-location-dot';
+
+                    return (
+                      <article key={destination.id} className="destination-card">
+                        <div className="destination-img-container">
+                          <div className="destination-category-badge">
+                            <i className={`fa-solid ${categoryIcon}`} />
+                            <span>{destination.kategori || 'Wisata'}</span>
+                          </div>
+                          {destination.foto_url ? (
+                            <img
+                              src={destination.foto_url}
+                              alt={destination.nama}
+                              className="destination-img"
+                            />
+                          ) : (
+                            <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                              <i className="fa-solid fa-image" style={{ fontSize: 32 }} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="destination-content">
+                          <div>
+                            <h3 className="destination-title">{destination.nama}</h3>
+                          </div>
+                          <p className="destination-desc">
+                            {destination.deskripsi || 'Tidak ada deskripsi.'}
                           </p>
-                        </div>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: 'var(--text-secondary)',
-                            fontSize: 13,
-                            lineHeight: 1.5,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {destination.deskripsi || '-'}
-                        </p>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: 8,
-                            fontSize: 11,
-                            color: 'var(--text-secondary)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              padding: '7px 8px',
-                              borderRadius: 8,
-                              background: 'var(--bg-secondary)',
-                              border: '1px solid var(--border-color-light)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            Lat: {destination.lat ?? '-'}
-                          </span>
-                          <span
-                            style={{
-                              padding: '7px 8px',
-                              borderRadius: 8,
-                              background: 'var(--bg-secondary)',
-                              border: '1px solid var(--border-color-light)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            Lng: {destination.lng ?? '-'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 'auto' }}>
-                          <span className="badge badge-success">
-                            <i className="fa-solid fa-calendar" />
-                            {formatDate(destination.created_at)}
-                          </span>
-                          <div className="action-cell">
-                            <button
-                              className="action-btn edit-btn"
-                              title="Edit"
-                              onClick={() => openEditForm(destination)}
-                            >
-                              <i className="fa-solid fa-pen" />
-                            </button>
-                            <button
-                              className="action-btn delete-btn"
-                              title="Hapus"
-                              onClick={() => setDeleteTarget(destination)}
-                            >
-                              <i className="fa-solid fa-trash" />
-                            </button>
+
+                          <div className="destination-meta-row">
+                            <i className="fa-solid fa-map-pin" style={{ color: 'var(--brand-emerald)', fontSize: 13 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                              {destination.lat ?? '-'}, {destination.lng ?? '-'}
+                            </span>
+                          </div>
+
+                          <div className="destination-footer">
+                            <span className="badge badge-success" style={{ padding: '6px 12px', gap: 6, fontSize: '0.74rem' }}>
+                              <i className="fa-solid fa-calendar" />
+                              {formatDate(destination.created_at)}
+                            </span>
+                            <div className="action-cell">
+                              <button
+                                className="action-btn edit-btn"
+                                title="Edit"
+                                onClick={() => openEditForm(destination)}
+                                style={{ borderRadius: 6 }}
+                              >
+                                <i className="fa-solid fa-pen" />
+                              </button>
+                              <button
+                                className="action-btn delete-btn"
+                                title="Hapus"
+                                onClick={() => setDeleteTarget(destination)}
+                                style={{ borderRadius: 6 }}
+                              >
+                                <i className="fa-solid fa-trash" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
 
                 {totalCount > 0 && (

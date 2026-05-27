@@ -121,6 +121,51 @@ CREATE POLICY "Owners can view bookings for their rentals" ON public.bookings
         )
     );
 
+-- ----------------------------------------------------------------------------
+-- BAGIAN 3: KONFIGURASI PENDUKUNG QRIS PER RENTAL
+-- ----------------------------------------------------------------------------
+-- A. Tambahkan kolom qris_image_url dan qris_merchant_name ke rental_profiles jika belum ada
+ALTER TABLE public.rental_profiles
+  ADD COLUMN IF NOT EXISTS qris_image_url text,
+  ADD COLUMN IF NOT EXISTS qris_merchant_name text;
+
+-- B. Kebijakan Keamanan (RLS) untuk Storage Bucket 'qris-images'
+-- Pengguna terautentikasi (admin/pemilik rental) diizinkan untuk mengunggah dan memperbarui file.
+-- Semua pengguna (termasuk anonim) diizinkan untuk membaca gambar QRIS.
+
+-- 1. Kebijakan SELECT (Membaca file)
+DROP POLICY IF EXISTS "Public can read qris images" ON storage.objects;
+CREATE POLICY "Public can read qris images"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'qris-images');
+
+-- 2. Kebijakan INSERT (Mengunggah file)
+DROP POLICY IF EXISTS "Authenticated can upload qris images" ON storage.objects;
+CREATE POLICY "Authenticated can upload qris images"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'qris-images');
+
+-- 3. Kebijakan UPDATE (Memperbarui file)
+DROP POLICY IF EXISTS "Authenticated can update qris images" ON storage.objects;
+CREATE POLICY "Authenticated can update qris images"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (bucket_id = 'qris-images')
+WITH CHECK (bucket_id = 'qris-images');
+
+-- 4. Kebijakan DELETE (Menghapus file)
+DROP POLICY IF EXISTS "Authenticated can delete qris images" ON storage.objects;
+CREATE POLICY "Authenticated can delete qris images"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (bucket_id = 'qris-images');
+
 -- ============================================================================
 -- AKHIR DARI SCRIPT
 -- ============================================================================

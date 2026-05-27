@@ -71,7 +71,7 @@ export default function TransaksiDetailPage() {
       try {
         const { data: row } = await supabase
           .from('bookings')
-          .select('*, rental_profiles(nama_rental, owner_id, alamat)')
+          .select('*, rental_profiles(nama_rental, owner_id, alamat, qris_image_url, qris_merchant_name)')
           .eq('id', id)
           .single()
         if (row) {
@@ -96,11 +96,13 @@ export default function TransaksiDetailPage() {
             rental_name: row.rental_profiles?.nama_rental || row.rental_name || 'Peralatan Camping',
             owner_name: row.owner_name || 'Mitra NatureRent',
             total_amount: row.total_bayar || row.total || row.total_amount || row.subtotal || 0,
-            payment_method: row.payment_method || 'QRIS',
+            payment_method: 'QRIS',
             start_date: row.tgl_mulai || row.start_date || row.created_at,
             end_date: row.tgl_selesai || row.end_date || row.created_at,
             notes: row.catatan || row.notes || '-',
             alamat: row.rental_profiles?.alamat || row.alamat || '-',
+            qris_image_url: row.rental_profiles?.qris_image_url || null,
+            qris_merchant_name: row.rental_profiles?.qris_merchant_name || null,
           }
         }
       } catch (e) {
@@ -216,6 +218,43 @@ export default function TransaksiDetailPage() {
                 </div>
                 {statusBadge(data.status)}
               </div>
+
+                {/* QRIS Payment Card */}
+                <div style={{ marginBottom: 24, padding: 20, borderRadius: 12, border: '1.5px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                    <i className="fa-solid fa-qrcode" style={{ color: 'var(--brand-green)', fontSize: 16 }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Pembayaran via QRIS</span>
+                    <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, backgroundColor: 'rgba(82,183,136,0.15)', color: 'var(--brand-green)', border: '1px solid rgba(82,183,136,0.3)', marginLeft: 'auto' }}>
+                      QRIS Only
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                    <div style={{ width: 120, height: 120, borderRadius: 10, border: '1.5px solid var(--border-color)', backgroundColor: 'var(--bg-card)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                      {data.qris_image_url
+                        ? <img src={data.qris_image_url} alt="QRIS" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                        : <>
+                            <i className="fa-solid fa-qrcode" style={{ fontSize: 36, color: 'var(--text-muted)' }} />
+                            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 6, textAlign: 'center', padding: '0 8px' }}>Belum ada QRIS</span>
+                          </>
+                      }
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{data.rental_name}</p>
+                      {data.qris_merchant_name && (
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 8 }}>Merchant: {data.qris_merchant_name}</p>
+                      )}
+                      <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                        Scan kode QR di atas menggunakan aplikasi m-banking atau e-wallet untuk menyelesaikan pembayaran.
+                      </p>
+                      {!data.qris_image_url && (
+                        <p style={{ fontSize: '0.74rem', color: '#f59e0b', fontWeight: 600, marginTop: 8 }}>
+                          <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 5 }} />
+                          QRIS belum dikonfigurasi. Hubungi admin untuk mengatur QRIS rental ini.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
               <div className="detail-grid" style={{ marginBottom: 24 }}>
                 {[

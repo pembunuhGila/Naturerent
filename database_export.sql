@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- NatureRent - Full Database Export
 -- Generated: 2026-05-26 06:41:09
 -- ============================================================
@@ -215,7 +215,9 @@ CREATE TABLE IF NOT EXISTS public.rental_profiles (id uuid NOT NULL DEFAULT uuid
   updated_at TIMESTAMPTZ DEFAULT now(),
   lat FLOAT8,
   lng FLOAT8,
-  foto_profil text
+  foto_profil text,
+  qris_image_url text,
+  qris_merchant_name text
 );
 
 -- Table: rental_settings
@@ -584,10 +586,15 @@ INSERT INTO public.commission_settings (percentage) VALUES (10.00);
 INSERT INTO public.equipment_categories (nama, icon) VALUES ('Tenda', 'tent'), ('Carrier', 'backpack'), ('Sleeping Bag', 'bed'), ('Matras', 'layers'), ('Kompor', 'local_fire_department'), ('Sepatu', 'hiking'), ('Jaket', 'jacket'), ('Lainnya', 'more_horiz') ON CONFLICT DO NOTHING;
 
 -- ============================================================
--- KTP STORAGE AND PROFILE POLICIES
+-- KTP & QRIS STORAGE AND PROFILE POLICIES
 -- ============================================================
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('ktp-docs', 'ktp-docs', true)
+ON CONFLICT (id) DO UPDATE
+SET public = true;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('qris-images', 'qris-images', true)
 ON CONFLICT (id) DO UPDATE
 SET public = true;
 
@@ -633,3 +640,34 @@ ON storage.objects
 FOR SELECT
 TO public
 USING (bucket_id = 'ktp-docs');
+
+-- QRIS-images bucket policies
+DROP POLICY IF EXISTS "Authenticated can upload qris images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can update qris images" ON storage.objects;
+DROP POLICY IF EXISTS "Public can read qris images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can delete qris images" ON storage.objects;
+
+CREATE POLICY "Authenticated can upload qris images"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'qris-images');
+
+CREATE POLICY "Authenticated can update qris images"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (bucket_id = 'qris-images')
+WITH CHECK (bucket_id = 'qris-images');
+
+CREATE POLICY "Public can read qris images"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'qris-images');
+
+CREATE POLICY "Authenticated can delete qris images"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (bucket_id = 'qris-images');

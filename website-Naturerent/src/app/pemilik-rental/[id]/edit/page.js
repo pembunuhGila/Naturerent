@@ -19,6 +19,11 @@ export default function EditPemilikRentalPage() {
   const [errors, setErrors] = useState({})
   const [userEmail, setUserEmail] = useState('')
   const [ownerId, setOwnerId] = useState(null)
+  // QRIS state
+  const [qrisMerchant, setQrisMerchant] = useState('')
+  const [qrisImageUrl, setQrisImageUrl] = useState(null)
+  const [qrisImageFile, setQrisImageFile] = useState(null)
+  const [qrisImagePreview, setQrisImagePreview] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +81,10 @@ export default function EditPemilikRentalPage() {
         commission_rate: data.commission_rate ?? '',
         is_active: data.is_active !== false,
       })
+      // Load existing QRIS
+      setQrisMerchant(data.qris_merchant_name || '')
+      setQrisImageUrl(data.qris_image_url || null)
+      setQrisImagePreview(data.qris_image_url || null)
       setLoading(false)
     }
     fetchData()
@@ -92,6 +101,17 @@ export default function EditPemilikRentalPage() {
     return e
   }
 
+  const handleQrisImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('Gambar terlalu besar (maks 2MB)', 'error')
+      return
+    }
+    setQrisImageFile(file)
+    setQrisImagePreview(URL.createObjectURL(file))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const errs = validate()
@@ -103,6 +123,23 @@ export default function EditPemilikRentalPage() {
     setErrors({})
     setSaving(true)
     const supabase = createClient()
+
+    // Upload QRIS image to Supabase Storage if a new file was selected
+    let finalQrisImageUrl = qrisImageUrl
+    if (qrisImageFile) {
+      const fileExt = qrisImageFile.name.split('.').pop()
+      const filePath = `${id}/qris.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('qris-images')
+        .upload(filePath, qrisImageFile, { upsert: true, contentType: qrisImageFile.type })
+      if (uploadError) {
+        addToast('Gagal upload gambar QRIS: ' + uploadError.message, 'error')
+        setSaving(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('qris-images').getPublicUrl(filePath)
+      finalQrisImageUrl = urlData?.publicUrl || null
+    }
     
     // Update rental profile
     const { error } = await supabase.from('rental_profiles').update({
@@ -111,6 +148,8 @@ export default function EditPemilikRentalPage() {
       no_wa: form.phone.trim(),
       deskripsi: form.description.trim(),
       is_active: form.is_active,
+      qris_merchant_name: qrisMerchant.trim() || null,
+      qris_image_url: finalQrisImageUrl,
       updated_at: new Date().toISOString(),
     }).eq('id', id)
 
@@ -213,6 +252,61 @@ export default function EditPemilikRentalPage() {
                 <option value="aktif">Aktif</option>
                 <option value="nonaktif">Nonaktif</option>
               </select>
+            </div>
+
+            {/* QRIS Configuration Section */}
+            <div style={{ marginTop: 8, padding: 20, borderRadius: 12, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: 'var(--brand-mint)', color: 'var(--brand-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+                  <i className="fa-solid fa-qrcode" />
+                </div>
+                <h4 style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>Konfigurasi QRIS Rental</h4>
+              </div>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 18 }}>Gambar QRIS ini ditampilkan kepada pembeli saat melakukan pembayaran untuk rental ini.</p>
+
+              <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                {/* QR Image Upload */}
+                <div
+                  onClick={() => document.getElementById('edit-qris-img').click()}
+                  style={{ width: 110, height: 110, borderRadius: 10, border: `2px dashed var(--brand-green)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', overflow: 'hidden', backgroundColor: 'var(--bg-card)', flexShrink: 0 }}
+                >
+                  {qrisImagePreview
+                    ? <img src={qrisImagePreview} alt="QRIS" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    : <>
+                        <i className="fa-solid fa-qrcode" style={{ fontSize: 32, color: 'var(--brand-green)' }} />
+                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center' }}>KLIK UPLOAD<br />GAMBAR QRIS</span>
+                      </>
+                  }
+                </div>
+                <input type="file" id="edit-qris-img" accept="image/*" style={{ display: 'none' }} onChange={handleQrisImageChange} />
+
+                <div style={{ flex: 1 }}>
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label className="form-label" style={{ marginBottom: 6 }}>Nama Merchant QRIS</label>
+                    <input
+                      className="form-input"
+                      type="text"
+                      placeholder="e.g. Pandawa Outdoor"
+                      value={qrisMerchant}
+                      onChange={e => setQrisMerchant(e.target.value)}
+                    />
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Nama yang tampil ke pembeli saat pembayaran</p>
+                  </div>
+                  {qrisImagePreview && (
+                    <button type="button"
+                      onClick={() => { setQrisImagePreview(null); setQrisImageFile(null); setQrisImageUrl(null) }}
+                      style={{ fontSize: '0.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>
+                      <i className="fa-solid fa-trash" style={{ marginRight: 5 }} />Hapus gambar QRIS
+                    </button>
+                  )}
+                  {!qrisImagePreview && (
+                    <p style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 600 }}>
+                      <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 5 }} />
+                      Belum ada gambar QRIS. Upload agar pembeli bisa melakukan pembayaran.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="form-actions">
