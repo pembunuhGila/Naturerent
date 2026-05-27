@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +17,10 @@ class QrisPage extends StatefulWidget {
   final DateTime tanggalMulai;
   final DateTime tanggalSelesai;
   final List<CartItem> items;
+  final bool isDelivery;
+  final double deliveryFee;
+  final double? deliveryDistanceKm;
+  final Map<String, double>? deliveryFeesByRentalId;
 
   const QrisPage({
     super.key,
@@ -23,6 +29,10 @@ class QrisPage extends StatefulWidget {
     required this.tanggalMulai,
     required this.tanggalSelesai,
     required this.items,
+    this.isDelivery = false,
+    this.deliveryFee = 0,
+    this.deliveryDistanceKm,
+    this.deliveryFeesByRentalId,
   });
 
   @override
@@ -47,10 +57,10 @@ class _QrisPageState extends State<QrisPage> {
   double get _dp => _subtotalSewa * _tarifDp;
   double get _sisaSewa => _subtotalSewa * (1 - _tarifDp);
   // Biaya layanan dibayar bersama DP
-  double get _dpDibayarSekarang => _dp + _biayaLayanan;
+  double get _dpDibayarSekarang => _dp + _biayaLayanan + widget.deliveryFee;
   // Pelunasan saat pengembalian (biaya layanan sudah dibayar)
   double get _pelunasan => _sisaSewa;
-  double get _totalAkhir => _subtotalSewa + _biayaLayanan;
+  double get _totalAkhir => _subtotalSewa + _biayaLayanan + widget.deliveryFee;
   int get _dpPercent => (_tarifDp * 100).round();
   int get _sisaPercent => 100 - _dpPercent;
 
@@ -161,6 +171,10 @@ class _QrisPageState extends State<QrisPage> {
         paymentProofBytes: paymentProofBytes,
         paymentProofExtension: paymentProofExtension,
         paymentProofContentType: paymentProofContentType,
+        isDelivery: widget.isDelivery,
+        deliveryFee: widget.deliveryFee,
+        deliveryFeesByRentalId: widget.deliveryFeesByRentalId,
+        deliveryDistanceKm: widget.deliveryDistanceKm,
       );
     } catch (e) {
       if (!mounted) return;
@@ -174,7 +188,7 @@ class _QrisPageState extends State<QrisPage> {
         paymentProofBytes: paymentProofBytes,
       );
       _showTopMessage(
-        'Pesanan masuk Riwayat sementara. Policy Supabase bookings perlu dicek.',
+        'Pesanan masuk Riwayat. Data tersimpan sementara di perangkat.',
       );
     }
 
@@ -190,7 +204,7 @@ class _QrisPageState extends State<QrisPage> {
   }
 
   void _showTopMessage(String message) {
-    NrToast.show(context, message, type: NrToastType.error);
+    NrToast.show(context, message, type: NrToastType.info);
   }
 
   @override
@@ -413,7 +427,7 @@ class _QrisPageState extends State<QrisPage> {
                           ...[
                             '1. Buka aplikasi e-wallet atau m-banking',
                             '2. Pilih menu Scan QR / QRIS',
-                            '3. Scan QR dan bayar ${_fmtRupiah(_dpDibayarSekarang)} (DP $_dpPercent% + biaya layanan)',
+                            '3. Scan QR dan bayar ${_fmtRupiah(_dpDibayarSekarang)} (DP $_dpPercent% + layanan${widget.isDelivery ? ' + delivery' : ''})',
                             '4. Screenshot atau simpan bukti pembayaran',
                             '5. Upload foto bukti lewat tombol di bawah',
                             '6. Pesanan masuk Riwayat menunggu verifikasi admin',
@@ -547,6 +561,13 @@ class _QrisPageState extends State<QrisPage> {
         children: [
           _InfoRow(label: 'Subtotal sewa', value: _fmtRupiah(_subtotalSewa)),
           _InfoRow(label: 'Biaya layanan', value: _loadingSettings ? '...' : _fmtRupiah(_biayaLayanan)),
+          if (widget.isDelivery)
+            _InfoRow(
+              label: widget.deliveryDistanceKm == null
+                  ? 'Biaya delivery'
+                  : 'Biaya delivery (${widget.deliveryDistanceKm!.toStringAsFixed(1)} km)',
+              value: _fmtRupiah(widget.deliveryFee),
+            ),
           const Divider(height: 14, color: AppColors.border),
           _InfoRow(label: 'Total keseluruhan',
               value: _loadingSettings ? '...' : _fmtRupiah(_totalAkhir), isStrong: true),
