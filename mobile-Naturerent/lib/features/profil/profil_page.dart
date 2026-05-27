@@ -142,6 +142,14 @@ class _ProfilPageState extends State<ProfilPage> {
   /// Navigasi ke halaman aktivitas yang sesuai dengan role user.
   /// Owner → OwnerActivityPage, Customer → AktivitasPage
   Future<void> _bukaAktivitas() async {
+    await _bukaHalamanAktivitas(initialTab: 0);
+  }
+
+  Future<void> _bukaRiwayatTransaksi() async {
+    await _bukaHalamanAktivitas(initialTab: 2);
+  }
+
+  Future<void> _bukaHalamanAktivitas({required int initialTab}) async {
     if (_openingActivity) return;
 
     setState(() => _openingActivity = true);
@@ -174,7 +182,10 @@ class _ProfilPageState extends State<ProfilPage> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const AktivitasPage(initialTab: 0),
+          builder: (_) => AktivitasPage(
+            initialTab: initialTab,
+            showBackButton: true,
+          ),
         ),
       );
     }
@@ -241,7 +252,7 @@ class _ProfilPageState extends State<ProfilPage> {
     if (_isMitra) return _buildMitraProfile();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -255,7 +266,9 @@ class _ProfilPageState extends State<ProfilPage> {
 
               // ── Avatar + Info
               _buildProfileHeader(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
+              _buildEditProfileButton(),
+              const SizedBox(height: 28),
 
               // ── Seksi AKUN
               _buildSectionLabel('AKUN'),
@@ -270,7 +283,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 _MenuItem(
                   icon: Icons.receipt_long_rounded,
                   label: 'Daftar Transaksi',
-                  onTap: () => _snackComingSoon('Daftar Transaksi'),
+                  onTap: _bukaRiwayatTransaksi,
                 ),
               ]),
               const SizedBox(height: 20),
@@ -307,55 +320,66 @@ class _ProfilPageState extends State<ProfilPage> {
   // ──────────────────────────────────────────────────────────
 
   Widget _buildAppBar() {
-    return Row(
-      children: [
-        Text(
-          'Profil Saya',
-          style: AppTextStyles.headlineLarge.copyWith(
-            color: const Color(0xFF202321),
-            fontSize: 20,
-          ),
+    return Center(
+      child: Text(
+        'Profil Saya',
+        style: AppTextStyles.headlineLarge.copyWith(
+          color: AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildProfileHeader() {
-    return Center(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryDark.withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          // Avatar
           Stack(
             children: [
               GestureDetector(
                 onTap: _bukaEditProfil,
                 child: Container(
-                  width: 90,
-                  height: 90,
+                  width: 92,
+                  height: 92,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF18743A).withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
                   child: ClipOval(
                     child: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
                         ? Image.network(_avatarUrl!,
-                            width: 90, height: 90, fit: BoxFit.cover)
+                            width: 92, height: 92, fit: BoxFit.cover)
                         : Container(
-                            color: const Color(0xFF18743A),
+                            color: AppColors.primary,
                             child: Center(
                               child: Text(
                                 _inisial,
                                 style: const TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 32,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                 ),
                               ),
@@ -364,7 +388,6 @@ class _ProfilPageState extends State<ProfilPage> {
                   ),
                 ),
               ),
-              // Edit button
               Positioned(
                 bottom: 0,
                 right: 0,
@@ -374,7 +397,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF18743A),
+                      color: AppColors.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -390,16 +413,43 @@ class _ProfilPageState extends State<ProfilPage> {
             _namaLengkap,
             style: AppTextStyles.headlineLarge.copyWith(
               fontSize: 20,
-              color: const Color(0xFF202321),
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             _email,
-            style:
-                AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF496171)),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: Colors.white.withValues(alpha: 0.78),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEditProfileButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: _bukaEditProfil,
+        icon: const Icon(Icons.edit_rounded, size: 18),
+        label: Text(
+          'Edit Profil',
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primaryDark,
+          backgroundColor: AppColors.surface,
+          side: const BorderSide(color: AppColors.border),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
       ),
     );
   }
@@ -408,7 +458,7 @@ class _ProfilPageState extends State<ProfilPage> {
     return Text(
       label,
       style: AppTextStyles.caption.copyWith(
-        color: const Color(0xFF7B8794),
+        color: AppColors.textSecondary,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.2,
         fontSize: 11,
@@ -419,9 +469,9 @@ class _ProfilPageState extends State<ProfilPage> {
   Widget _buildMenuCard({required List<_MenuItem> items}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E5DE)),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -453,18 +503,18 @@ class _ProfilPageState extends State<ProfilPage> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE4EFE7),
+                          color: AppColors.primaryLight,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(item.icon,
-                            color: Color(0xFF18743A), size: 18),
+                            color: AppColors.primaryDark, size: 18),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           item.label,
                           style: AppTextStyles.bodyMedium.copyWith(
-                            color: Color(0xFF202321),
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -480,13 +530,13 @@ class _ProfilPageState extends State<ProfilPage> {
                         )
                       else
                         const Icon(Icons.chevron_right_rounded,
-                            color: Color(0xFF7B8794), size: 20),
+                            color: AppColors.textHint, size: 20),
                     ],
                   ),
                 ),
               ),
               if (i < items.length - 1)
-                const Divider(height: 1, indent: 66, color: Color(0xFFE0E5DE)),
+                const Divider(height: 1, indent: 66, color: AppColors.border),
             ],
           );
         }).toList(),
