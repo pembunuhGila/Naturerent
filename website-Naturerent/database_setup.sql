@@ -166,6 +166,49 @@ FOR DELETE
 TO authenticated
 USING (bucket_id = 'qris-images');
 
+-- ----------------------------------------------------------------------------
+-- BAGIAN 4: HAK AKSES & KEBIJAKAN KEAMANAN TABEL WISATA_LOCATIONS
+-- ----------------------------------------------------------------------------
+-- A. Berikan hak akses CRUD penuh ke tabel wisata_locations
+GRANT ALL PRIVILEGES ON TABLE public.wisata_locations TO anon, authenticated, service_role;
+
+-- B. Aktifkan Row Level Security (RLS) pada tabel wisata_locations
+ALTER TABLE public.wisata_locations ENABLE ROW LEVEL SECURITY;
+
+-- C. Buat Kebijakan Akses Keamanan (RLS Policies)
+-- 1. Izin SELECT untuk semua orang (publik/anon & terautentikasi) agar destinasi tampil di peta/aplikasi
+DROP POLICY IF EXISTS "Allow public read access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow public read access to wisata_locations"
+ON public.wisata_locations
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+-- 2. Izin INSERT untuk pengguna terautentikasi (admin/owner) agar bisa menambah destinasi
+DROP POLICY IF EXISTS "Allow authenticated insert access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow authenticated insert access to wisata_locations"
+ON public.wisata_locations
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- 3. Izin UPDATE untuk pengguna terautentikasi (admin/owner) agar bisa mengedit destinasi
+DROP POLICY IF EXISTS "Allow authenticated update access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow authenticated update access to wisata_locations"
+ON public.wisata_locations
+FOR UPDATE
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+-- 4. Izin DELETE untuk pengguna terautentikasi (admin/owner) agar bisa menghapus destinasi
+DROP POLICY IF EXISTS "Allow authenticated delete access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow authenticated delete access to wisata_locations"
+ON public.wisata_locations
+FOR DELETE
+TO authenticated
+USING (true);
+
 -- ============================================================================
 -- AKHIR DARI SCRIPT
 -- ============================================================================

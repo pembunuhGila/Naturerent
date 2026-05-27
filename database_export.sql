@@ -671,3 +671,45 @@ ON storage.objects
 FOR DELETE
 TO authenticated
 USING (bucket_id = 'qris-images');
+
+-- ============================================================
+-- WISATA_LOCATIONS GRANTS AND RLS POLICIES
+-- ============================================================
+-- Grant privileges
+GRANT ALL PRIVILEGES ON TABLE public.wisata_locations TO anon, authenticated, service_role;
+
+-- Enable RLS
+ALTER TABLE public.wisata_locations ENABLE ROW LEVEL SECURITY;
+
+-- 1. Kebijakan SELECT (Semua orang dapat membaca wisata_locations)
+DROP POLICY IF EXISTS "Allow public read access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow public read access to wisata_locations"
+ON public.wisata_locations
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+-- 2. Kebijakan INSERT (Pengguna terautentikasi dapat menambah data)
+DROP POLICY IF EXISTS "Allow authenticated insert access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow authenticated insert access to wisata_locations"
+ON public.wisata_locations
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- 3. Kebijakan UPDATE (Pengguna terautentikasi dapat mengedit data)
+DROP POLICY IF EXISTS "Allow authenticated update access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow authenticated update access to wisata_locations"
+ON public.wisata_locations
+FOR UPDATE
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+-- 4. Kebijakan DELETE (Pengguna terautentikasi dapat menghapus data)
+DROP POLICY IF EXISTS "Allow authenticated delete access to wisata_locations" ON public.wisata_locations;
+CREATE POLICY "Allow authenticated delete access to wisata_locations"
+ON public.wisata_locations
+FOR DELETE
+TO authenticated
+USING (true);
