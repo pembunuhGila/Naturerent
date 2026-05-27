@@ -179,17 +179,12 @@ class _QrisPageState extends State<QrisPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isMenyimpanBooking = false);
-      OrderActivityService().tambahLokalPending(
-        namaRental: widget.namaRental,
-        total: _totalAkhir,
-        tanggalMulai: widget.tanggalMulai,
-        tanggalSelesai: widget.tanggalSelesai,
-        items: List<CartItem>.from(widget.items),
-        paymentProofBytes: paymentProofBytes,
+      NrToast.show(
+        context,
+        'Pesanan gagal tersimpan ke database: $e',
+        type: NrToastType.error,
       );
-      _showTopMessage(
-        'Pesanan masuk Riwayat. Data tersimpan sementara di perangkat.',
-      );
+      return;
     }
 
     CartService().bersihkan();
@@ -201,10 +196,6 @@ class _QrisPageState extends State<QrisPage> {
       ),
       (route) => route.isFirst,
     );
-  }
-
-  void _showTopMessage(String message) {
-    NrToast.show(context, message, type: NrToastType.info);
   }
 
   @override
