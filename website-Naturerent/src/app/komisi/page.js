@@ -67,8 +67,9 @@ export default function KomisiPage() {
             id: b.id.startsWith('TRX-') ? b.id : `TRX-${b.id.substring(0, 5)}`,
             created_at: b.created_at,
             rental_name: b.rental_name || fallbackRentals[index % fallbackRentals.length],
-            gross_amount: b.total || b.total_amount || 300000,
-            status: b.status === 'Selesai' ? 'Lunas' : 'Proses'
+            gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 300000,
+            status: (b.status === 'completed' || b.status === 'Selesai') ? 'Lunas' : 
+                    (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
           }
         })
         setData(resolved)
@@ -184,8 +185,8 @@ export default function KomisiPage() {
                       <div className="loading-spinner" style={{ margin: 'auto' }} />
                     </td>
                   </tr>
-                ) : data.map(row => {
-                  const comm = row.gross_amount * (commissionRate / 100)
+                ) : data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(row => {
+                  const comm = row.status === 'Batal' ? 0 : row.gross_amount * (commissionRate / 100)
                   return (
                     <tr key={row.id}>
                       <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>#{row.id}</td>
@@ -200,7 +201,7 @@ export default function KomisiPage() {
                       <td>{formatCurrency(row.gross_amount)}</td>
                       <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>{formatCurrency(comm)}</td>
                       <td>
-                        <span className={`badge ${row.status === 'Lunas' ? 'badge-success' : 'badge-warning'}`}>
+                        <span className={`badge ${row.status === 'Lunas' ? 'badge-success' : row.status === 'Batal' ? 'badge-danger' : 'badge-warning'}`}>
                           {row.status}
                         </span>
                       </td>
@@ -218,7 +219,7 @@ export default function KomisiPage() {
             {!loading && totalCount > 0 && (
               <div className="pagination-section" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
                 <p className="pagination-info" style={{ color: 'var(--text-secondary)' }}>
-                  Menampilkan 1-{data.length} dari {totalCount} transaksi
+                  Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalCount)} dari {totalCount} transaksi
                 </p>
                 <div className="pagination">
                   <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>

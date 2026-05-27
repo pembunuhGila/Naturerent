@@ -138,11 +138,25 @@ export default function TransaksiDetailPage() {
       updated_at: new Date().toISOString(),
     }
 
+    // Koreksi nilai ENUM agar sesuai dengan definisi database (public.payment_status)
     if (nextStatus === 'confirmed') {
-      payload.payment_status = 'dp_verified'
+      payload.payment_status = 'dp_confirmed'
     }
     if (nextStatus === 'cancelled') {
-      payload.payment_status = 'rejected'
+      payload.payment_status = 'failed'
+    }
+
+    // Cek format UUID untuk mencegah error syntax pada data simulasi (mock)
+    const isUUID = (str) => {
+      const pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      return pattern.test(str)
+    }
+
+    if (!isUUID(data.id)) {
+      // Untuk data simulasi, langsung update state UI tanpa memanggil database
+      setSaving(false)
+      setData(prev => ({ ...prev, ...payload }))
+      return
     }
 
     const { error } = await supabase
