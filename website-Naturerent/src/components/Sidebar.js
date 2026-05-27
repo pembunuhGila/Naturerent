@@ -8,6 +8,7 @@ const navItems = [
   { href: '/komisi',          icon: 'fa-cube',               label: 'Komisi' },
   { href: '/pemilik-rental',  icon: 'fa-user-group',         label: 'Pemilik Rental' },
   { href: '/pengguna',        icon: 'fa-users',              label: 'Pengguna' },
+  { href: '/destinasi-wisata', icon: 'fa-mountain-sun',       label: 'Destinasi Wisata' },
   { href: '/transaksi',       icon: 'fa-chart-line',         label: 'Transaksi' },
   { href: '/settings',        icon: 'fa-gear',               label: 'System Settings' },
 ]
