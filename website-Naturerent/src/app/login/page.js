@@ -58,17 +58,6 @@ export default function LoginPage() {
         <h1 className="login-title-figma">Selamat Datang Kembali</h1>
         <p className="login-subtitle-figma">Silakan masuk untuk melanjutkan petualangan Anda.</p>
 
-        <button type="button" className="google-oauth-btn">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo" className="google-icon" />
-          <span>Masuk dengan Google</span>
-        </button>
-
-        <div className="figma-separator">
-          <div className="separator-line" />
-          <span className="separator-text">ATAU</span>
-          <div className="separator-line" />
-        </div>
-
         {error && (
           <div className="alert-error" role="alert" style={{ marginBottom: 16 }}>
             <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 8 }} />
@@ -96,7 +85,6 @@ export default function LoginPage() {
           <div className="input-group" style={{ marginBottom: 24 }}>
             <div className="label-row-figma">
               <label className="input-label-figma" htmlFor="password">Kata Sandi</label>
-              <a href="#" className="forgot-link-figma">Lupa kata sandi?</a>
             </div>
             <div className="input-wrapper-figma">
               <input
@@ -128,10 +116,6 @@ export default function LoginPage() {
             ) : 'Masuk'}
           </button>
         </form>
-
-        <div className="login-footer-link-figma">
-          Baru disini? <a href="#" className="register-link-figma">Buat akun</a>
-        </div>
       </div>
 
       <div className="login-footer-credit-figma">
