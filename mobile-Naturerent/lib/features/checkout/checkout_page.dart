@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
+import '../profil/edit_profil_page.dart';
 import 'date_picker_sheet.dart';
 import 'delivery_location_page.dart';
 import 'qris_page.dart';
@@ -99,6 +101,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
+    final ktpOk = await _pastikanKtpTerisi();
+    if (!ktpOk) return;
+
     DeliveryLocationResult? deliveryResult;
     if (_metodeAmbil == 1) {
       deliveryResult = await Navigator.push<DeliveryLocationResult>(
@@ -116,6 +121,100 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (!mounted) return;
     _bukaQris(deliveryResult ?? _deliveryResult);
+  }
+
+  Future<bool> _pastikanKtpTerisi() async {
+    final auth = AuthService();
+    final user = auth.penggunaSaatIni;
+    if (user == null) {
+      _snack('Silakan login ulang sebelum melakukan peminjaman.');
+      return false;
+    }
+
+    try {
+      final data = await AuthService.client
+          .from('users')
+          .select('nama_lengkap, email, avatar_url, ktp_url')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      final ktpUrl = (data?['ktp_url'] as String?)?.trim();
+      if (ktpUrl != null && ktpUrl.isNotEmpty) return true;
+
+      if (!mounted) return false;
+      final bukaEditProfil = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Lengkapi Foto KTP',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          content: const Text(
+            'Upload foto KTP terlebih dahulu sebelum melakukan peminjaman alat.',
+            style: TextStyle(
+              height: 1.45,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Nanti'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryDark,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Edit Profil'),
+            ),
+          ],
+        ),
+      );
+
+      if (bukaEditProfil != true || !mounted) return false;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EditProfilPage(
+            namaAwal:
+                (data?['nama_lengkap'] as String?) ?? user.email ?? 'Pengguna',
+            email: (data?['email'] as String?) ?? user.email ?? '-',
+            avatarUrlAwal: data?['avatar_url'] as String?,
+          ),
+        ),
+      );
+
+      if (!mounted) return false;
+      final refreshed = await AuthService.client
+          .from('users')
+          .select('ktp_url')
+          .eq('id', user.id)
+          .maybeSingle();
+      final refreshedKtp = (refreshed?['ktp_url'] as String?)?.trim();
+      if (refreshedKtp != null && refreshedKtp.isNotEmpty) return true;
+
+      _snack('Foto KTP belum tersimpan. Upload KTP dulu ya.');
+      return false;
+    } catch (_) {
+      if (mounted) {
+        _snack('Data KTP belum bisa dicek. Coba lagi sebentar.');
+      }
+      return false;
+    }
   }
 
   void _bukaQris(DeliveryLocationResult? deliveryResult) {
