@@ -276,19 +276,6 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         ),
 
         // ── Notif button
-        Positioned(
-          top: 44, right: 16,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.black38,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.notifications_none_rounded,
-                color: Colors.white, size: 18),
-          ),
-        ),
-
         // ── Foto indicator dots (jika lebih dari 1)
         if (gambar.length > 1)
           Positioned(
