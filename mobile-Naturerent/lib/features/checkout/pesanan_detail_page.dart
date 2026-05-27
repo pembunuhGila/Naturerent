@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -234,11 +235,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                       fit: BoxFit.cover,
                     )
                   : hasUrl
-                      ? Image.network(
-                          widget.paymentProofUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildProofPlaceholder(),
-                        )
+                      ? _buildProofImageFromUrl(widget.paymentProofUrl!)
                       : _buildProofPlaceholder(),
             ),
           ),
@@ -252,6 +249,26 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProofImageFromUrl(String url) {
+    if (url.startsWith('data:image/')) {
+      final comma = url.indexOf(',');
+      if (comma > 0) {
+        try {
+          final bytes = base64Decode(url.substring(comma + 1));
+          return Image.memory(bytes, fit: BoxFit.cover);
+        } catch (_) {
+          return _buildProofPlaceholder();
+        }
+      }
+    }
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _buildProofPlaceholder(),
     );
   }
 

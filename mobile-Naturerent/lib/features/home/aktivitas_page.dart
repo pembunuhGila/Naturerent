@@ -53,18 +53,9 @@ class _AktivitasPageState extends State<AktivitasPage>
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      if (Navigator.canPop(context)) Navigator.pop(context);
-                    },
-                    child: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.textPrimary,
-                      size: 20,
-                    ),
-                  ),
+                  const SizedBox(width: 20),
+                  const Spacer(),
                   Text(
                     'Aktivitas Saya',
                     style: AppTextStyles.headlineLarge.copyWith(
@@ -72,6 +63,7 @@ class _AktivitasPageState extends State<AktivitasPage>
                       fontSize: 20,
                     ),
                   ),
+                  const Spacer(),
                   const SizedBox(width: 20),
                 ],
               ),
@@ -195,7 +187,11 @@ class _TabRiwayat extends StatelessWidget {
     return ValueListenableBuilder<List<ActivityOrder>>(
       valueListenable: OrderActivityService().orders,
       builder: (context, orders, _) {
-        if (orders.isEmpty) {
+        final riwayat = orders
+            .where((order) => !_isActiveOrder(order))
+            .toList(growable: false);
+
+        if (riwayat.isEmpty) {
           return const _EmptyTab(
             icon: Icons.history_rounded,
             judul: 'Belum ada riwayat',
@@ -205,9 +201,9 @@ class _TabRiwayat extends StatelessWidget {
 
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
-          itemCount: orders.length,
+          itemCount: riwayat.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) => _OrderCard(order: orders[index]),
+          itemBuilder: (context, index) => _OrderCard(order: riwayat[index]),
         );
       },
     );

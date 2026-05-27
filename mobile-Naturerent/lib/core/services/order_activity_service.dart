@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -100,7 +101,7 @@ class OrderActivityService {
     final nomorPesanan = _buatNomorPesanan();
     final proofUrl = paymentProofBytes == null
         ? null
-        : await _uploadPaymentProof(
+        : await _preparePaymentProofValue(
             userId: user.id,
             paymentGroupId: paymentGroupId,
             bytes: paymentProofBytes,
@@ -144,6 +145,14 @@ class OrderActivityService {
 
       final bookingId = data['id'] as String;
       insertedRows.add(data);
+
+      await _buatPaymentDp(
+        bookingId: bookingId,
+        jumlahBayar: (subtotal * dpPercent / 100) +
+            (i == 0 ? biayaLayanan : 0) +
+            (isDelivery ? groupDeliveryFee : 0),
+        proofUrl: proofUrl,
+      );
 
       for (final item in group.items) {
         await AuthService.client.from('booking_items').insert({
@@ -277,6 +286,24 @@ class OrderActivityService {
     }
   }
 
+  Future<void> _buatPaymentDp({
+    required String bookingId,
+    required double jumlahBayar,
+    required String? proofUrl,
+  }) async {
+    try {
+      await AuthService.client.from('payments').insert({
+        'booking_id': bookingId,
+        'jumlah_bayar': jumlahBayar,
+        'status': 'pending',
+        'qris_code_url': proofUrl,
+        'tgl_bayar': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {
+      // Table payments belum wajib untuk menampilkan riwayat user.
+    }
+  }
+
   ActivityOrder _mapGroup(String groupId, List<Map<String, dynamic>> rows) {
     final first = rows.first;
     final items = <CartItem>[];
@@ -346,6 +373,26 @@ class OrderActivityService {
           fileOptions: FileOptions(contentType: contentType, upsert: true),
         );
     return AuthService.client.storage.from('payment-proofs').getPublicUrl(path);
+  }
+
+  Future<String> _preparePaymentProofValue({
+    required String userId,
+    required String paymentGroupId,
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    try {
+      return await _uploadPaymentProof(
+        userId: userId,
+        paymentGroupId: paymentGroupId,
+        bytes: bytes,
+        extension: extension,
+        contentType: contentType,
+      );
+    } catch (_) {
+      return 'data:$contentType;base64,${base64Encode(bytes)}';
+    }
   }
 
   RentalProfile _rentalFromMap(Map<String, dynamic>? map, String fallbackId) {
