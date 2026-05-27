@@ -73,10 +73,12 @@ class PaymentService {
 
   // ── Update biaya_layanan (dipanggil dari admin dashboard) ─────────────────
   Future<void> updateBiayaLayanan(int biayaBaru) async {
+    final userId = AuthService().penggunaSaatIni?.id;
     await AuthService.client
         .from('platform_settings')
         .update({
           'biaya_layanan': biayaBaru,
+          'updated_by': userId,
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', 1);
@@ -85,10 +87,12 @@ class PaymentService {
 
   // ── Update QRIS image URL ─────────────────────────────────────────────────
   Future<void> updateQrisUrl(String url) async {
+    final userId = AuthService().penggunaSaatIni?.id;
     await AuthService.client
         .from('platform_settings')
         .update({
           'qris_image_url': url,
+          'updated_by': userId,
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', 1);
