@@ -15,7 +15,9 @@ class OwnerOrdersPage extends StatefulWidget {
 }
 
 class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
+  final RentalService _rentalService = RentalService();
   late Future<List<AdminOrder>> _futureOrders;
+  String? _processingId;
 
   @override
   void initState() {
@@ -59,6 +61,52 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
 
   void _reload() {
     setState(() => _futureOrders = _loadOrders());
+  }
+
+  Future<void> _confirmOrder(AdminOrder order) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Transaksi'),
+        content: Text(
+          'Konfirmasi bahwa transaksi ${order.bookingCode ?? order.id} sudah dilakukan oleh penyewa. Status pesanan akan diproses.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Konfirmasi'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+
+    setState(() => _processingId = order.id);
+    try {
+      await _rentalService.konfirmasiPesananPemilik(order.id);
+      if (!mounted) return;
+      _showMessage('Transaksi berhasil dikonfirmasi. Pesanan diproses.');
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Gagal mengonfirmasi transaksi: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _processingId = null);
+    }
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.error : AppColors.primary,
+      ),
+    );
   }
 
   @override
@@ -119,7 +167,11 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
                           ...orders.map(
                             (order) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _OwnerOrderCard(order: order),
+                              child: _OwnerOrderCard(
+                                order: order,
+                                processing: _processingId == order.id,
+                                onConfirm: () => _confirmOrder(order),
+                              ),
                             ),
                           ),
                       ],
@@ -273,8 +325,14 @@ class _SummaryItem extends StatelessWidget {
 
 class _OwnerOrderCard extends StatelessWidget {
   final AdminOrder order;
+  final bool processing;
+  final VoidCallback onConfirm;
 
-  const _OwnerOrderCard({required this.order});
+  const _OwnerOrderCard({
+    required this.order,
+    required this.processing,
+    required this.onConfirm,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -329,6 +387,18 @@ class _OwnerOrderCard extends StatelessWidget {
             icon: Icons.payments_rounded,
             label: _formatCurrency(order.totalBayar),
           ),
+          const SizedBox(height: 14),
+          if (order.status == 'confirmed')
+            processing
+                ? const LinearProgressIndicator(color: AppColors.primary)
+                : FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                    onPressed: onConfirm,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Konfirmasi Transaksi'),
+                  ),
         ],
       ),
     );
