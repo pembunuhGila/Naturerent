@@ -171,6 +171,19 @@ class RentalService {
     return RentalProfile.fromMap(data);
   }
 
+  /// Konfirmasi pesanan yang telah disetujui admin, dilakukan oleh pemilik rental.
+  Future<void> konfirmasiPesananPemilik(String bookingId) async {
+    await client
+        .from('bookings')
+        .update({
+          'status': 'processing',
+          'confirmed_by_owner_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', bookingId)
+        .eq('status', 'confirmed');
+  }
+
   /// Ambil rental yang dekat dengan lokasi wisata tertentu.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
     // Ambil rental yang terhubung ke wisata ini via rental_wisata
