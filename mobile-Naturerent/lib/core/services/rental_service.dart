@@ -184,6 +184,18 @@ class RentalService {
         .eq('status', 'confirmed');
   }
 
+  /// Konfirmasi bahwa pesanan telah dikembalikan oleh penyewa.
+  Future<void> konfirmasiPengembalianPesananPemilik(String bookingId) async {
+    await client
+        .from('bookings')
+        .update({
+          'status': 'returned',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', bookingId)
+        .eq('status', 'rented');
+  }
+
   /// Ambil rental yang dekat dengan lokasi wisata tertentu.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
     // Ambil rental yang terhubung ke wisata ini via rental_wisata
