@@ -121,6 +121,21 @@ CREATE POLICY "Owners can view bookings for their rentals" ON public.bookings
         )
     );
 
+-- 4. Izin UPDATE untuk pemilik rental memproses pesanan mereka sendiri
+DROP POLICY IF EXISTS "Owners can update bookings for their rentals" ON public.bookings;
+CREATE POLICY "Owners can update bookings for their rentals" ON public.bookings
+    FOR UPDATE TO authenticated USING (
+        EXISTS (
+            SELECT 1 FROM public.rental_profiles rp
+            WHERE rp.id = rental_id AND rp.owner_id = auth.uid()
+        )
+    ) WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.rental_profiles rp
+            WHERE rp.id = rental_id AND rp.owner_id = auth.uid()
+        )
+    );
+
 -- ----------------------------------------------------------------------------
 -- BAGIAN 3: KONFIGURASI PENDUKUNG QRIS PER RENTAL
 -- ----------------------------------------------------------------------------
