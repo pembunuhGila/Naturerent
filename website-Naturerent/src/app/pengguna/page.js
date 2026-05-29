@@ -14,6 +14,78 @@ function getInitials(name) {
 
 const avatarColors = ['#1f5a3f', '#0d8c75', '#1e3a8a', '#7c3aed', '#b45309']
 
+const roleBadge = (role) => {
+  const labelMap = {
+    admin: 'Admin',
+    rental_owner: 'Pemilik Rental',
+    customer: 'Penyewa',
+  }
+  const styleMap = {
+    admin: {
+      backgroundColor: 'rgba(124, 58, 237, 0.12)',
+      color: '#7c3aed',
+      border: '1px solid rgba(124, 58, 237, 0.25)',
+      padding: '4px 10px',
+      borderRadius: '999px',
+      fontSize: '11px',
+      fontWeight: '700',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px'
+    },
+    rental_owner: {
+      backgroundColor: 'rgba(16, 185, 129, 0.12)',
+      color: 'var(--brand-green)',
+      border: '1px solid rgba(16, 185, 129, 0.25)',
+      padding: '4px 10px',
+      borderRadius: '999px',
+      fontSize: '11px',
+      fontWeight: '700',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px'
+    },
+    customer: {
+      backgroundColor: 'rgba(59, 130, 246, 0.12)',
+      color: '#3b82f6',
+      border: '1px solid rgba(59, 130, 246, 0.25)',
+      padding: '4px 10px',
+      borderRadius: '999px',
+      fontSize: '11px',
+      fontWeight: '700',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px'
+    }
+  }
+
+  const defaultStyle = {
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border-color)',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    fontSize: '11px',
+    fontWeight: '700',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px'
+  }
+
+  const iconMap = {
+    admin: <i className="fa-solid fa-user-shield" style={{ fontSize: '10px' }} />,
+    rental_owner: <i className="fa-solid fa-store" style={{ fontSize: '10px' }} />,
+    customer: <i className="fa-solid fa-user" style={{ fontSize: '10px' }} />
+  }
+
+  const cleanRole = role || 'customer'
+  return (
+    <span style={styleMap[cleanRole] || defaultStyle}>
+      {iconMap[cleanRole]} {labelMap[cleanRole] || cleanRole}
+    </span>
+  )
+}
+
 function DetailModal({ user, onClose }) {
   if (!user) return null
   const name = user.nama_lengkap || user.name || '-'
@@ -47,6 +119,7 @@ function DetailModal({ user, onClose }) {
         {/* Detail rows */}
         {[
           { icon: 'fa-phone', label: 'Nomor HP', value: user.no_wa || user.phone || '-' },
+          { icon: 'fa-user-tag', label: 'Peran (Role)', value: user.role === 'admin' ? 'Admin' : user.role === 'rental_owner' ? 'Pemilik Rental' : 'Penyewa' },
           { icon: 'fa-calendar', label: 'Bergabung', value: user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-' },
           { icon: 'fa-id-card', label: 'ID Pengguna', value: user.id },
         ].map(row => (
@@ -196,6 +269,7 @@ export default function PenggunaPage() {
                       <th>NAMA</th>
                       <th>EMAIL</th>
                       <th>NOMOR HP</th>
+                      <th>ROLE</th>
                       <th>BERGABUNG</th>
                       <th>AKSI</th>
                     </tr>
@@ -216,6 +290,7 @@ export default function PenggunaPage() {
                           </td>
                           <td style={{ color: 'var(--text-secondary)' }}>{user.email || '-'}</td>
                           <td>{user.no_wa || user.phone || '-'}</td>
+                          <td>{roleBadge(user.role)}</td>
                           <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
                             {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-'}
                           </td>
