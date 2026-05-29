@@ -186,7 +186,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     return switch (kategori?.toLowerCase()) {
       'gunung' => const Color(0xFF336A77),
       'pantai' => const Color(0xFF336A77),
-      _ => const Color(0xFF18743A),
+      _ => AppColors.ownerPrimaryGreen,
     };
   }
 
@@ -331,7 +331,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -384,7 +384,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                       padding: EdgeInsets.symmetric(vertical: 28),
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFF18743A),
+                          color: AppColors.ownerPrimaryGreen,
                           strokeWidth: 2,
                         ),
                       ),
@@ -431,7 +431,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
         ),
       ),
       bottomNavigationBar: Container(
-        color: const Color(0xFFF8F8F5),
+        color: AppColors.ownerPageBackground,
         padding: EdgeInsets.fromLTRB(
           38,
           12,
@@ -443,11 +443,10 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
           child: ElevatedButton(
             onPressed: (_saving || _loadingGps) ? null : _save,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF18743A),
+              backgroundColor: AppColors.ownerPrimaryGreen,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(
-                0xFF18743A,
-              ).withValues(alpha: 0.5),
+              disabledBackgroundColor:
+                  AppColors.ownerPrimaryGreen.withValues(alpha: 0.5),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -601,7 +600,7 @@ class _LocationCard extends StatelessWidget {
                                   children: [
                                     Container(
                                       decoration: const BoxDecoration(
-                                        color: Color(0xFF18743A),
+                                        color: AppColors.ownerPrimaryGreen,
                                         shape: BoxShape.circle,
                                       ),
                                       padding: const EdgeInsets.all(6),
@@ -614,7 +613,7 @@ class _LocationCard extends StatelessWidget {
                                     CustomPaint(
                                       size: const Size(12, 8),
                                       painter: _TrianglePainter(
-                                        color: const Color(0xFF18743A),
+                                        color: AppColors.ownerPrimaryGreen,
                                       ),
                                     ),
                                   ],
@@ -710,13 +709,13 @@ class _LocationCard extends StatelessWidget {
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Color(0xFF18743A),
+                                  color: AppColors.ownerPrimaryGreen,
                                 ),
                               )
                             else
                               const Icon(
                                 Icons.map_rounded,
-                                color: Color(0xFF18743A),
+                                color: AppColors.ownerPrimaryGreen,
                                 size: 15,
                               ),
                             const SizedBox(width: 6),
@@ -727,7 +726,7 @@ class _LocationCard extends StatelessWidget {
                                   ? 'Ubah Lokasi'
                                   : 'Pilih Lokasi',
                               style: AppTextStyles.caption.copyWith(
-                                color: const Color(0xFF18743A),
+                                color: AppColors.ownerPrimaryGreen,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0,
@@ -750,15 +749,18 @@ class _LocationCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFE4EFE7),
+                color: AppColors.ownerSoftGreen,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE0E5DE)),
+                border: Border.all(
+                  color: AppColors.ownerBorderColor,
+                  width: AppColors.ownerBorderWidth,
+                ),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.check_circle_outline_rounded,
-                    color: Color(0xFF18743A),
+                    color: AppColors.ownerPrimaryGreen,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -766,7 +768,7 @@ class _LocationCard extends StatelessWidget {
                     child: Text(
                       'Lat: ${lat!.toStringAsFixed(6)}  •  Lng: ${lng!.toStringAsFixed(6)}',
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF18743A),
+                        color: AppColors.ownerPrimaryGreen,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0,
@@ -833,7 +835,10 @@ class _EditSectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFE0E5DE)),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.025),
@@ -907,18 +912,24 @@ class _LabeledInput extends StatelessWidget {
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF2F4F1),
+            fillColor: AppColors.ownerCardBackground,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFF18743A)),
+              borderSide: const BorderSide(color: AppColors.ownerPrimaryGreen),
             ),
           ),
         ),
@@ -977,7 +988,7 @@ class _DestinationCard extends StatelessWidget {
                       children: [
                         const Icon(
                           Icons.star_rounded,
-                          color: Color(0xFF18743A),
+                          color: AppColors.ownerPrimaryGreen,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -1031,7 +1042,7 @@ class _DestinationCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: added
                         ? const Color(0xFFEAEAE7)
-                        : const Color(0xFF18743A),
+                        : AppColors.ownerPrimaryGreen,
                     borderRadius: BorderRadius.circular(19),
                   ),
                   child: added
