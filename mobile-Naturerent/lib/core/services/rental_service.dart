@@ -196,6 +196,41 @@ class RentalService {
         .eq('status', 'rented');
   }
 
+  /// Tandai pesanan telah selesai diproses oleh pemilik (siap diambil atau dikirim),
+  /// dan kirim notifikasi ke penyewa.
+  Future<void> tandaiPesananSiap(String bookingId) async {
+    // Update processed_at agar tercatat kapan pemilik menyelesaikan persiapan.
+    final updated = await client
+        .from('bookings')
+        .update({
+          'processed_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', bookingId)
+        .eq('status', 'processing')
+        .select('customer_id, booking_code')
+        .maybeSingle();
+
+    if (updated == null) return;
+
+    final customerId = (updated as Map<String, dynamic>)['customer_id'] as String?;
+    final bookingCode = (updated as Map<String, dynamic>)['booking_code'] as String?;
+
+    if (customerId != null && customerId.isNotEmpty) {
+      try {
+        await client.from('notifications').insert({
+          'user_id': customerId,
+          'judul': 'Pesanan #${bookingCode ?? bookingId} siap',
+          'pesan': 'Pesanan Anda telah selesai diproses dan siap diambil atau dikirim.',
+          'type': 'booking',
+          'ref_id': bookingId,
+        });
+      } catch (_) {
+        // Notifikasi bukan blocker
+      }
+    }
+  }
+
   /// Ambil rental yang dekat dengan lokasi wisata tertentu.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
     // Ambil rental yang terhubung ke wisata ini via rental_wisata
