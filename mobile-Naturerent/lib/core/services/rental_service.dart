@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/wisata_location.dart';
 import '../models/rental_profile.dart';
 import 'auth_service.dart';
+import 'location_service.dart';
 
 /// Service untuk mengambil data wisata dan rental dari Supabase.
 class RentalService {
@@ -226,15 +227,16 @@ class RentalService {
 
     if (updated == null) return;
 
-    final customerId = (updated as Map<String, dynamic>)['customer_id'] as String?;
-    final bookingCode = (updated as Map<String, dynamic>)['booking_code'] as String?;
+    final customerId = updated['customer_id'] as String?;
+    final bookingCode = updated['booking_code'] as String?;
 
     if (customerId != null && customerId.isNotEmpty) {
       try {
         await client.from('notifications').insert({
           'user_id': customerId,
           'judul': 'Pesanan #${bookingCode ?? bookingId} siap',
-          'pesan': 'Pesanan Anda telah selesai diproses dan siap diambil atau dikirim.',
+          'pesan':
+              'Pesanan Anda telah selesai diproses dan siap diambil atau dikirim.',
           'type': 'booking',
           'ref_id': bookingId,
         });
@@ -244,21 +246,33 @@ class RentalService {
     }
   }
 
-  /// Ambil rental yang dekat dengan lokasi wisata tertentu.
+  /// Ambil rental aktif yang diurutkan dari yang paling dekat ke wisata.
   Future<List<RentalProfile>> ambilRentalDekatWisata(String wisataId) async {
-    // Ambil rental yang terhubung ke wisata ini via rental_wisata
-    final data = await client
-        .from('rental_wisata')
-        .select('rental_profiles(*, rental_settings(*))')
-        .eq('wisata_id', wisataId);
+    final wisata = await client
+        .from('wisata_locations')
+        .select('lat, lng')
+        .eq('id', wisataId)
+        .maybeSingle();
 
-    return (data as List)
-        .map((e) {
-          final rental = e['rental_profiles'] as Map<String, dynamic>;
-          return RentalProfile.fromMap(rental);
-        })
-        .where((r) => r.isActive)
+    final wisataLat = (wisata?['lat'] as num?)?.toDouble();
+    final wisataLng = (wisata?['lng'] as num?)?.toDouble();
+    if (wisataLat == null || wisataLng == null) return [];
+
+    final data = await client
+        .from('rental_profiles')
+        .select('*, rental_settings(*)')
+        .eq('is_active', true);
+
+    final rentals = (data as List)
+        .map((e) => RentalProfile.fromMap(e as Map<String, dynamic>))
         .toList();
+
+    return LocationService.sortRentalsByDistance(
+      referenceLat: wisataLat,
+      referenceLng: wisataLng,
+      rentals: rentals,
+      includeUnknownLocation: false,
+    ).map((r) => r.rental).toList();
   }
 
   /// Cek apakah rental sudah di-favorit oleh user saat ini.
