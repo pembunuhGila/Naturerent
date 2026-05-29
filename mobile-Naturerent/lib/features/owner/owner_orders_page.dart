@@ -41,8 +41,18 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           payment_status,
           payment_proof_url,
           created_at,
+          users(nama_lengkap, email),
           rental_profiles(nama_rental),
-          booking_items(nama_equipment, nama_rental, jumlah, total_harga)
+          booking_items(
+            nama_equipment,
+            nama_rental,
+            jumlah,
+            total_harga,
+            equipment(
+              image_url,
+              equipment_images(image_url, is_primary, sort_order)
+            )
+          )
         ''')
         .eq('rental_id', rental.id)
         .inFilter('status', [
@@ -65,7 +75,24 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     });
   }
 
+  List<AdminOrder> _activeOrders(List<AdminOrder> orders) {
+    return orders
+        .where((order) =>
+            order.status == 'confirmed' ||
+            order.status == 'processing' ||
+            order.status == 'rented')
+        .toList(growable: false);
+  }
+
+  List<AdminOrder> _historyOrders(List<AdminOrder> orders) {
+    return orders
+        .where((order) =>
+            order.status == 'returned' || order.status == 'completed')
+        .toList(growable: false);
+  }
+
   Future<void> _confirmOrder(AdminOrder order) async {
+    if (_processingId != null) return;
     final approved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -102,6 +129,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
   }
 
   Future<void> _confirmReturn(AdminOrder order) async {
+    if (_processingId != null) return;
     final approved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -137,13 +165,14 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     }
   }
 
-  Future<void> _markReady(AdminOrder order) async {
+  Future<void> _confirmPickup(AdminOrder order) async {
+    if (_processingId != null) return;
     final approved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Tandai Pesanan Siap'),
+        title: const Text('Konfirmasi Diambil'),
         content: Text(
-          'Tandai bahwa pesanan ${order.bookingCode ?? order.id} telah selesai diproses dan siap diambil atau dikirim?',
+          'Konfirmasi bahwa peralatan untuk pesanan ${order.bookingCode ?? order.id} sudah diambil oleh penyewa.',
         ),
         actions: [
           TextButton(
@@ -152,7 +181,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Tandai Siap'),
+            child: const Text('Konfirmasi'),
           ),
         ],
       ),
@@ -161,13 +190,13 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
 
     setState(() => _processingId = order.id);
     try {
-      await _rentalService.tandaiPesananSiap(order.id);
+      await _rentalService.konfirmasiPengambilanPesananPemilik(order.id);
       if (!mounted) return;
-      _showMessage('Notifikasi dikirim ke penyewa: pesanan siap diambil/dikirim.');
+      _showMessage('Pengambilan berhasil dikonfirmasi.');
       _reload();
     } catch (e) {
       if (!mounted) return;
-      _showMessage('Gagal menandai siap: $e', isError: true);
+      _showMessage('Gagal mengonfirmasi pengambilan: $e', isError: true);
     } finally {
       if (mounted) setState(() => _processingId = null);
     }
@@ -175,10 +204,21 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
 
   void _showMessage(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? AppColors.error : AppColors.primary,
+      ),
+    );
+  }
+
+  Future<void> _openOrderDetail(AdminOrder order) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _OwnerOrderDetailPage(order: order),
       ),
     );
   }
@@ -201,63 +241,267 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           children: [
             const OwnerHeaderWidget(),
             Expanded(
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: () async => _reload(),
-                child: FutureBuilder<List<AdminOrder>>(
-                  future: _futureOrders,
-                  builder: (context, snapshot) {
-                    final orders = snapshot.data ?? const <AdminOrder>[];
+              child: FutureBuilder<List<AdminOrder>>(
+                future: _futureOrders,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
                     return ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 110),
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 110),
                       children: [
                         _TitleRow(onReload: _reload),
                         const SizedBox(height: 18),
-                        _SummaryStrip(orders: orders),
-                        const SizedBox(height: 18),
-                        if (snapshot.connectionState != ConnectionState.done)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 80),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          )
-                        else if (snapshot.hasError)
-                          _StateBox(
-                            icon: Icons.error_outline_rounded,
-                            title: 'Pesanan gagal dimuat',
-                            message: '${snapshot.error}',
-                          )
-                        else if (orders.isEmpty)
-                          const _StateBox(
-                            icon: Icons.receipt_long_outlined,
-                            title: 'Belum ada pesanan masuk',
-                            message:
-                                'Pesanan akan tampil setelah admin melakukan ACC.',
-                          )
-                        else
-                          ...orders.map(
-                            (order) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _OwnerOrderCard(
-                                order: order,
-                                processing: _processingId == order.id,
-                                onConfirm: () => _confirmOrder(order),
-                                onMarkReady: () => _markReady(order),
-                                onConfirmReturn: () => _confirmReturn(order),
-                              ),
-                            ),
-                          ),
+                        _StateBox(
+                          icon: Icons.error_outline_rounded,
+                          title: 'Pesanan gagal dimuat',
+                          message: '${snapshot.error}',
+                        ),
                       ],
                     );
-                  },
-                ),
+                  }
+
+                  final orders = snapshot.data ?? const <AdminOrder>[];
+                  final activeOrders = _activeOrders(orders);
+                  final historyOrders = _historyOrders(orders);
+
+                  return DefaultTabController(
+                    length: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                          child: _TitleRow(onReload: _reload),
+                        ),
+                        const SizedBox(height: 12),
+                        const _OwnerOrdersTabBar(),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _OrdersTab(
+                                orders: activeOrders,
+                                processingId: _processingId,
+                                onRefresh: () async => _reload(),
+                                onOpenDetail: _openOrderDetail,
+                                onConfirm: _confirmOrder,
+                                onConfirmPickup: _confirmPickup,
+                                onConfirmReturn: _confirmReturn,
+                              ),
+                              _HistoryTab(
+                                orders: historyOrders,
+                                onRefresh: () async => _reload(),
+                                onOpenDetail: _openOrderDetail,
+                              ),
+                              _IncomeTab(
+                                orders: historyOrders,
+                                onRefresh: () async => _reload(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OwnerOrdersTabBar extends StatelessWidget {
+  const _OwnerOrdersTabBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF8F8F5),
+      child: TabBar(
+        labelColor: const Color(0xFF18743A),
+        unselectedLabelColor: const Color(0xFF626A60),
+        indicatorColor: const Color(0xFF18743A),
+        indicatorWeight: 3,
+        labelStyle: AppTextStyles.caption.copyWith(
+          fontWeight: FontWeight.w900,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: AppTextStyles.caption.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+        tabs: const [
+          Tab(text: 'Pesanan'),
+          Tab(text: 'Riwayat'),
+          Tab(text: 'Pendapatan'),
+        ],
+      ),
+    );
+  }
+
+}
+
+class _OrdersTab extends StatelessWidget {
+  final List<AdminOrder> orders;
+  final String? processingId;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<AdminOrder> onOpenDetail;
+  final Future<void> Function(AdminOrder) onConfirm;
+  final Future<void> Function(AdminOrder) onConfirmPickup;
+  final Future<void> Function(AdminOrder) onConfirmReturn;
+
+  const _OrdersTab({
+    required this.orders,
+    required this.processingId,
+    required this.onRefresh,
+    required this.onOpenDetail,
+    required this.onConfirm,
+    required this.onConfirmPickup,
+    required this.onConfirmReturn,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
+        children: [
+          if (orders.isEmpty)
+            const _StateBox(
+              icon: Icons.receipt_long_outlined,
+              title: 'Belum ada pesanan aktif',
+              message: 'Pesanan yang butuh aksi pemilik akan tampil di sini.',
+            )
+          else
+            ...orders.map(
+              (order) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _OwnerOrderCard(
+                  order: order,
+                  processing: processingId == order.id,
+                  onConfirm: () => onConfirm(order),
+                  onConfirmPickup: () => onConfirmPickup(order),
+                  onConfirmReturn: () => onConfirmReturn(order),
+                  onTap: () => onOpenDetail(order),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryTab extends StatelessWidget {
+  final List<AdminOrder> orders;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<AdminOrder> onOpenDetail;
+
+  const _HistoryTab({
+    required this.orders,
+    required this.onRefresh,
+    required this.onOpenDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
+        children: [
+          if (orders.isEmpty)
+            const _StateBox(
+              icon: Icons.history_rounded,
+              title: 'Belum ada riwayat transaksi',
+              message: 'Pesanan selesai akan masuk ke riwayat transaksi.',
+            )
+          else
+            ...orders.map(
+              (order) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _HistoryOrderCard(
+                  order: order,
+                  onTap: () => onOpenDetail(order),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IncomeTab extends StatelessWidget {
+  final List<AdminOrder> orders;
+  final Future<void> Function() onRefresh;
+
+  const _IncomeTab({required this.orders, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final monthOrders = orders.where(_isCurrentMonth).toList(growable: false);
+    final gross = monthOrders.fold<double>(
+      0,
+      (sum, order) => sum + order.totalBayar,
+    );
+    final commission = gross * 0.1;
+    final net = gross - commission;
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
+        children: [
+          _IncomeSummaryCard(total: net),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Rincian Pendapatan',
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: const Color(0xFF202321),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                'Urutkan: Terbaru',
+                style: AppTextStyles.caption.copyWith(
+                  color: const Color(0xFF7D847D),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (monthOrders.isEmpty)
+            const _StateBox(
+              icon: Icons.payments_outlined,
+              title: 'Belum ada pendapatan bulan ini',
+              message: 'Transaksi selesai bulan berjalan akan dihitung di sini.',
+            )
+          else
+            ...monthOrders.map(
+              (order) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _IncomeDetailCard(order: order),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -403,24 +647,672 @@ class _OwnerOrderCard extends StatelessWidget {
   final AdminOrder order;
   final bool processing;
   final VoidCallback onConfirm;
-  final VoidCallback onMarkReady;
+  final VoidCallback onConfirmPickup;
   final VoidCallback onConfirmReturn;
+  final VoidCallback onTap;
 
   const _OwnerOrderCard({
     required this.order,
     required this.processing,
     required this.onConfirm,
-    required this.onMarkReady,
+    required this.onConfirmPickup,
     required this.onConfirmReturn,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final item = order.items.isNotEmpty ? order.items.first : null;
+    final status = _activeStatusText(order.status);
+    final action = _activeActionText(order.status);
+    final onAction = switch (order.status) {
+      'confirmed' => onConfirm,
+      'processing' => onConfirmPickup,
+      'rented' => onConfirmReturn,
+      _ => null,
+    };
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFDDE8),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  status,
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF9D2850),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 9,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'ID: ${_shortCode(order)}',
+                style: AppTextStyles.caption.copyWith(
+                  color: const Color(0xFF626A60),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _EquipmentThumb(imageUrl: item?.imageUrl),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.person_outline_rounded,
+                          color: Color(0xFF202321),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            order.namaUser,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: const Color(0xFF202321),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item?.namaEquipment ?? order.ringkasanAlat,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: const Color(0xFF202321),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_month_outlined,
+                color: Color(0xFF626A60),
+                size: 15,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
+                style: AppTextStyles.caption.copyWith(
+                  color: const Color(0xFF626A60),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (processing)
+            const LinearProgressIndicator(color: AppColors.primary)
+          else if (onAction != null)
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF087022),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                ),
+                onPressed: onAction,
+                child: Text(
+                  action,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HistoryOrderCard extends StatelessWidget {
+  final AdminOrder order;
+  final VoidCallback onTap;
+
+  const _HistoryOrderCard({required this.order, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final item = order.items.isNotEmpty ? order.items.first : null;
+    final net = _netIncome(order.totalBayar);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE0E5DE)),
+        ),
+        child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _shortCode(order),
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF626A60),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      order.namaUser,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: const Color(0xFF202321),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const _SuccessBadge(label: 'SELESAI'),
+            ],
+          ),
+          const Divider(height: 24, color: Color(0xFFE0E5DE)),
+          Row(
+            children: [
+              _EquipmentThumb(imageUrl: item?.imageUrl),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item?.namaEquipment ?? order.ringkasanAlat,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: const Color(0xFF202321),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Qty: ${item?.jumlah ?? 1} Unit',
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF626A60),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 24, color: Color(0xFFE0E5DE)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Icon(
+                Icons.calendar_month_outlined,
+                color: Color(0xFF626A60),
+                size: 16,
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF626A60),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Pendapatan Bersih',
+                    style: AppTextStyles.caption.copyWith(
+                      color: const Color(0xFF626A60),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _formatCurrency(net),
+                    style: AppTextStyles.headlineMedium.copyWith(
+                      color: const Color(0xFF087022),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerOrderDetailPage extends StatelessWidget {
+  final AdminOrder order;
+
+  const _OwnerOrderDetailPage({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final item = order.items.isNotEmpty ? order.items.first : null;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F8F5),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFF18743A),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Detail Pesanan',
+                  style: AppTextStyles.headlineLarge.copyWith(
+                    color: const Color(0xFF202321),
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE0E5DE)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _shortCode(order),
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: const Color(0xFF202321),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      _OrderStatusBadge(status: order.status),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _EquipmentThumb(imageUrl: item?.imageUrl),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.namaUser,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: const Color(0xFF202321),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item?.namaEquipment ?? order.ringkasanAlat,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: const Color(0xFF626A60),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 28, color: Color(0xFFE0E5DE)),
+                  _DetailInfoRow(
+                    icon: Icons.calendar_month_outlined,
+                    label:
+                        '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
+                  ),
+                  const SizedBox(height: 10),
+                  _DetailInfoRow(
+                    icon: Icons.payments_outlined,
+                    label: _formatCurrency(order.totalBayar),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            _OwnerRentalTimeline(order: order),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerRentalTimeline extends StatelessWidget {
+  final AdminOrder order;
+
+  const _OwnerRentalTimeline({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = _timelineSteps(order);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F0),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Proses Rental',
+            style: AppTextStyles.headlineMedium.copyWith(
+              color: const Color(0xFF202321),
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ...steps.asMap().entries.map((entry) {
+            return _OwnerTimelineItem(
+              step: entry.value,
+              isLast: entry.key == steps.length - 1,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _OwnerTimelineItem extends StatelessWidget {
+  final _OwnerTimelineStep step;
+  final bool isLast;
+
+  const _OwnerTimelineItem({required this.step, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    final dotColor = step.isDone
+        ? const Color(0xFF315C3B)
+        : const Color(0xFFE0E5DE);
+    final lineColor = step.isDone
+        ? const Color(0xFF315C3B)
+        : const Color(0xFFE0E5DE);
+    final titleColor = step.isDone
+        ? const Color(0xFF202321)
+        : const Color(0xFF8A9189);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              child: Icon(
+                step.icon,
+                size: 14,
+                color: step.isDone ? Colors.white : const Color(0xFF9BA19A),
+              ),
+            ),
+            if (!isLast) Container(width: 2, height: 64, color: lineColor),
+          ],
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 3, bottom: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: titleColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  step.time,
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF8A9189),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  step.description,
+                  style: AppTextStyles.caption.copyWith(
+                    color: step.isDone
+                        ? const Color(0xFF202321)
+                        : const Color(0xFF8A9189),
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OwnerTimelineStep {
+  final IconData icon;
+  final String title;
+  final String time;
+  final String description;
+  final bool isDone;
+
+  const _OwnerTimelineStep({
+    required this.icon,
+    required this.title,
+    required this.time,
+    required this.description,
+    required this.isDone,
+  });
+}
+
+class _DetailInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _DetailInfoRow({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF626A60), size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF202321),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrderStatusBadge extends StatelessWidget {
+  final String status;
+
+  const _OrderStatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD8F8E1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        _detailStatusLabel(status),
+        style: AppTextStyles.caption.copyWith(
+          color: const Color(0xFF18743A),
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _IncomeSummaryCard extends StatelessWidget {
+  final double total;
+
+  const _IncomeSummaryCard({required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E8435),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'TOTAL PENDAPATAN BERSIH',
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.86),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            _formatCurrency(total),
+            style: AppTextStyles.displayLarge.copyWith(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '+12% dari bulan lalu',
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IncomeDetailCard extends StatelessWidget {
+  final AdminOrder order;
+
+  const _IncomeDetailCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final commission = order.totalBayar * 0.1;
+    final net = _netIncome(order.totalBayar);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFE0E5DE)),
       ),
       child: Column(
@@ -429,79 +1321,142 @@ class _OwnerOrderCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ID Transaksi',
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF626A60),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _trxCode(order),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: const Color(0xFF202321),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const _SuccessBadge(label: 'Berhasil'),
+            ],
+          ),
+          const Divider(height: 24, color: Color(0xFFE0E5DE)),
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  order.bookingCode ?? order.id,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.labelMedium.copyWith(
-                    fontWeight: FontWeight.w800,
+                  'Potongan Komisi (10%)',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: const Color(0xFF7D847D),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  order.statusLabel,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0,
-                  ),
+              Text(
+                '-${_formatCurrency(commission)}',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          _InfoLine(icon: Icons.hiking_rounded, label: order.ringkasanAlat),
-          _InfoLine(
-            icon: Icons.calendar_month_rounded,
-            label:
-                '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
-          ),
-          _InfoLine(
-            icon: Icons.payments_rounded,
-            label: _formatCurrency(order.totalBayar),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Total Diterima',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: const Color(0xFF202321),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                _formatCurrency(net),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: const Color(0xFF087022),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
-          if (order.status == 'confirmed')
-            processing
-                ? const LinearProgressIndicator(color: AppColors.primary)
-                : FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                    ),
-                    onPressed: onConfirm,
-                    icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Konfirmasi Transaksi'),
-                  )
-          else if (order.status == 'processing')
-            processing
-                ? const LinearProgressIndicator(color: AppColors.primary)
-                : FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                    ),
-                    onPressed: onMarkReady,
-                    icon: const Icon(Icons.local_shipping_rounded, size: 18),
-                    label: const Text('Tandai Siap Ambil/Kirim'),
-                  )
-          else if (order.status == 'rented')
-            processing
-                ? const LinearProgressIndicator(color: AppColors.primary)
-                : FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                    ),
-                    onPressed: onConfirmReturn,
-                    icon: const Icon(Icons.arrow_circle_down_rounded, size: 18),
-                    label: const Text('Konfirmasi Pengembalian'),
-                  ),
+          Text(
+            _formatDateTime(order.createdAt),
+            style: AppTextStyles.caption.copyWith(
+              color: const Color(0xFFB5BBAF),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SuccessBadge extends StatelessWidget {
+  final String label;
+
+  const _SuccessBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD8F8E1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: const Color(0xFF18743A),
+          fontWeight: FontWeight.w900,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+}
+
+class _EquipmentThumb extends StatelessWidget {
+  final String? imageUrl;
+
+  const _EquipmentThumb({this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 52,
+        height: 52,
+        child: imageUrl != null && imageUrl!.isNotEmpty
+            ? Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _placeholder(),
+              )
+            : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: const Color(0xFFE8EFE7),
+      child: const Icon(
+        Icons.hiking_rounded,
+        color: Color(0xFF18743A),
+        size: 24,
       ),
     );
   }
@@ -586,6 +1541,110 @@ String _formatDate(DateTime value) {
   final day = value.day.toString().padLeft(2, '0');
   final month = value.month.toString().padLeft(2, '0');
   return '$day/$month/${value.year}';
+}
+
+String _formatDateTime(DateTime value) {
+  final date = _formatDate(value);
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '$date • $hour:$minute WIB';
+}
+
+String _shortCode(AdminOrder order) {
+  final code = order.bookingCode;
+  if (code != null && code.isNotEmpty) return code;
+  final suffix = order.id.length <= 4
+      ? order.id.toUpperCase()
+      : order.id.substring(order.id.length - 4).toUpperCase();
+  return '#RENT-$suffix';
+}
+
+String _trxCode(AdminOrder order) {
+  final suffix = order.id.length <= 5
+      ? order.id.toUpperCase()
+      : order.id.substring(order.id.length - 5).toUpperCase();
+  return '#TRX-$suffix';
+}
+
+String _activeStatusText(String status) {
+  return switch (status) {
+    'confirmed' => 'MENUNGGU KONFIRMASI',
+    'processing' => 'MENUNGGU DIAMBIL',
+    'rented' => 'SEDANG DISEWA',
+    _ => status.toUpperCase(),
+  };
+}
+
+String _activeActionText(String status) {
+  return switch (status) {
+    'confirmed' => 'Konfirmasi Pesanan',
+    'processing' => 'Konfirmasi Diambil',
+    'rented' => 'Peralatan Dikembalikan',
+    _ => 'Konfirmasi',
+  };
+}
+
+bool _isCurrentMonth(AdminOrder order) {
+  final now = DateTime.now();
+  return order.createdAt.year == now.year && order.createdAt.month == now.month;
+}
+
+double _netIncome(double gross) => gross * 0.9;
+
+List<_OwnerTimelineStep> _timelineSteps(AdminOrder order) {
+  final rank = _statusRank(order.status);
+  return [
+    _OwnerTimelineStep(
+      icon: Icons.check_rounded,
+      title: 'Menunggu Konfirmasi',
+      time: _formatDateTime(order.createdAt),
+      description:
+          'Permintaan rental telah diterima. Pemilik rental perlu mengonfirmasi pesanan ini.',
+      isDone: rank >= 0,
+    ),
+    _OwnerTimelineStep(
+      icon: Icons.sync_rounded,
+      title: 'Proses',
+      time: rank >= 1 ? 'Terkonfirmasi pemilik' : 'Menunggu konfirmasi',
+      description:
+          'Peralatan sedang disiapkan dan dicek sebelum tanggal pengambilan.',
+      isDone: rank >= 1,
+    ),
+    _OwnerTimelineStep(
+      icon: Icons.schedule_rounded,
+      title: 'Pesanan telah diambil',
+      time: rank >= 2 ? _formatDate(order.tanggalMulai) : 'Estimasi: ${_formatDate(order.tanggalMulai)}',
+      description: 'Perlengkapan sudah berada di tangan penyewa.',
+      isDone: rank >= 2,
+    ),
+    _OwnerTimelineStep(
+      icon: Icons.inventory_2_outlined,
+      title: 'Selesai',
+      time: rank >= 3 ? _formatDate(order.tanggalSelesai) : _formatDate(order.tanggalSelesai),
+      description: 'Peralatan dikembalikan dan diperiksa.',
+      isDone: rank >= 3,
+    ),
+  ];
+}
+
+int _statusRank(String status) {
+  return switch (status) {
+    'confirmed' => 0,
+    'processing' => 1,
+    'rented' => 2,
+    'returned' || 'completed' => 3,
+    _ => 0,
+  };
+}
+
+String _detailStatusLabel(String status) {
+  return switch (status) {
+    'confirmed' => 'MENUNGGU',
+    'processing' => 'DIPROSES',
+    'rented' => 'DISEWA',
+    'returned' || 'completed' => 'SELESAI',
+    _ => status.toUpperCase(),
+  };
 }
 
 String _formatCurrency(double value) {

@@ -184,6 +184,18 @@ class RentalService {
         .eq('status', 'confirmed');
   }
 
+  /// Konfirmasi bahwa peralatan telah diambil oleh penyewa.
+  Future<void> konfirmasiPengambilanPesananPemilik(String bookingId) async {
+    await client
+        .from('bookings')
+        .update({
+          'status': 'rented',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', bookingId)
+        .eq('status', 'processing');
+  }
+
   /// Konfirmasi bahwa pesanan telah dikembalikan oleh penyewa.
   Future<void> konfirmasiPengembalianPesananPemilik(String bookingId) async {
     await client

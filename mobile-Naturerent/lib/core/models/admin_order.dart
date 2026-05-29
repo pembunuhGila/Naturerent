@@ -2,18 +2,32 @@ class AdminOrderItem {
   final String namaEquipment;
   final int jumlah;
   final double totalHarga;
+  final String? imageUrl;
 
   const AdminOrderItem({
     required this.namaEquipment,
     required this.jumlah,
     required this.totalHarga,
+    this.imageUrl,
   });
 
   factory AdminOrderItem.fromMap(Map<String, dynamic> map) {
+    final equipment = map['equipment'] as Map<String, dynamic>?;
+    final images = List<Map<String, dynamic>>.from(
+      equipment?['equipment_images'] as List? ?? const [],
+    );
+    String? imageUrl = equipment?['image_url'] as String?;
+    if (images.isNotEmpty) {
+      final primary = images.where((img) => img['is_primary'] == true);
+      imageUrl ??= (primary.isNotEmpty ? primary.first : images.first)
+          ['image_url'] as String?;
+    }
+
     return AdminOrderItem(
       namaEquipment: map['nama_equipment'] as String? ?? 'Alat rental',
       jumlah: map['jumlah'] as int? ?? 1,
       totalHarga: (map['total_harga'] as num?)?.toDouble() ?? 0,
+      imageUrl: imageUrl,
     );
   }
 }
