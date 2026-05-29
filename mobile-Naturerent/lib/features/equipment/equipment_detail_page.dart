@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/equipment.dart';
+import '../../core/models/rental_profile.dart';
+import '../../core/services/cart_service.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 
 class EquipmentDetailPage extends StatefulWidget {
   final String equipmentId;
-  final String namaRental;
+  final RentalProfile rental;
 
   const EquipmentDetailPage({
     super.key,
     required this.equipmentId,
-    required this.namaRental,
+    required this.rental,
   });
 
   @override
@@ -361,7 +363,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                 const SizedBox(height: 2),
                 Text(
                   alat.stock > 0
-                      ? '${alat.stock} unit tersedia di ${widget.namaRental}'
+                      ? '${alat.stock} unit tersedia di ${widget.rental.namaRental}'
                       : 'Stok sedang habis',
                   style: AppTextStyles.bodySmall
                       .copyWith(color: AppColors.textSecondary),
@@ -396,11 +398,12 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
           child: ElevatedButton.icon(
             onPressed: bisa
                 ? () {
-                    // TODO: navigasi ke halaman buat booking
+                    CartService().tambah(alat, widget.rental);
                     NrToast.show(
                       context,
-                      '${alat.nama} ditambahkan ke pesanan',
+                      '${alat.nama} ditambahkan ke keranjang',
                       type: NrToastType.success,
+                      duration: const Duration(seconds: 2),
                     );
                   }
                 : null,
