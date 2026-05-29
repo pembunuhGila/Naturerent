@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/wisata_location.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
-import '../../core/widgets/nr_toast.dart';
 import '../equipment/equipment_list_page.dart';
-import 'rental_detail_page.dart';
 import 'rental_page.dart';
 
 class WisataDetailPage extends StatefulWidget {
@@ -28,17 +25,12 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
 
   List<RentalWithDistance> _rentals = [];
   bool _isLoading = true;
-  bool _lokasiSaya = false;
-  LatLng? _userLatLng;
 
   // Koordinat default wisata
   LatLng get _wisataLatLng =>
       LatLng(widget.wisata.lat ?? -7.9425, widget.wisata.lng ?? 112.9531);
   bool get _wisataHasLocation =>
       widget.wisata.lat != null && widget.wisata.lng != null;
-
-  List<RentalProfile> get _rentalProfiles =>
-      _rentals.map((r) => r.rental).toList();
 
   @override
   void initState() {
@@ -60,48 +52,8 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
     }
   }
 
-  Future<void> _pindahLokasiSaya() async {
-    try {
-      bool svcEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!svcEnabled) {
-        _snack('Aktifkan GPS terlebih dahulu.');
-        return;
-      }
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.deniedForever ||
-          perm == LocationPermission.denied) {
-        _snack('Izin lokasi ditolak.');
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition();
-      if (!mounted) return;
-      final latlng = LatLng(pos.latitude, pos.longitude);
-      setState(() {
-        _userLatLng = latlng;
-        _lokasiSaya = true;
-        _rentals = _urutkanRental(_rentalProfiles);
-      });
-      _mapController.move(latlng, 13.0);
-    } catch (e) {
-      _snack('Gagal ambil lokasi.');
-    }
-  }
-
-  void _pindahDestinasi() {
-    setState(() {
-      _lokasiSaya = false;
-      _rentals = _urutkanRental(_rentalProfiles);
-    });
-    _mapController.move(_wisataLatLng, 12.0);
-  }
-
   List<RentalWithDistance> _urutkanRental(List<RentalProfile> rentals) {
-    final reference = _lokasiSaya
-        ? _userLatLng
-        : (_wisataHasLocation ? _wisataLatLng : null);
+    final reference = _wisataHasLocation ? _wisataLatLng : null;
     if (reference == null) {
       return rentals
           .map((r) => RentalWithDistance(rental: r, distanceKm: null))
@@ -114,11 +66,6 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
       rentals: rentals,
       includeUnknownLocation: true,
     );
-  }
-
-  void _snack(String msg) {
-    if (!mounted) return;
-    NrToast.show(context, msg, type: NrToastType.info);
   }
 
   @override
@@ -183,7 +130,8 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                     ),
                   ),
                   // Marker Rental
-                  ..._rentalProfiles
+                  ..._rentals
+                      .map((item) => item.rental)
                       .where((r) => r.lat != null && r.lng != null)
                       .map(
                         (r) => Marker(
@@ -215,31 +163,6 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                           ),
                         ),
                       ),
-                  // Marker Lokasi User
-                  if (_userLatLng != null)
-                    Marker(
-                      point: _userLatLng!,
-                      width: 40,
-                      height: 40,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withValues(alpha: 0.4),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ],
@@ -340,46 +263,6 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
             ),
           ),
 
-          // ── Toggle Lokasi Saya / Dekat Destinasi
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 56,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _ToggleBtn(
-                      label: 'Lokasi Saya',
-                      icon: Icons.my_location_rounded,
-                      isActive: _lokasiSaya,
-                      onTap: _pindahLokasiSaya,
-                    ),
-                    _ToggleBtn(
-                      label: 'Dekat Destinasi',
-                      icon: Icons.place_rounded,
-                      isActive: !_lokasiSaya,
-                      onTap: _pindahDestinasi,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
           // ── Bottom Sheet Rental List
           DraggableScrollableSheet(
             initialChildSize: 0.35,
@@ -428,7 +311,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                               Text(
                                 _isLoading
                                     ? 'Memuat...'
-                                    : '${_rentals.length} rental terurut ${_lokasiSaya ? 'dari lokasimu' : 'dari destinasi'}',
+                                    : '${_rentals.length} rental terurut dari destinasi',
                                 style: AppTextStyles.bodySmall.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
@@ -501,14 +384,6 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                                     ),
                                   ),
                                 ),
-                                onDetail: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => RentalDetailPage(
-                                      rental: _rentals[i].rental,
-                                    ),
-                                  ),
-                                ),
                               ),
                             ),
                     ),
@@ -524,67 +399,16 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
 }
 
 // ─────────────────────────────────────────────
-//  TOGGLE BUTTON
-// ─────────────────────────────────────────────
-class _ToggleBtn extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isActive;
-  final VoidCallback onTap;
-  const _ToggleBtn({
-    required this.label,
-    required this.icon,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isActive ? Colors.white : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: isActive ? Colors.white : AppColors.textSecondary,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
 //  RENTAL CARD DI BOTTOM SHEET
 // ─────────────────────────────────────────────
 class _RentalBottomCard extends StatelessWidget {
   final RentalProfile rental;
   final double? jarak;
   final VoidCallback onTap;
-  final VoidCallback onDetail;
   const _RentalBottomCard({
     required this.rental,
     required this.jarak,
     required this.onTap,
-    required this.onDetail,
   });
 
   String get _jarakText {
@@ -668,21 +492,10 @@ class _RentalBottomCard extends StatelessWidget {
                 ],
               ),
             ),
-            GestureDetector(
-              onTap: onDetail,
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.info_outline_rounded,
-                  color: AppColors.primaryDark,
-                  size: 18,
-                ),
-              ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textHint,
+              size: 20,
             ),
           ],
         ),
