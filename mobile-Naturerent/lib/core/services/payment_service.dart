@@ -1,6 +1,27 @@
 import 'auth_service.dart';
 
 // ─────────────────────────────────────────────
+//  Model: RentalQrisInfo
+// ─────────────────────────────────────────────
+/// Info QRIS milik satu rental spesifik dari tabel rental_profiles.
+class RentalQrisInfo {
+  final String rentalId;
+  final String namaRental;
+  final String? qrisImageUrl;
+  final String? qrisMerchantName;
+
+  const RentalQrisInfo({
+    required this.rentalId,
+    required this.namaRental,
+    this.qrisImageUrl,
+    this.qrisMerchantName,
+  });
+
+  bool get hasQris =>
+      qrisImageUrl != null && qrisImageUrl!.isNotEmpty;
+}
+
+// ─────────────────────────────────────────────
 //  Model: PlatformSettings
 // ─────────────────────────────────────────────
 class PlatformSettings {
@@ -99,7 +120,7 @@ class PaymentService {
     invalidateCache();
   }
 
-  // ── Update komisi persen ──────────────────────────────────────────────────
+  // ── Update komisi persen ──────────────────────────────────────────
   Future<void> updateKomisi(double persen) async {
     await AuthService.client.from('commission_settings').insert({
       'percentage': persen,
@@ -107,6 +128,57 @@ class PaymentService {
       'updated_at': DateTime.now().toIso8601String(),
     });
     invalidateCache();
+  }
+
+  // ── Ambil info QRIS untuk satu rental spesifik ──────────────────────
+  /// Fetch `qris_image_url` dan `qris_merchant_name` langsung dari
+  /// tabel `rental_profiles` untuk rental tertentu.
+  Future<RentalQrisInfo?> ambilQrisRental(String rentalId) async {
+    try {
+      final data = await AuthService.client
+          .from('rental_profiles')
+          .select('id, nama_rental, qris_image_url, qris_merchant_name')
+          .eq('id', rentalId)
+          .maybeSingle();
+
+      if (data == null) return null;
+      return RentalQrisInfo(
+        rentalId: data['id'] as String,
+        namaRental: data['nama_rental'] as String,
+        qrisImageUrl: data['qris_image_url'] as String?,
+        qrisMerchantName: data['qris_merchant_name'] as String?,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Ambil info QRIS untuk banyak rental sekaligus ─────────────────
+  /// Fetch QRIS untuk list rentalId (misal: multi-rental checkout).
+  Future<Map<String, RentalQrisInfo>> ambilQrisMultipleRental(
+    List<String> rentalIds,
+  ) async {
+    if (rentalIds.isEmpty) return {};
+    try {
+      final data = await AuthService.client
+          .from('rental_profiles')
+          .select('id, nama_rental, qris_image_url, qris_merchant_name')
+          .inFilter('id', rentalIds);
+
+      final result = <String, RentalQrisInfo>{};
+      for (final row in (data as List)) {
+        final info = RentalQrisInfo(
+          rentalId: row['id'] as String,
+          namaRental: row['nama_rental'] as String,
+          qrisImageUrl: row['qris_image_url'] as String?,
+          qrisMerchantName: row['qris_merchant_name'] as String?,
+        );
+        result[info.rentalId] = info;
+      }
+      return result;
+    } catch (_) {
+      return {};
+    }
   }
 
   /// Hapus cache agar fetch ulang dari DB di request berikutnya.
