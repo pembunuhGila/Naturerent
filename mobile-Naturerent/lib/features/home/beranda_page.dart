@@ -5,6 +5,7 @@ import '../../core/models/wisata_location.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../home/rental_page.dart';
+import '../home/wisata_detail_page.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -468,7 +469,7 @@ class _WisataCard extends StatelessWidget {
               ),
             ),
 
-            // ── Seluruh area clickable → ke RentalPage untuk rental terdekat
+            // ── Seluruh area clickable → ke WisataDetailPage
             Positioned.fill(
               child: Material(
                 color: Colors.transparent,
@@ -477,12 +478,7 @@ class _WisataCard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => RentalPage(
-                          wisataId: wisata.id,
-                          namaWisata: wisata.nama,
-                          wisataLat: wisata.lat,
-                          wisataLng: wisata.lng,
-                        ),
+                        builder: (_) => WisataDetailPage(wisata: wisata),
                       ),
                     );
                   },
