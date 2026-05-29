@@ -156,45 +156,58 @@ class _LoginPageState extends State<LoginPage>
   Widget _buildPartnerLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isCompact = constraints.maxHeight < 760;
+        final horizontalPadding = isCompact ? 20.0 : 24.0;
+        final topPadding = isCompact ? 12.0 : 20.0;
+        final bottomPadding = isCompact ? 14.0 : 20.0;
+
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 42, 24, 28),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            topPadding,
+            horizontalPadding,
+            bottomPadding,
+          ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 70),
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight - topPadding - bottomPadding,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
                     child: _buildBackButton(),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: isCompact ? 8 : 10),
                   _BrandMark(color: _config.accentColor, centered: true),
-                  const SizedBox(height: 28),
+                  SizedBox(height: isCompact ? 14 : 18),
                   Text(
                     _config.title,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.displayLarge.copyWith(
                       color: const Color(0xFF202321),
-                      fontSize: 30,
+                      fontSize: isCompact ? 25 : 28,
                       fontWeight: FontWeight.w900,
                       height: 1.15,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: isCompact ? 6 : 8),
                   Text(
                     _config.subtitle,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: const Color(0xFF687067),
-                      fontSize: 15,
+                      fontSize: isCompact ? 13 : 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  _buildPartnerCard(),
-                  const SizedBox(height: 82),
-                  _buildPartnerFooter(),
+                  SizedBox(height: isCompact ? 18 : 24),
+                  _buildPartnerCard(isCompact: isCompact),
+                  SizedBox(height: isCompact ? 18 : 24),
+                  _buildPartnerFooter(isCompact: isCompact),
                 ],
               ),
             ),
@@ -204,10 +217,15 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildPartnerCard() {
+  Widget _buildPartnerCard({required bool isCompact}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(32, 30, 32, 32),
+      padding: EdgeInsets.fromLTRB(
+        isCompact ? 22 : 26,
+        isCompact ? 20 : 24,
+        isCompact ? 22 : 26,
+        isCompact ? 22 : 26,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
@@ -223,9 +241,9 @@ class _LoginPageState extends State<LoginPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildFieldLabel('EMAIL ATAU USERNAME'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _buildEmailField(compact: true),
-          const SizedBox(height: 22),
+          SizedBox(height: isCompact ? 16 : 18),
           Row(
             children: [
               Expanded(child: _buildFieldLabel('KATA SANDI')),
@@ -248,13 +266,13 @@ class _LoginPageState extends State<LoginPage>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _buildPasswordField(compact: true),
-          const SizedBox(height: 32),
+          SizedBox(height: isCompact ? 22 : 26),
           _buildLoginButton(),
-          const SizedBox(height: 34),
+          SizedBox(height: isCompact ? 20 : 24),
           const Divider(color: Color(0xFFE7E9E3)),
-          const SizedBox(height: 20),
+          SizedBox(height: isCompact ? 14 : 16),
           _buildRegisterLink(),
         ],
       ),
@@ -433,7 +451,7 @@ class _LoginPageState extends State<LoginPage>
       fillColor: compact ? const Color(0xFFFAFBF8) : AppColors.surface,
       contentPadding: EdgeInsets.symmetric(
         horizontal: compact ? 16 : 16,
-        vertical: compact ? 17 : 16,
+        vertical: compact ? 14 : 16,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
@@ -462,7 +480,7 @@ class _LoginPageState extends State<LoginPage>
     final isPartner = widget.role == UserRole.pemilik;
     return SizedBox(
       width: double.infinity,
-      height: isPartner ? 54 : 52,
+      height: isPartner ? 50 : 52,
       child: ElevatedButton(
         onPressed: _loading ? null : _login,
         style: ElevatedButton.styleFrom(
@@ -509,14 +527,16 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _buildRegisterLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    const fontSize = 14.0;
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
           _config.registerPrompt,
           style: AppTextStyles.bodyMedium.copyWith(
             color: const Color(0xFF687067),
-            fontSize: widget.role == UserRole.pemilik ? 15 : 14,
+            fontSize: fontSize,
           ),
         ),
         GestureDetector(
@@ -529,7 +549,7 @@ class _LoginPageState extends State<LoginPage>
             style: AppTextStyles.bodyMedium.copyWith(
               color: _config.accentColor,
               fontWeight: FontWeight.w900,
-              fontSize: widget.role == UserRole.pemilik ? 15 : 14,
+              fontSize: fontSize,
             ),
           ),
         ),
@@ -596,7 +616,7 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildPartnerFooter() {
+  Widget _buildPartnerFooter({required bool isCompact}) {
     return Column(
       children: [
         Text(
@@ -605,32 +625,32 @@ class _LoginPageState extends State<LoginPage>
           style: AppTextStyles.caption.copyWith(
             color: const Color(0xFF9DA39A),
             fontWeight: FontWeight.w900,
-            letterSpacing: 3.2,
-            height: 1.6,
-            fontSize: 10,
+            letterSpacing: isCompact ? 2.2 : 2.8,
+            height: 1.35,
+            fontSize: isCompact ? 8.5 : 9.5,
           ),
         ),
-        const SizedBox(height: 32),
+        SizedBox(height: isCompact ? 12 : 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _footerLink('SYARAT & KETENTUAN'),
-            const SizedBox(width: 28),
-            _footerLink('KEBIJAKAN PRIVASI'),
+            _footerLink('SYARAT & KETENTUAN', isCompact: isCompact),
+            SizedBox(width: isCompact ? 18 : 24),
+            _footerLink('KEBIJAKAN PRIVASI', isCompact: isCompact),
           ],
         ),
       ],
     );
   }
 
-  Widget _footerLink(String text) {
+  Widget _footerLink(String text, {required bool isCompact}) {
     return Text(
       text,
       style: AppTextStyles.caption.copyWith(
         color: const Color(0xFF9DA39A),
         fontWeight: FontWeight.w900,
-        letterSpacing: 1.3,
-        fontSize: 10,
+        letterSpacing: isCompact ? 0.8 : 1.1,
+        fontSize: isCompact ? 8.5 : 9.5,
       ),
     );
   }
