@@ -60,7 +60,9 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
   }
 
   void _reload() {
-    setState(() => _futureOrders = _loadOrders());
+    setState(() {
+      _futureOrders = _loadOrders();
+    });
   }
 
   Future<void> _confirmOrder(AdminOrder order) async {
