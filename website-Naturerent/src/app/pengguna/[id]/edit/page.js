@@ -14,6 +14,7 @@ export default function EditPenggunaPage() {
     nama_lengkap: '',
     email: '',
     no_wa: '',
+    role: 'customer',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -37,6 +38,7 @@ export default function EditPenggunaPage() {
         nama_lengkap: data.nama_lengkap || data.name || '',
         email: data.email || '',
         no_wa: data.no_wa || data.phone || '',
+        role: data.role || 'customer',
       })
       setLoading(false)
     }
@@ -70,6 +72,7 @@ export default function EditPenggunaPage() {
         .update({
           nama_lengkap: form.nama_lengkap.trim(),
           no_wa: form.no_wa.trim(),
+          role: form.role,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -84,6 +87,7 @@ export default function EditPenggunaPage() {
           body: JSON.stringify({
             nama_lengkap: form.nama_lengkap.trim(),
             no_wa: form.no_wa.trim(),
+            role: form.role,
             updated_at: new Date().toISOString(),
           }),
         })
@@ -169,6 +173,19 @@ export default function EditPenggunaPage() {
                   value={form.no_wa}
                   onChange={e => setForm({ ...form, no_wa: e.target.value })}
                 />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Role / Peran Pengguna <span style={{ color: 'var(--accent-red)' }}>*</span></label>
+                <select
+                  className="form-input"
+                  value={form.role}
+                  onChange={e => setForm({ ...form, role: e.target.value })}
+                  style={{ cursor: 'pointer', fontWeight: 600 }}
+                >
+                  <option value="customer">Penyewa (Customer)</option>
+                  <option value="rental_owner">Pemilik Rental (Rental Owner)</option>
+                  <option value="admin">Administrator (Admin)</option>
+                </select>
               </div>
             </div>
 
