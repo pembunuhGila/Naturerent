@@ -120,7 +120,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
 
     if (!mounted) return;
-    _bukaQris(deliveryResult ?? _deliveryResult);
+
+    // Fetch QRIS per-rental dari Supabase sebelum navigasi ke QrisPage
+    final rentalIds = _cart.groupedByRental.map((g) => g.rental.id).toList();
+    final rentalQrisMap = await PaymentService().ambilQrisMultipleRental(rentalIds);
+
+    if (!mounted) return;
+    _bukaQris(deliveryResult ?? _deliveryResult, rentalQrisMap);
   }
 
   Future<bool> _pastikanKtpTerisi() async {
@@ -217,7 +223,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  void _bukaQris(DeliveryLocationResult? deliveryResult) {
+  void _bukaQris(
+    DeliveryLocationResult? deliveryResult,
+    Map<String, RentalQrisInfo> rentalQrisMap,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -236,6 +245,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               _metodeAmbil == 1 ? deliveryResult?.totalDistanceKm : null,
           deliveryFeesByRentalId:
               _metodeAmbil == 1 ? deliveryResult?.feesByRentalId : null,
+          rentalQrisMap: rentalQrisMap,
         ),
       ),
     );
