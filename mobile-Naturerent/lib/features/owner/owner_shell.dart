@@ -37,8 +37,7 @@ class _OwnerShellState extends State<OwnerShell> {
     ];
 
     return Scaffold(
-      backgroundColor:
-          _currentIndex == 3 ? Colors.white : const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: _OwnerBottomNav(
         currentIndex: _currentIndex,
@@ -71,8 +70,12 @@ class _OwnerBottomNav extends StatelessWidget {
         12 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.ownerCardBackground,
         borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -99,7 +102,7 @@ class _OwnerBottomNav extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: isActive
-                            ? const Color(0xFF18743A)
+                            ? AppColors.ownerPrimaryGreen
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(11),
                       ),
