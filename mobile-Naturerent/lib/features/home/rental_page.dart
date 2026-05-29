@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/services/location_service.dart';
@@ -9,7 +11,6 @@ import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../checkout/checkout_page.dart';
 import '../equipment/equipment_list_page.dart';
-import 'rental_detail_page.dart';
 
 class RentalPage extends StatefulWidget {
   /// Jika [wisataId] diisi, hanya tampilkan rental dekat wisata tersebut.
@@ -86,6 +87,19 @@ class _RentalPageState extends State<RentalPage> {
       _lokasiSaya = true;
       _rentalFiltered = _urutkanRental(_semuaRental);
     });
+    _bukaPetaLokasiSaya(pos);
+  }
+
+  void _bukaPetaLokasiSaya(Position pos) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _RentalUserLocationMapPage(
+          userPoint: LatLng(pos.latitude, pos.longitude),
+          rentals: _rentalFiltered,
+        ),
+      ),
+    );
   }
 
   Future<Position?> _ambilPosisiSaya({bool showMessages = true}) async {
@@ -201,14 +215,6 @@ class _RentalPageState extends State<RentalPage> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => EquipmentListPage(
-                            rental: _rentalFiltered[i].rental,
-                          ),
-                        ),
-                      ),
-                      onDetail: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RentalDetailPage(
                             rental: _rentalFiltered[i].rental,
                           ),
                         ),
@@ -525,13 +531,11 @@ class _RentalCard extends StatelessWidget {
   final RentalProfile rental;
   final double? jarak;
   final VoidCallback onTap;
-  final VoidCallback onDetail;
 
   const _RentalCard({
     required this.rental,
     required this.jarak,
     required this.onTap,
-    required this.onDetail,
   });
 
   String get _jarakStr {
@@ -644,39 +648,18 @@ class _RentalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  children: [
-                    GestureDetector(
-                      onTap: onDetail,
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.info_outline_rounded,
-                          color: AppColors.primaryDark,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceSoft,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppColors.textHint,
-                        size: 22,
-                      ),
-                    ),
-                  ],
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.primaryDark,
+                    size: 22,
+                  ),
                 ),
               ],
             ),
@@ -708,6 +691,151 @@ class _Badge extends StatelessWidget {
           fontSize: 9,
           letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+}
+
+class _RentalUserLocationMapPage extends StatelessWidget {
+  final LatLng userPoint;
+  final List<RentalWithDistance> rentals;
+
+  const _RentalUserLocationMapPage({
+    required this.userPoint,
+    required this.rentals,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rentalMarkers = rentals
+        .map((item) => item.rental)
+        .where((r) => r.lat != null && r.lng != null)
+        .map(
+          (r) => Marker(
+            point: LatLng(r.lat!, r.lng!),
+            width: 44,
+            height: 44,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        )
+        .toList();
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: userPoint,
+              initialZoom: 13,
+              minZoom: 5,
+              maxZoom: 18,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.naturerent.app',
+              ),
+              MarkerLayer(
+                markers: [
+                  ...rentalMarkers,
+                  Marker(
+                    point: userPoint,
+                    width: 46,
+                    height: 46,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.my_location_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 12,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      'Lokasi Saya',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
