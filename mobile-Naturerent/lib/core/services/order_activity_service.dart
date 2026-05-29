@@ -84,7 +84,6 @@ class OrderActivityService {
     required List<CartItem> items,
     required double biayaLayanan,
     required double taxRate,
-    required double dpPercent,
     Uint8List? paymentProofBytes,
     String paymentProofExtension = 'jpg',
     String paymentProofContentType = 'image/jpeg',
@@ -132,13 +131,14 @@ class OrderActivityService {
             'status': 'pending',
             'booking_code': nomorPesanan,
             'payment_group_id': paymentGroupId,
-            'dp_percent': dpPercent,
+            'dp_percent': 0,
             'payment_method': 'qris',
             'payment_status': 'dp_under_review',
             'payment_proof_url': proofUrl,
             'catatan': isDelivery
-                ? 'Bukti DP diupload melalui aplikasi NatureRent. Delivery ${deliveryDistanceKm?.toStringAsFixed(1) ?? '-'} km.'
-                : 'Bukti DP diupload melalui aplikasi NatureRent.',
+                ? 'Bukti pembayaran lunas diupload melalui aplikasi NatureRent. '
+                    'Delivery ${deliveryDistanceKm?.toStringAsFixed(1) ?? '-'} km.'
+                : 'Bukti pembayaran lunas diupload melalui aplikasi NatureRent.',
           })
           .select('id, total_bayar')
           .single();
@@ -146,9 +146,9 @@ class OrderActivityService {
       final bookingId = data['id'] as String;
       insertedRows.add(data);
 
-      await _buatPaymentDp(
+      await _buatPaymentLunas(
         bookingId: bookingId,
-        jumlahBayar: (subtotal * dpPercent / 100) +
+        jumlahBayar: subtotal +
             (i == 0 ? biayaLayanan : 0) +
             (isDelivery ? groupDeliveryFee : 0),
         proofUrl: proofUrl,
@@ -278,7 +278,8 @@ class OrderActivityService {
         'user_id': userId,
         'judul': 'Pesanan #$nomorPesanan menunggu verifikasi',
         'pesan':
-            'Bukti DP sudah diupload. Admin akan cek pembayaran lalu pemilik rental melakukan ACC.',
+            'Bukti pembayaran lunas sudah diupload. Admin akan cek pembayaran '
+            'lalu pemilik rental melakukan ACC.',
         'type': 'booking',
         'ref_id': refId,
       });
@@ -287,7 +288,7 @@ class OrderActivityService {
     }
   }
 
-  Future<void> _buatPaymentDp({
+  Future<void> _buatPaymentLunas({
     required String bookingId,
     required double jumlahBayar,
     required String? proofUrl,
@@ -296,7 +297,7 @@ class OrderActivityService {
       await AuthService.client.from('payments').insert({
         'booking_id': bookingId,
         'jumlah_bayar': jumlahBayar,
-        'status': 'pending',
+        'status': 'paid',
         'qris_code_url': proofUrl,
         'tgl_bayar': DateTime.now().toIso8601String(),
       });
