@@ -87,6 +87,21 @@ export default function KomisiPage() {
       if (savedRate) {
         setCommissionRate(Number(savedRate))
       }
+
+      // Fetch live commission rate from Supabase database
+      try {
+        const comRes = await fetch('/api/commission-settings')
+        if (comRes.ok) {
+          const comData = await comRes.json()
+          if (comData?.percentage !== undefined) {
+            const dbRate = Number(comData.percentage)
+            setCommissionRate(dbRate)
+            localStorage.setItem('naturerent_commission_rate', String(dbRate))
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching commission rate from DB:', err)
+      }
     }
     init()
     fetchData()

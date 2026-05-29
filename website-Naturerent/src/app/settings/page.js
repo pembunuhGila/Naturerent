@@ -189,6 +189,21 @@ export default function SettingsPage() {
         setForm(prev => ({ ...prev, commissionRate: Number(savedRate) }))
       }
 
+      // Fetch live commission rate from Supabase database
+      try {
+        const comRes = await fetch('/api/commission-settings')
+        if (comRes.ok) {
+          const comData = await comRes.json()
+          if (comData?.percentage !== undefined) {
+            const dbRate = Number(comData.percentage)
+            setForm(prev => ({ ...prev, commissionRate: dbRate }))
+            localStorage.setItem('naturerent_commission_rate', String(dbRate))
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching commission rate from DB:', err)
+      }
+
       // Fetch global QRIS from Supabase
       fetchGlobalQris(supabase)
     }
@@ -361,6 +376,17 @@ export default function SettingsPage() {
       }
     } catch (err) {
       console.error('Error saving service fee to DB:', err)
+    }
+
+    // Save commission rate to database
+    try {
+      await fetch('/api/commission-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ percentage: form.commissionRate ?? 12.5 })
+      })
+    } catch (err) {
+      console.error('Error saving commission rate to DB:', err)
     }
 
     setSaving(false)
