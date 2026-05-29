@@ -26,7 +26,7 @@ class RentalQrisInfo {
 //  Model: GlobalQrisInfo
 // ─────────────────────────────────────────────
 /// QRIS tunggal milik admin platform, berlaku untuk semua rental.
-/// Di-fetch dari tabel platform_settings (key = 'global_qris').
+/// Di-fetch dari tabel platform_settings (id = 1).
 class GlobalQrisInfo {
   final String? imageUrl;
   final String? merchantName;
@@ -149,21 +149,21 @@ class PaymentService {
   }
 
   // ── Ambil QRIS global admin (satu QRIS untuk semua rental) ───────────────
-  /// Fetch dari platform_settings dengan key = 'global_qris'.
-  /// Value disimpan sebagai JSON string: {"merchant_name": "...", "image_url": "..."}.
+  /// Fetch dari wisata_locations dengan nama = '__GLOBAL_QRIS__'.
+  /// Value disimpan sebagai JSON string di kolom `deskripsi`: {"merchant_name": "...", "image_url": "..."}.
   Future<GlobalQrisInfo> ambilGlobalQris() async {
     try {
       final data = await AuthService.client
-          .from('platform_settings')
-          .select('value')
-          .eq('key', 'global_qris')
+          .from('wisata_locations')
+          .select('deskripsi')
+          .eq('nama', '__GLOBAL_QRIS__')
+          .eq('kategori', 'QRIS')
           .maybeSingle();
 
-      if (data == null || data['value'] == null) return GlobalQrisInfo.empty;
+      if (data == null || data['deskripsi'] == null) return GlobalQrisInfo.empty;
 
-      // value bisa berupa String JSON atau Map (tergantung tipe kolom Supabase)
+      final raw = data['deskripsi'];
       Map<String, dynamic> parsed;
-      final raw = data['value'];
       if (raw is Map) {
         parsed = Map<String, dynamic>.from(raw);
       } else {
@@ -172,10 +172,16 @@ class PaymentService {
         parsed = <String, dynamic>{};
         // Minimal safe parse tanpa dart:convert di core
         final str = raw.toString();
-        final merchantMatch = RegExp(r'"merchant_name":"([^"]*)"').firstMatch(str);
-        final imageMatch = RegExp(r'"image_url":"([^"]*)"').firstMatch(str);
-        parsed['merchant_name'] = merchantMatch?.group(1);
-        parsed['image_url'] = imageMatch?.group(1);
+        if (str.startsWith('{')) {
+          final merchantMatch = RegExp(r'"merchant_name":"([^"]*)"').firstMatch(str);
+          final imageMatch = RegExp(r'"image_url":"([^"]*)"').firstMatch(str);
+          parsed['merchant_name'] = merchantMatch?.group(1);
+          parsed['image_url'] = imageMatch?.group(1);
+        } else {
+          // Fallback jika berupa string URL biasa (format lama)
+          parsed['merchant_name'] = 'Naturerent Indonesia';
+          parsed['image_url'] = str;
+        }
       }
 
       return GlobalQrisInfo(
