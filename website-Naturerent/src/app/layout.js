@@ -89,6 +89,22 @@ export default function RootLayout({ children }) {
               root.style.setProperty('--brand-mint', brandMint);
               root.style.setProperty('--bg-sidebar', brandGreen);
 
+              // Set dynamic page title and description from system settings when available
+              if (parsed.appName) {
+                document.title = parsed.appName + ' - Operations Portal';
+              }
+              if (parsed.description) {
+                var metaDescription = document.querySelector('meta[name="description"]');
+                if (metaDescription) {
+                  metaDescription.setAttribute('content', parsed.description);
+                } else {
+                  metaDescription = document.createElement('meta');
+                  metaDescription.name = 'description';
+                  metaDescription.content = parsed.description;
+                  document.head.appendChild(metaDescription);
+                }
+              }
+
               // Dynamically compute and inject isolated sidebar styles to prevent sidebar flicker
               var sidebarBg = brandGreen;
               var sidebarTxt = '#c2f0dc';
