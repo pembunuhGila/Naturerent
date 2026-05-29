@@ -86,6 +86,94 @@ const roleBadge = (role) => {
   )
 }
 
+function KtpModal({ user, onClose }) {
+  if (!user) return null
+  const name = user.nama_lengkap || user.name || '-'
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+    >
+      <div
+        className="modal-box"
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 600, border: '1px solid var(--border-color)', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', gap: 20 }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fa-solid fa-id-card" style={{ color: '#fff', fontSize: 16 }} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Foto KTP Pengguna</h2>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 16, padding: '6px 10px', borderRadius: 8, lineHeight: 1 }}
+          >
+            <i className="fa-solid fa-xmark" />
+          </button>
+        </div>
+
+        {/* KTP Image Viewer */}
+        {user.ktp_url ? (
+          <div style={{ borderRadius: 14, overflow: 'hidden', border: '2px solid var(--border-color)', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220, maxHeight: '60vh' }}>
+            <img
+              src={user.ktp_url}
+              alt={`KTP ${name}`}
+              style={{ width: '100%', maxHeight: '60vh', objectFit: 'contain', display: 'block' }}
+              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+            />
+            <div style={{ display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 40, color: 'var(--text-muted)' }}>
+              <i className="fa-solid fa-image-slash" style={{ fontSize: 36 }} />
+              <span style={{ fontSize: 13 }}>Gambar KTP tidak dapat dimuat</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ borderRadius: 14, border: '2px dashed var(--border-color)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 48 }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fa-solid fa-id-card" style={{ fontSize: 24, color: '#3b82f6' }} />
+            </div>
+            <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>KTP Belum Diunggah</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+              Pengguna ini belum mengunggah foto KTP mereka.
+            </p>
+          </div>
+        )}
+
+        {/* Info Row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+          <i className="fa-solid fa-shield-halved" style={{ color: '#3b82f6', fontSize: 13 }} />
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Data KTP bersifat rahasia dan hanya dapat dilihat oleh admin. Jangan bagikan informasi ini kepada pihak luar.
+          </span>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Tutup</button>
+          {user.ktp_url && (
+            <a
+              href={user.ktp_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+              style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <i className="fa-solid fa-arrow-up-right-from-square" /> Buka di Tab Baru
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DetailModal({ user, onClose }) {
   if (!user) return null
   const name = user.nama_lengkap || user.name || '-'
@@ -142,6 +230,7 @@ function DetailModal({ user, onClose }) {
   )
 }
 
+
 export default function PenggunaPage() {
   const router = useRouter()
   const { toasts, addToast, removeToast } = useToast()
@@ -152,6 +241,7 @@ export default function PenggunaPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [detailTarget, setDetailTarget] = useState(null)
+  const [ktpTarget, setKtpTarget] = useState(null)
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const PAGE_SIZE = 10
@@ -305,6 +395,14 @@ export default function PenggunaPage() {
                                 <i className="fa-solid fa-eye" />
                               </button>
                               <button
+                                className="action-btn"
+                                title="Lihat KTP"
+                                onClick={() => setKtpTarget(user)}
+                                style={{ color: '#3b82f6' }}
+                              >
+                                <i className="fa-solid fa-id-card" />
+                              </button>
+                              <button
                                 className="action-btn edit-btn"
                                 title="Edit"
                                 onClick={() => router.push(`/pengguna/${user.id}/edit`)}
@@ -355,6 +453,11 @@ export default function PenggunaPage() {
         {/* Detail Modal */}
         {detailTarget && (
           <DetailModal user={detailTarget} onClose={() => setDetailTarget(null)} />
+        )}
+
+        {/* KTP Modal */}
+        {ktpTarget && (
+          <KtpModal user={ktpTarget} onClose={() => setKtpTarget(null)} />
         )}
 
         <ConfirmModal
