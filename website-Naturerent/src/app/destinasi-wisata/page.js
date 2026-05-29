@@ -413,6 +413,7 @@ function ImageCropper({ previewUrl, crop, onCropChange }) {
 
 function DestinationFormModal({
   initialData,
+  categories,
   saving,
   onClose,
   onSubmit,
@@ -556,13 +557,31 @@ function DestinationFormModal({
 
             <div className="form-group">
               <label className="form-label">Kategori</label>
-              <input
-                className="form-input"
-                value={form.kategori}
-                onChange={e => handleChange('kategori', e.target.value)}
-                placeholder="Masukkan kategori destinasi, misal Gunung atau Pantai"
-                required
-              />
+              {categories.length > 0 ? (
+                <select
+                  className="form-input"
+                  value={form.kategori}
+                  onChange={e => handleChange('kategori', e.target.value)}
+                  required
+                  style={{ appearance: 'none', backgroundImage: 'none' }}
+                >
+                  <option value="">Pilih kategori destinasi</option>
+                  {categories.map(kategori => (
+                    <option key={kategori} value={kategori}>{kategori}</option>
+                  ))}
+                  {form.kategori && !categories.includes(form.kategori) && (
+                    <option value={form.kategori}>{form.kategori} (dipilih)</option>
+                  )}
+                </select>
+              ) : (
+                <input
+                  className="form-input"
+                  value={form.kategori}
+                  onChange={e => handleChange('kategori', e.target.value)}
+                  placeholder="Masukkan kategori destinasi, misal Gunung atau Pantai"
+                  required
+                />
+              )}
             </div>
           </div>
 
@@ -743,8 +762,34 @@ export default function DestinasiWisataPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [formTarget, setFormTarget] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [categories, setCategories] = useState([])
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const fetchCategories = useCallback(async () => {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('wisata_locations')
+      .select('kategori')
+      .neq('kategori', 'QRIS')
+      .not('kategori', 'is', null)
+      .order('kategori', { ascending: true })
+
+    if (error) {
+      addToast('Gagal memuat daftar kategori: ' + error.message, 'error')
+      return
+    }
+
+    const uniqueCategories = Array.from(
+      new Set(
+        (data || [])
+          .map(item => (item.kategori || '').trim())
+          .filter(Boolean)
+      )
+    )
+
+    setCategories(uniqueCategories)
+  }, [addToast])
 
   const fetchDestinations = useCallback(async (searchTerm = '', currentPage = 1) => {
     setLoading(true)
@@ -778,9 +823,10 @@ export default function DestinasiWisataPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setUserEmail(user?.email || '')
+      await fetchCategories()
     }
     init()
-  }, [])
+  }, [fetchCategories])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -884,6 +930,7 @@ export default function DestinasiWisataPage() {
         }
         return [savedDestination, ...prev].slice(0, PAGE_SIZE)
       })
+      await fetchCategories()
       fetchDestinations(appliedSearch, page)
     } catch (error) {
       console.error('Gagal menyimpan destinasi:', error)
@@ -1115,13 +1162,6 @@ export default function DestinasiWisataPage() {
                             {destination.deskripsi || 'Tidak ada deskripsi.'}
                           </p>
 
-                          <div className="destination-meta-row">
-                            <i className="fa-solid fa-map-pin" style={{ color: 'var(--brand-emerald)', fontSize: 13 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                              {destination.lat ?? '-'}, {destination.lng ?? '-'}
-                            </span>
-                          </div>
-
                           <div className="destination-footer">
                             <span className="badge badge-success" style={{ padding: '6px 12px', gap: 6, fontSize: '0.74rem' }}>
                               <i className="fa-solid fa-calendar" />
@@ -1181,6 +1221,7 @@ export default function DestinasiWisataPage() {
           <DestinationFormModal
             key={formTarget?.id || 'create'}
             initialData={formTarget}
+            categories={categories}
             saving={saving}
             onClose={closeForm}
             onSubmit={handleSubmit}
