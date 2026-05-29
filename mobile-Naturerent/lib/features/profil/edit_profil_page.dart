@@ -660,7 +660,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
   Widget _buildMitraEditPage() {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.ownerPageBackground,
       bottomNavigationBar: _buildMitraBottomNav(),
       body: SafeArea(
         bottom: false,
@@ -681,9 +681,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _simpanMitra,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF123D1D),
+                    backgroundColor: AppColors.ownerPrimaryGreen,
                     disabledBackgroundColor:
-                        const Color(0xFF123D1D).withValues(alpha: 0.45),
+                        AppColors.ownerPrimaryGreen.withValues(alpha: 0.45),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(28),
@@ -716,7 +716,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   onPressed:
                       _isSaving ? null : () => Navigator.pop(context, false),
                   style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFF5F6F4),
+                    backgroundColor: AppColors.ownerCardBackground,
+                    side: const BorderSide(
+                      color: AppColors.ownerBorderColor,
+                      width: AppColors.ownerBorderWidth,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(28),
                     ),
@@ -869,7 +873,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     final initial =
         words.length >= 2 ? '${words[0][0]}${words[1][0]}' : nama[0];
     return Container(
-      color: const Color(0xFF18743A),
+      color: AppColors.ownerPrimaryGreen,
       alignment: Alignment.center,
       child: Text(
         initial.toUpperCase(),
@@ -933,9 +937,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color:
-                readOnly ? const Color(0xFFF7F8F6) : const Color(0xFFF1F3F0),
+            color: AppColors.ownerCardBackground,
             borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: AppColors.ownerBorderColor,
+              width: AppColors.ownerBorderWidth,
+            ),
           ),
           child: TextField(
             controller: controller,
@@ -987,8 +994,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
         12 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.ownerCardBackground,
         borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -1015,7 +1026,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: isActive
-                            ? const Color(0xFF18743A)
+                            ? AppColors.ownerPrimaryGreen
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(11),
                       ),
@@ -1104,7 +1115,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF18743A).withValues(alpha: 0.25),
+                        color: AppColors.ownerPrimaryGreen.withValues(alpha: 0.25),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -1121,7 +1132,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                                 width: 100, height: 100, fit: BoxFit.cover)
                             // Fallback: inisial nama
                             : Container(
-                                color: const Color(0xFF18743A),
+                                color: AppColors.ownerPrimaryGreen,
                                 child: Center(
                                   child: Text(
                                     inisial,
@@ -1147,7 +1158,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF18743A),
+                      color: AppColors.ownerPrimaryGreen,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -1261,7 +1272,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasKtp ? const Color(0xFF18743A) : const Color(0xFFE0E5DE),
+            color: hasKtp ? AppColors.ownerPrimaryGreen : const Color(0xFFE0E5DE),
             width: hasKtp ? 1.5 : 1,
           ),
         ),
@@ -1286,7 +1297,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Color(0xFF18743A).withValues(alpha: 0.85),
+                        color: AppColors.ownerPrimaryGreen.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1308,16 +1319,16 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE4EFE7),
+                      color: AppColors.ownerPrimarySoft,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.badge_outlined,
-                        color: Color(0xFF18743A), size: 28),
+                        color: AppColors.ownerPrimaryGreen, size: 28),
                   ),
                   const SizedBox(height: 10),
                   Text('Tap untuk ambil foto KTP',
                       style: AppTextStyles.bodySmall.copyWith(
-                          color: Color(0xFF18743A),
+                          color: AppColors.ownerPrimaryGreen,
                           fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text('Gunakan kamera perangkat',
@@ -1350,7 +1361,7 @@ class _MitraCameraButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: small ? const Color(0xFF123D1D) : Colors.white,
+          color: small ? AppColors.ownerPrimaryGreen : Colors.white,
           shape: BoxShape.circle,
           border: small ? Border.all(color: Colors.white, width: 4) : null,
           boxShadow: [
@@ -1363,7 +1374,7 @@ class _MitraCameraButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: small ? Colors.white : const Color(0xFF123D1D),
+          color: small ? Colors.white : AppColors.ownerPrimaryGreen,
           size: small ? 17 : 22,
         ),
       ),
