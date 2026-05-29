@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 /// Model data destinasi wisata untuk halaman Owner.
 /// [lat] dan [lng] bersifat opsional — destinasi tanpa koordinat
 /// tetap aman digunakan dan tidak menyebabkan error.
@@ -48,7 +50,7 @@ const ownerNearbyDestinations = [
     distance: '2.2 km',
     detailDistance: '2.2 km dari rental',
     icon: Icons.water_rounded,
-    color: Color(0xFF18743A),
+    color: AppColors.ownerPrimaryGreen,
     lat: -8.0559,
     lng: 112.9653,
   ),
@@ -66,7 +68,7 @@ const ownerNearbyDestinations = [
     distance: '1.8 km',
     detailDistance: '1.8 km dari rental',
     icon: Icons.forest_rounded,
-    color: Color(0xFF18743A),
+    color: AppColors.ownerPrimaryGreen,
     lat: -8.0822,
     lng: 112.9374,
   ),
@@ -75,7 +77,7 @@ const ownerNearbyDestinations = [
     distance: '12 km',
     detailDistance: '12 km dari rental',
     icon: Icons.waterfall_chart_rounded,
-    color: Color(0xFF18743A),
+    color: AppColors.ownerPrimaryGreen,
     lat: -7.8956,
     lng: 113.0284,
   ),
@@ -106,7 +108,7 @@ const ownerCandidateDestinations = [
     distance: '12 km',
     detailDistance: '12 km dari rental',
     icon: Icons.waterfall_chart_rounded,
-    color: Color(0xFF18743A),
+    color: AppColors.ownerPrimaryGreen,
     lat: -7.8956,
     lng: 113.0284,
   ),
