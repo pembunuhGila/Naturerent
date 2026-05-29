@@ -80,27 +80,27 @@ class PaymentService {
     if (!forceRefresh && _cached != null) return _cached!;
 
     try {
-      // 1. Biaya layanan + QRIS URL dari platform_settings
-      final biayaData = await AuthService.client
-          .from('platform_settings')
-          .select('biaya_layanan, qris_image_url')
-          .eq('id', 1)
+      // Ambil biaya layanan flat dari wisata_locations (config virtual)
+      final data = await AuthService.client
+          .from('wisata_locations')
+          .select('deskripsi')
+          .eq('nama', '__GLOBAL_QRIS__')
+          .eq('kategori', 'QRIS')
           .maybeSingle();
 
-      // 2. Komisi persen dari commission_settings (ambil yg terbaru)
-      final komisiData = await AuthService.client
-          .from('commission_settings')
-          .select('percentage')
-          .order('updated_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+      int flatBiayaLayanan = 2000;
+      if (data != null && data['deskripsi'] != null) {
+        final str = data['deskripsi'].toString();
+        final match = RegExp(r'"biaya_layanan":(\d+)').firstMatch(str);
+        if (match != null) {
+          flatBiayaLayanan = int.tryParse(match.group(1)!) ?? 2000;
+        }
+      }
 
       _cached = PlatformSettings(
-        biayaLayanan: (biayaData?['biaya_layanan'] as num?)?.toInt() ??
-            PlatformSettings.defaultSettings.biayaLayanan,
-        komisiPersen: (komisiData?['percentage'] as num?)?.toDouble() ??
-            PlatformSettings.defaultSettings.komisiPersen,
-        qrisImageUrl: biayaData?['qris_image_url'] as String?,
+        biayaLayanan: flatBiayaLayanan,
+        komisiPersen: 10.0, // Persentase komisi platform default tetap 10%
+        qrisImageUrl: null,
       );
 
       return _cached!;
