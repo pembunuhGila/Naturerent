@@ -37,7 +37,7 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
     ));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -83,11 +83,14 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E5DE)),
+                border: Border.all(
+                  color: AppColors.ownerBorderColor,
+                  width: AppColors.ownerBorderWidth,
+                ),
               ),
               child: TabBar(
                 controller: _tabCtrl,
-                labelColor: const Color(0xFF18743A),
+                labelColor: AppColors.ownerPrimaryGreen,
                 unselectedLabelColor: const Color(0xFF496171),
                 labelStyle: AppTextStyles.bodySmall.copyWith(
                   fontWeight: FontWeight.w700,
@@ -97,10 +100,10 @@ class _OwnerActivityPageState extends State<OwnerActivityPage>
                   fontSize: 12,
                 ),
                 indicator: BoxDecoration(
-                  color: const Color(0xFFE4EFE7),
+                  color: AppColors.ownerSoftGreen,
                   borderRadius: BorderRadius.circular(10),
                   border: const Border(
-                    bottom: BorderSide(color: Color(0xFF18743A), width: 2),
+                    bottom: BorderSide(color: AppColors.ownerPrimaryGreen, width: 2),
                   ),
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
@@ -157,10 +160,10 @@ class _OwnerEmptyTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFFE4EFE7),
+                color: AppColors.ownerSoftGreen,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 40, color: const Color(0xFF18743A)),
+              child: Icon(icon, size: 40, color: AppColors.ownerPrimaryGreen),
             ),
             const SizedBox(height: 16),
             Text(
