@@ -33,7 +33,6 @@ export default function KomisiPage() {
   const [commissionRate, setCommissionRate] = useState(12.5)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState([])
-  const [saving, setSaving] = useState(false)
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [statusFilter, setStatusFilter] = useState('Semua')
@@ -98,17 +97,6 @@ export default function KomisiPage() {
     fetchData()
   }, [])
 
-  const handleSave = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    
-    // Simulate save duration and persist in localStorage
-    await new Promise(resolve => setTimeout(resolve, 500))
-    localStorage.setItem('naturerent_commission_rate', String(commissionRate))
-    
-    setSaving(false)
-    addToast('Tarif komisi standar berhasil diperbarui!', 'success')
-  }
 
   const filteredData = statusFilter === 'Semua' 
     ? data 
@@ -128,38 +116,6 @@ export default function KomisiPage() {
         </header>
 
         <section className="content-section">
-          {/* Pengaturan Pengurangan Komisi Card */}
-          <div className="form-section" style={{ maxWidth: '100%', padding: '28px', marginBottom: '8px' }}>
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Pengaturan Pengurangan Komisi</h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Konfigurasikan berapa banyak yang ditahan platform dari setiap transaksi penyewaan.</p>
-            </div>
-            
-            <form onSubmit={handleSave}>
-              <div className="form-group" style={{ marginBottom: 24 }}>
-                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Persentase Komisi Standar</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="form-input"
-                    value={commissionRate}
-                    onChange={e => setCommissionRate(Number(e.target.value))}
-                    required
-                    style={{ paddingRight: '40px', fontWeight: 600 }}
-                  />
-                  <span style={{ position: 'absolute', right: '16px', fontWeight: 700, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 8 }}>Tarif ini berlaku untuk semua kategori penyewaan peralatan.</p>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: 20 }}>
-                <button type="submit" className="btn btn-primary" style={{ backgroundColor: 'var(--brand-green)', padding: '12px 24px' }} disabled={saving}>
-                  {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-                </button>
-              </div>
-            </form>
-          </div>
 
           {/* History Komisi Card */}
           <div className="table-wrapper" style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)', overflow: 'hidden' }}>
