@@ -38,8 +38,8 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   String _pickedImageContentType = 'image/jpeg';
   bool _isSaving = false;
 
-  static const _green = Color(0xFF18743A);
-  static const _pageBg = Color(0xFFF8F8F5);
+  static const _green = AppColors.ownerPrimaryGreen;
+  static const _pageBg = AppColors.ownerPageBackground;
 
   @override
   void initState() {
@@ -101,11 +101,11 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Pangkas Foto Produk',
-            toolbarColor: const Color(0xFF18743A),
+            toolbarColor: AppColors.ownerPrimaryGreen,
             toolbarWidgetColor: Colors.white,
             statusBarLight: false,
             backgroundColor: Colors.black,
-            activeControlsWidgetColor: const Color(0xFF18743A),
+            activeControlsWidgetColor: AppColors.ownerPrimaryGreen,
             lockAspectRatio: true,
             hideBottomControls: false,
             showCropGrid: true,
@@ -452,12 +452,12 @@ class _ImagePickerCard extends StatelessWidget {
         aspectRatio: 4 / 5,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF2F4F1),
+            color: AppColors.ownerCardBackground,
             borderRadius: BorderRadius.circular(8),
             border: hasImage
                 ? null
                 : Border.all(
-                    color: const Color(0xFFE0E5DE),
+                    color: AppColors.ownerBorderColor,
                     width: 1.5,
                     style: BorderStyle.solid,
                   ),
@@ -741,6 +741,10 @@ class _StockBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -827,6 +831,10 @@ class _SpecPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -921,7 +929,7 @@ class _SpecInput extends StatelessWidget {
           ],
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF2F4F1),
+            fillColor: AppColors.ownerCardBackground,
             hintText: decimal ? '0.0' : '0',
             hintStyle: AppTextStyles.bodyMedium.copyWith(
               color: const Color(0xFF748076),
@@ -934,7 +942,21 @@ class _SpecInput extends StatelessWidget {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.ownerPrimaryGreen),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 12,
@@ -978,7 +1000,7 @@ class _SaveButton extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF18743A),
+          backgroundColor: AppColors.ownerPrimaryGreen,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
