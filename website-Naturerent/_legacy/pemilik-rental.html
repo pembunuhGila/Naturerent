@@ -9,6 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="pemilik-rental.css">
+    <!-- Leaflet for map preview -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2QYb7gP3v1q6gqZ1gq8z6u3bM8Q5f5v+v6L3S3U=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8Gk5xk1nD9w2Z6m1Yf1z2x8v1k2x3y4z5a6b7c=" crossorigin=""></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -26,10 +29,6 @@
                 <div class="nav-item">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Dashboard</span>
-                </div>
-                <div class="nav-item">
-                    <i class="fa-solid fa-coins"></i>
-                    <span>Komisi</span>
                 </div>
                 <div class="nav-item active">
                     <i class="fa-solid fa-person"></i>
@@ -89,7 +88,7 @@
                                     <span>Green Valley Glamping</span>
                                 </td>
                                 <td class="owner-name">Samsudin Hernanto</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-7.9425" data-lng="112.9530" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Bromo
                                 </td>
@@ -110,7 +109,7 @@
                                     <span>Teras Padi Resort</span>
                                 </td>
                                 <td class="owner-name">Ahmad Subario</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-8.5069" data-lng="115.2624" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Ubud
                                 </td>
@@ -131,7 +130,7 @@
                                     <span>Misty Blue Mountain</span>
                                 </td>
                                 <td class="owner-name">Dewi Sartika</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-6.8306" data-lng="107.6019" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Lembang
                                 </td>
@@ -152,7 +151,7 @@
                                     <span>Ocean Cove Villas</span>
                                 </td>
                                 <td class="owner-name">Bambang Wijaya</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-8.6520" data-lng="116.3245" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Lombok
                                 </td>
@@ -173,7 +172,7 @@
                                     <span>Green Valley Glamping</span>
                                 </td>
                                 <td class="owner-name">Samsudin Hernanto</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-7.9425" data-lng="112.9530" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Bromo
                                 </td>
@@ -194,7 +193,7 @@
                                     <span>Teras Padi Resort</span>
                                 </td>
                                 <td class="owner-name">Ahmad Subario</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-8.5069" data-lng="115.2624" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Ubud
                                 </td>
@@ -215,7 +214,7 @@
                                     <span>Misty Blue Mountain</span>
                                 </td>
                                 <td class="owner-name">Dewi Sartika</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-6.8306" data-lng="107.6019" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Lembang
                                 </td>
@@ -236,7 +235,7 @@
                                     <span>Ocean Cove Villas</span>
                                 </td>
                                 <td class="owner-name">Bambang Wijaya</td>
-                                <td class="location">
+                                <td class="location clickable" data-lat="-8.6520" data-lng="116.3245" title="Lihat lokasi di peta">
                                     <i class="fa-solid fa-location-dot"></i>
                                     Lombok
                                 </td>
@@ -273,6 +272,14 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Map preview modal (opened when clicking a location) -->
+    <div id="mapModal" class="map-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+        <div style="width:90%;max-width:900px;background:#fff;border-radius:8px;overflow:hidden;position:relative;box-shadow:0 6px 24px rgba(0,0,0,0.3)">
+            <button id="closeMap" style="position:absolute;right:8px;top:8px;z-index:1010;border:none;background:transparent;font-size:28px;cursor:pointer;">&times;</button>
+            <div id="map" style="height:480px;width:100%"></div>
+        </div>
     </div>
 
     <script src="pemilik-rental.js"></script>
