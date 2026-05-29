@@ -182,7 +182,7 @@ export default function SettingsPage() {
         }
       }
 
-      // Fetch global QRIS from Supabase platform_settings
+      // Fetch global QRIS from Supabase
       fetchGlobalQris(supabase)
     }
     init()
@@ -190,15 +190,21 @@ export default function SettingsPage() {
 
   const fetchGlobalQris = async (supabaseClient) => {
     const sb = supabaseClient || createClient()
-    const { data, error } = await sb
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'global_qris')
-      .single()
-    if (!error && data?.value) {
-      const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value
-      setGlobalQris({ merchantName: parsed.merchant_name || '', imageUrl: parsed.image_url || null })
-      setQrisImagePreview(parsed.image_url || null)
+    try {
+      const { data, error } = await sb
+        .from('wisata_locations')
+        .select('deskripsi')
+        .eq('nama', '__GLOBAL_QRIS__')
+        .eq('kategori', 'QRIS')
+        .maybeSingle()
+
+      if (!error && data?.deskripsi) {
+        const parsed = typeof data.deskripsi === 'string' ? JSON.parse(data.deskripsi) : data.deskripsi
+        setGlobalQris({ merchantName: parsed.merchant_name || '', imageUrl: parsed.image_url || null })
+        setQrisImagePreview(parsed.image_url || null)
+      }
+    } catch (e) {
+      console.error('Fetch error:', e)
     }
   }
 
@@ -221,8 +227,8 @@ export default function SettingsPage() {
       const fileExt = qrisImageFile.name.split('.').pop()
       const filePath = `global/qris.${fileExt}`
       const { error: uploadError } = await supabase.storage
-        .from('qris-images')
-        .upload(filePath, qrisImageFile, { upsert: true, contentType: qrisImageFile.type })
+          .from('qris-images')
+          .upload(filePath, qrisImageFile, { upsert: true, contentType: qrisImageFile.type })
       if (uploadError) {
         addToast('Gagal upload gambar: ' + uploadError.message, 'error')
         setQrisSaving(false)
@@ -232,20 +238,55 @@ export default function SettingsPage() {
       imageUrl = urlData?.publicUrl || null
     }
 
-    // Save to platform_settings table with key = 'global_qris'
+    // Save to wisata_locations table as a system config row
     const payload = { merchant_name: globalQris.merchantName.trim(), image_url: imageUrl }
-    const { error: upsertError } = await supabase
-      .from('platform_settings')
-      .upsert({ key: 'global_qris', value: JSON.stringify(payload) }, { onConflict: 'key' })
+    
+    try {
+      // Check if the config row already exists
+      const { data: existingRow, error: checkError } = await supabase
+        .from('wisata_locations')
+        .select('id')
+        .eq('nama', '__GLOBAL_QRIS__')
+        .eq('kategori', 'QRIS')
+        .maybeSingle()
 
-    setQrisSaving(false)
-    if (upsertError) {
-      addToast('Gagal menyimpan QRIS: ' + upsertError.message, 'error')
-      return
+      if (checkError) throw checkError
+
+      let dbError = null
+      if (existingRow?.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('wisata_locations')
+          .update({ deskripsi: JSON.stringify(payload), foto_url: imageUrl })
+          .eq('id', existingRow.id)
+        dbError = error
+      } else {
+        // Insert new
+        const { error } = await supabase
+          .from('wisata_locations')
+          .insert({
+            nama: '__GLOBAL_QRIS__',
+            kategori: 'QRIS',
+            deskripsi: JSON.stringify(payload),
+            foto_url: imageUrl,
+            lat: 0,
+            lng: 0
+          })
+        dbError = error
+      }
+
+      setQrisSaving(false)
+      if (dbError) {
+        addToast('Gagal menyimpan QRIS: ' + dbError.message, 'error')
+        return
+      }
+      setGlobalQris(prev => ({ ...prev, imageUrl }))
+      setQrisImageFile(null)
+      addToast('QRIS global berhasil diperbarui!', 'success')
+    } catch (e) {
+      setQrisSaving(false)
+      addToast('Gagal menyimpan QRIS: ' + e.message, 'error')
     }
-    setGlobalQris(prev => ({ ...prev, imageUrl }))
-    setQrisImageFile(null)
-    addToast('QRIS global berhasil diperbarui!', 'success')
   }
 
   // Real-time appearance switcher (Preview Mode)
