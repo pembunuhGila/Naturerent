@@ -355,7 +355,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Total Akhir',
+                  Text('Total Pembayaran',
                       style: AppTextStyles.caption
                           .copyWith(color: AppColors.textHint)),
                   const SizedBox(height: 2),
@@ -379,6 +379,21 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                         fontWeight: FontWeight.w600),
                   ),
                 ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.verified_rounded,
+                  size: 16, color: AppColors.primaryDark),
+              const SizedBox(width: 6),
+              Text(
+                'Status Pembayaran: Lunas',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
@@ -493,8 +508,9 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     final steps = [
       _TimelineStep(
         icon: Icons.check_rounded,
-        title: 'Bukti DP diupload',
-        subtitle: 'Admin NatureRent memeriksa foto bukti pembayaran DP 30% yang kamu upload.',
+        title: 'Bukti pembayaran diupload',
+        subtitle:
+            'Admin NatureRent memeriksa foto bukti pembayaran yang kamu upload.',
         isDone: true,
         isActive: rank == 0,
       ),
