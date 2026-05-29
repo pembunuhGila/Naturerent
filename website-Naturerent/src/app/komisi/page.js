@@ -37,46 +37,41 @@ export default function KomisiPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [statusFilter, setStatusFilter] = useState('Semua')
 
-  // Fetch or setup commission rate and transactions
-  const fetchData = useCallback(async (rate) => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
-    const supabase = createClient()
     
     try {
-      // Try fetching from bookings to make it dynamic
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const res = await fetch('/api/bookings')
+      if (!res.ok) throw new Error('Gagal memuat data bookings')
+      const bookings = await res.json()
       
-      // Fallback/Mock transactions matching Figma exactly
-      if (error || !bookings || bookings.length === 0) {
-        const fallbackTransactions = [
-          { id: 'TRX-99210', created_at: '2026-10-12T14:30:00Z', rental_name: 'Summit Peak Gear', gross_amount: 700000, status: 'Selesai' },
-          { id: 'TRX-99208', created_at: '2026-10-12T12:15:00Z', rental_name: 'River Runner Rentals', gross_amount: 250000, status: 'Selesai' },
-          { id: 'TRX-99194', created_at: '2026-10-12T11:45:00Z', rental_name: 'Forest Bound Hub', gross_amount: 150000, status: 'Proses' },
-          { id: 'TRX-99182', created_at: '2026-10-11T18:20:00Z', rental_name: 'Trail Blazers Co.', gross_amount: 300000, status: 'Selesai' }
-        ]
-        
-        setData(fallbackTransactions)
-        setTotalCount(fallbackTransactions.length)
-      } else {
-        const resolved = bookings.map((b, index) => {
-          const fallbackRentals = ['Summit Peak Gear', 'River Runner Rentals', 'Forest Bound Hub', 'Trail Blazers Co.']
-          return {
-            id: b.id.startsWith('TRX-') ? b.id : `TRX-${b.id.substring(0, 5)}`,
-            created_at: b.created_at,
-            rental_name: b.rental_name || fallbackRentals[index % fallbackRentals.length],
-            gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 300000,
-            status: (b.status === 'completed' || b.status === 'Selesai') ? 'Selesai' : 
-                    (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
-          }
-        })
-        setData(resolved)
-        setTotalCount(resolved.length)
+      if (!bookings || bookings.length === 0) {
+        throw new Error('Tidak ada data bookings')
       }
-    } catch {
-      // Fallback in case of general query failure
+
+      const resolved = bookings.map((b) => {
+        return {
+          id: b.id.startsWith('TRX-') ? b.id : `TRX-${b.id.substring(0, 5).toUpperCase()}`,
+          created_at: b.created_at,
+          rental_name: b.rental_profiles?.nama_rental || 'Unknown Rental',
+          gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 0,
+          status: (b.status === 'completed' || b.status === 'returned' || b.status === 'Selesai') ? 'Selesai' : 
+                  (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
+        }
+      })
+      setData(resolved)
+      setTotalCount(resolved.length)
+    } catch (error) {
+      console.error('Error fetching bookings:', error)
+      const fallbackTransactions = [
+        { id: 'TRX-99210', created_at: '2026-10-12T14:30:00Z', rental_name: 'Summit Peak Gear', gross_amount: 700000, status: 'Selesai' },
+        { id: 'TRX-99208', created_at: '2026-10-12T12:15:00Z', rental_name: 'River Runner Rentals', gross_amount: 250000, status: 'Selesai' },
+        { id: 'TRX-99194', created_at: '2026-10-12T11:45:00Z', rental_name: 'Forest Bound Hub', gross_amount: 150000, status: 'Proses' },
+        { id: 'TRX-99182', created_at: '2026-10-11T18:20:00Z', rental_name: 'Trail Blazers Co.', gross_amount: 300000, status: 'Selesai' }
+      ]
+      
+      setData(fallbackTransactions)
+      setTotalCount(fallbackTransactions.length)
     }
     setLoading(false)
   }, [])
@@ -95,6 +90,15 @@ export default function KomisiPage() {
     }
     init()
     fetchData()
+
+    // Live-sync if admin updates rate from System Settings in another tab
+    const onStorage = (e) => {
+      if (e.key === 'naturerent_commission_rate' && e.newValue) {
+        setCommissionRate(Number(e.newValue))
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
 
@@ -116,6 +120,54 @@ export default function KomisiPage() {
         </header>
 
         <section className="content-section">
+
+          {/* Commission Rate Info Banner */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+            {/* Rate card */}
+            <div style={{ borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)', padding: '20px 22px', position: 'relative', boxShadow: '0 8px 24px rgba(124,58,237,0.18)' }}>
+              <div style={{ position: 'absolute', top: -15, right: -15, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+              <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Tarif Komisi Aktif</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                <span style={{ fontSize: '2rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{commissionRate}</span>
+                <span style={{ fontSize: '1rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)' }}>%</span>
+              </div>
+              <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', margin: '6px 0 0 0' }}>Dikonfigurasikan dari System Settings</p>
+              <a href="/settings" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 10, fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: 999, transition: 'background 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+              >
+                <i className="fa-solid fa-gear" style={{ fontSize: 10 }} /> Ubah di Settings
+              </a>
+            </div>
+
+            {/* Total transaksi selesai */}
+            <div style={{ borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '20px 22px', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(16,185,129,0.1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="fa-solid fa-circle-check" style={{ color: '#10b981', fontSize: 14 }} />
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Transaksi Selesai</span>
+              </div>
+              <p style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
+                {data.filter(r => r.status === 'Selesai').length}
+              </p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>dari {data.length} total transaksi</p>
+            </div>
+
+            {/* Total komisi terkumpul */}
+            <div style={{ borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '20px 22px', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'var(--brand-mint)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="fa-solid fa-coins" style={{ color: 'var(--brand-green)', fontSize: 14 }} />
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Total Komisi</span>
+              </div>
+              <p style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--brand-emerald)', margin: 0, lineHeight: 1 }}>
+                {formatCurrency(data.filter(r => r.status === 'Selesai').reduce((sum, r) => sum + r.gross_amount * (commissionRate / 100), 0))}
+              </p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>@ {commissionRate}% dari transaksi selesai</p>
+            </div>
+          </div>
 
           {/* History Komisi Card */}
           <div className="table-wrapper" style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)', overflow: 'hidden' }}>
