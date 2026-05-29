@@ -19,7 +19,8 @@ const DEFAULT_SETTINGS = {
   officeAddress: 'The Green Hub, Fl. 12, Sudirman Central Business District, Jakarta 12190, Indonesia',
   paymentLimit: '30 Minutes',
   defaultPaymentMethod: 'QRIS',
-  serviceFee: 10,
+  serviceFee: 2000,
+  commissionRate: 12.5,
   currency: 'IDR',
   autoCancel: true,
 }
@@ -182,6 +183,12 @@ export default function SettingsPage() {
         }
       }
 
+      // Load commission rate from localStorage (synced with Komisi page)
+      const savedRate = localStorage.getItem('naturerent_commission_rate')
+      if (savedRate) {
+        setForm(prev => ({ ...prev, commissionRate: Number(savedRate) }))
+      }
+
       // Fetch global QRIS from Supabase
       fetchGlobalQris(supabase)
     }
@@ -202,6 +209,9 @@ export default function SettingsPage() {
         const parsed = typeof data.deskripsi === 'string' ? JSON.parse(data.deskripsi) : data.deskripsi
         setGlobalQris({ merchantName: parsed.merchant_name || '', imageUrl: parsed.image_url || null })
         setQrisImagePreview(parsed.image_url || null)
+        if (parsed.biaya_layanan !== undefined) {
+          setForm(prev => ({ ...prev, serviceFee: parsed.biaya_layanan }))
+        }
       }
     } catch (e) {
       console.error('Fetch error:', e)
@@ -239,7 +249,11 @@ export default function SettingsPage() {
     }
 
     // Save to wisata_locations table as a system config row
-    const payload = { merchant_name: globalQris.merchantName.trim(), image_url: imageUrl }
+    const payload = { 
+      merchant_name: globalQris.merchantName.trim(), 
+      image_url: imageUrl,
+      biaya_layanan: Number(form.serviceFee ?? 2000)
+    }
     
     try {
       // Check if the config row already exists
@@ -297,11 +311,58 @@ export default function SettingsPage() {
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
+    const supabase = createClient()
     
     // Simulate save delay
     await new Promise(resolve => setTimeout(resolve, 600))
     localStorage.setItem('naturerent_system_settings', JSON.stringify(form))
+
+    // Sync commission rate to dedicated key (read by Komisi page)
+    localStorage.setItem('naturerent_commission_rate', String(form.commissionRate ?? 12.5))
     
+    // Save serviceFee to database config row
+    try {
+      const { data: existingRow } = await supabase
+        .from('wisata_locations')
+        .select('id, deskripsi')
+        .eq('nama', '__GLOBAL_QRIS__')
+        .eq('kategori', 'QRIS')
+        .maybeSingle()
+
+      let currentPayload = { merchant_name: globalQris.merchantName, image_url: globalQris.imageUrl }
+      if (existingRow?.deskripsi) {
+        try {
+          const parsed = typeof existingRow.deskripsi === 'string' ? JSON.parse(existingRow.deskripsi) : existingRow.deskripsi
+          currentPayload = { ...currentPayload, ...parsed }
+        } catch {
+          // ignore
+        }
+      }
+      
+      // Update with new service fee
+      currentPayload.biaya_layanan = Number(form.serviceFee)
+
+      if (existingRow?.id) {
+        await supabase
+          .from('wisata_locations')
+          .update({ deskripsi: JSON.stringify(currentPayload) })
+          .eq('id', existingRow.id)
+      } else {
+        await supabase
+          .from('wisata_locations')
+          .insert({
+            nama: '__GLOBAL_QRIS__',
+            kategori: 'QRIS',
+            deskripsi: JSON.stringify(currentPayload),
+            foto_url: globalQris.imageUrl,
+            lat: 0,
+            lng: 0
+          })
+      }
+    } catch (err) {
+      console.error('Error saving service fee to DB:', err)
+    }
+
     setSaving(false)
     addToast('Pengaturan sistem berhasil disimpan!', 'success')
     
@@ -611,159 +672,331 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Transaction Settings Card */}
-                <div className="setting-card" style={{ display: matchesTransaction ? 'block' : 'none', padding: 28, border: '1px solid var(--border-color)', borderRadius: 12, backgroundColor: 'var(--bg-card)', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.035)' }}>
-                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                    <div className="card-icon mint" style={{ width: 34, height: 34, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: 'var(--brand-mint)', color: 'var(--brand-green)' }}>
-                      <i className="fa-solid fa-receipt" />
-                    </div>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.98rem', fontWeight: 700 }}>Transaction Settings</h3>
-                  </div>
+                 {/* Transaction Settings Card */}
+                 <div className="setting-card" style={{ display: matchesTransaction ? 'block' : 'none', padding: 32, border: '1px solid var(--border-color)', borderRadius: 16, backgroundColor: 'var(--bg-card)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.04)', transition: 'all 0.3s ease-in-out' }}>
+                   <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+                     <div className="card-icon mint" style={{ width: 38, height: 38, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: 'var(--brand-mint)', color: 'var(--brand-green)', boxShadow: '0 4px 12px rgba(82, 183, 136, 0.15)' }}>
+                       <i className="fa-solid fa-receipt" style={{ fontSize: 16 }} />
+                     </div>
+                     <div>
+                       <h3 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>Transaction Settings</h3>
+                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.74rem', margin: '2px 0 0 0' }}>Configure checkout limits, admin QRIS, and flat platform fees.</p>
+                     </div>
+                   </div>
 
-                  <div className="settings-form" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                   <div className="settings-form" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-                    {/* Row: Payment Time Limit + Default Payment Method */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                     {/* Row: Payment Time Limit + Default Payment Method */}
+                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                       <div>
+                         <label style={{ display: 'block', marginBottom: 8, fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Payment time limit</label>
+                         <div style={{ position: 'relative' }}>
+                           <select
+                             value={form.paymentLimit}
+                             onChange={e => setForm({ ...form, paymentLimit: e.target.value })}
+                             style={{ minHeight: 46, padding: '0 16px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 10, outline: 0, width: '100%', cursor: 'pointer', fontSize: '0.86rem', fontWeight: 600, transition: 'all 0.2s', appearance: 'none' }}
+                           >
+                             <option>15 Minutes</option>
+                             <option>30 Minutes</option>
+                             <option>1 Hour</option>
+                             <option>2 Hours</option>
+                           </select>
+                           <div style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-secondary)', fontSize: 12 }}>
+                             <i className="fa-solid fa-chevron-down" />
+                           </div>
+                         </div>
+                       </div>
+                       <div>
+                         <label style={{ display: 'block', marginBottom: 8, fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Default payment method</label>
+                         <div style={{ position: 'relative' }}>
+                           <input
+                             type="text"
+                             value="QRIS (Global Admin)"
+                             readOnly
+                             style={{ minHeight: 46, padding: '0 16px 0 42px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: 10, outline: 0, width: '100%', fontSize: '0.86rem', fontWeight: 600, boxSizing: 'border-box', cursor: 'not-allowed' }}
+                           />
+                           <div style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand-green)' }}>
+                             <i className="fa-solid fa-qrcode" />
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+
+                     {/* QRIS Configuration Section — Single Global Admin QRIS */}
+                     <div>
+                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                         <p style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>QRIS Configuration</p>
+                         <span style={{ padding: '3px 12px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 800, backgroundColor: 'var(--brand-mint)', color: 'var(--brand-green)', border: '1px solid rgba(82,183,136,0.25)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Global</span>
+                       </div>
+                       <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '0 0 16px 0', lineHeight: 1.4 }}>Satu QRIS admin yang digunakan untuk memproses pembayaran semua transaksi dari pelanggan.</p>
+
+                       <div style={{ borderRadius: 14, border: '1px solid var(--border-color)', background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%)', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.015)' }}>
+                         {/* Preview + Upload */}
+                         <div style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '20px 20px 16px' }}>
+                           <div
+                             onClick={() => document.getElementById('global-qris-img-input').click()}
+                             style={{ 
+                               width: 90, height: 90, borderRadius: 12, 
+                               border: '2px dashed var(--brand-emerald)', 
+                               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, 
+                               cursor: 'pointer', overflow: 'hidden', backgroundColor: 'var(--bg-card)', 
+                               flexShrink: 0, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                               boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+                             }}
+                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--brand-green)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--brand-emerald)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                           >
+                             {qrisImagePreview
+                               ? <img src={qrisImagePreview} alt="QRIS" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                               : <>
+                                   <i className="fa-solid fa-qrcode" style={{ fontSize: 28, color: 'var(--brand-emerald)' }} />
+                                   <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 800, textAlign: 'center', lineHeight: 1.3, letterSpacing: '0.3px' }}>UPLOAD<br/>IMAGE</span>
+                                 </>
+                             }
+                           </div>
+                           <input type="file" id="global-qris-img-input" accept="image/*" style={{ display: 'none' }} onChange={handleQrisImageChange} />
+                           <div style={{ flex: 1 }}>
+                             <p style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Gambar Kode QRIS</p>
+                             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Format JPG/PNG · Maks 2MB<br/>Klik kotak di sebelah kiri untuk mengganti gambar.</p>
+                             {qrisImagePreview && (
+                               <button type="button" onClick={() => { setQrisImagePreview(null); setQrisImageFile(null); setGlobalQris(prev => ({ ...prev, imageUrl: null })) }}
+                                 style={{ marginTop: 8, fontSize: '0.72rem', color: '#f43f5e', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 800, padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'color 0.2s' }}
+                                 onMouseEnter={(e) => e.currentTarget.style.color = '#e11d48'}
+                                 onMouseLeave={(e) => e.currentTarget.style.color = '#f43f5e'}
+                               >
+                                 <i className="fa-solid fa-trash-can" /> Hapus gambar
+                               </button>
+                             )}
+                           </div>
+                         </div>
+
+                         {/* Merchant Name */}
+                         <div style={{ padding: '0 20px 16px' }}>
+                           <label style={{ display: 'block', marginBottom: 8, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Nama Merchant QRIS *</label>
+                           <input
+                             type="text"
+                             value={globalQris.merchantName}
+                             onChange={e => setGlobalQris(prev => ({ ...prev, merchantName: e.target.value }))}
+                             placeholder="Contoh: NatureRent Indonesia"
+                             style={{ width: '100%', minHeight: 44, padding: '0 16px', border: '1px solid var(--border-color)', borderRadius: 10, backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', outline: 0, fontSize: '0.86rem', fontWeight: 600, boxSizing: 'border-box', transition: 'all 0.2s' }}
+                             onFocus={(e) => e.target.style.borderColor = 'var(--brand-emerald)'}
+                             onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                           />
+                           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, margin: '6px 0 0 0' }}>Nama yang tampil ke pembeli di semua rental saat pembayaran.</p>
+                         </div>
+
+                         {/* Status banner */}
+                         <div style={{ margin: '0 20px 16px', padding: '10px 14px', borderRadius: 10, backgroundColor: globalQris.imageUrl ? 'rgba(82,183,136,0.06)' : 'rgba(245,158,11,0.06)', border: `1px solid ${globalQris.imageUrl ? 'rgba(82,183,136,0.18)' : 'rgba(245,158,11,0.18)'}`, fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                           <i className={`fa-solid ${globalQris.imageUrl ? 'fa-circle-check' : 'fa-circle-exclamation'}`} style={{ fontSize: 14, color: globalQris.imageUrl ? 'var(--brand-green)' : '#f59e0b', flexShrink: 0 }} />
+                           {globalQris.imageUrl
+                             ? <span><strong style={{ color: 'var(--brand-green)', fontWeight: 800 }}>QRIS Aktif</strong> — Siap digunakan untuk merchant <strong>{globalQris.merchantName || '(belum diisi)'}</strong></span>
+                             : <span><strong style={{ color: '#f59e0b', fontWeight: 800 }}>Belum Dikonfigurasi</strong> — Upload gambar QRIS dan isi nama merchant di atas.</span>
+                           }
+                         </div>
+
+                         {/* Save button */}
+                         <div style={{ padding: '0 20px 20px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color-light)', paddingTop: 16 }}>
+                           <button type="button" onClick={saveGlobalQris} disabled={qrisSaving}
+                             style={{ 
+                               minHeight: 40, padding: '0 24px', borderRadius: 10, border: 0, 
+                               background: 'linear-gradient(135deg, var(--brand-emerald) 0%, var(--brand-green) 100%)', 
+                               color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '0.84rem', 
+                               display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s ease-in-out',
+                               boxShadow: '0 4px 12px rgba(31, 90, 63, 0.2)', opacity: qrisSaving ? 0.75 : 1
+                             }}
+                             onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.92'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                             onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
+                           >
+                             {qrisSaving
+                               ? <><div className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 2, borderTopColor: '#fff' }} /> Menyimpan...</>
+                               : <><i className="fa-solid fa-circle-check" /> Simpan QRIS</>
+                             }
+                           </button>
+                         </div>
+                       </div>
+                     </div>
+
+                      {/* Biaya Layanan Section */}
                       <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Payment time limit</label>
-                        <select
-                          value={form.paymentLimit}
-                          onChange={e => setForm({ ...form, paymentLimit: e.target.value })}
-                          style={{ minHeight: 44, padding: '0 16px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 8, outline: 0, width: '100%', cursor: 'pointer', fontSize: '0.88rem' }}
-                        >
-                          <option>15 Minutes</option>
-                          <option>30 Minutes</option>
-                          <option>1 Hour</option>
-                          <option>2 Hours</option>
-                        </select>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                          <p style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Biaya Layanan Platform</p>
+                          <span style={{ padding: '3px 12px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 800, backgroundColor: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.18)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Flat Fee</span>
+                        </div>
+
+                        {/* Main fee card */}
+                        <div style={{ borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 8px 28px rgba(0,0,0,0.03)' }}>
+                          {/* Fee display hero */}
+                          <div style={{ background: 'linear-gradient(135deg, var(--brand-green) 0%, var(--brand-emerald) 100%)', padding: '24px 24px 20px', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                            <div style={{ position: 'absolute', bottom: -30, right: 30, width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+                            <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Biaya per transaksi</p>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                              <span style={{ fontSize: '1rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)' }}>Rp</span>
+                              <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#ffffff', lineHeight: 1, letterSpacing: '-1px' }}>
+                                {Number(form.serviceFee ?? 2000).toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', margin: '8px 0 0 0' }}>Dibebankan kepada pengguna di setiap transaksi checkout</p>
+                          </div>
+
+                          {/* Input area */}
+                          <div style={{ padding: '20px 24px 16px' }}>
+                            <label style={{ display: 'block', marginBottom: 10, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Atur Nominal Biaya</label>
+                            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--border-color)', borderRadius: 12, overflow: 'hidden', transition: 'border-color 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
+                              onFocusCapture={(e) => e.currentTarget.style.borderColor = 'var(--brand-emerald)'}
+                              onBlurCapture={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                            >
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 48, backgroundColor: 'var(--bg-secondary)', borderRight: '1.5px solid var(--border-color)', flexShrink: 0 }}>
+                                <i className="fa-solid fa-coins" style={{ color: 'var(--brand-green)', fontSize: 14 }} />
+                                <span style={{ fontWeight: 800, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Rp</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="500"
+                                value={form.serviceFee ?? 2000}
+                                onChange={e => setForm({ ...form, serviceFee: Math.max(0, Number(e.target.value)) })}
+                                style={{ flex: 1, height: 48, padding: '0 16px', fontWeight: 700, fontSize: '1rem', border: 0, backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', outline: 0, minWidth: 0 }}
+                                placeholder="0"
+                              />
+                              <span style={{ padding: '0 16px', height: 48, display: 'inline-flex', alignItems: 'center', backgroundColor: 'var(--bg-secondary)', borderLeft: '1.5px solid var(--border-color)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                {Number(form.serviceFee ?? 2000).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 })}
+                              </span>
+                            </div>
+
+                            {/* Quick preset buttons */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Preset:</span>
+                              {[1000, 2000, 3000, 5000, 10000].map(preset => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => setForm({ ...form, serviceFee: preset })}
+                                  style={{
+                                    padding: '4px 12px', borderRadius: 8, border: `1px solid ${form.serviceFee === preset ? 'var(--brand-green)' : 'var(--border-color)'}`,
+                                    backgroundColor: form.serviceFee === preset ? 'var(--brand-mint)' : 'var(--bg-secondary)',
+                                    color: form.serviceFee === preset ? 'var(--brand-green)' : 'var(--text-secondary)',
+                                    fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => { if (form.serviceFee !== preset) { e.currentTarget.style.borderColor = 'var(--brand-emerald)'; e.currentTarget.style.color = 'var(--brand-green)' } }}
+                                  onMouseLeave={(e) => { if (form.serviceFee !== preset) { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
+                                >
+                                  Rp {preset.toLocaleString('id-ID')}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Info footer */}
+                          <div style={{ margin: '0 24px 20px', padding: '10px 14px', borderRadius: 10, backgroundColor: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <i className="fa-solid fa-circle-info" style={{ color: '#3b82f6', fontSize: 13, marginTop: 2, flexShrink: 0 }} />
+                            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                              Biaya layanan <strong style={{ color: 'var(--text-primary)' }}>Rp {Number(form.serviceFee ?? 2000).toLocaleString('id-ID')}</strong> akan ditambahkan otomatis saat checkout. Perubahan berlaku setelah menekan <em>Save Changes</em>.
+                            </p>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Biaya Komisi Section */}
                       <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Default payment method</label>
-                        <input
-                          type="text"
-                          value="QRIS"
-                          readOnly
-                          style={{ minHeight: 44, padding: '0 16px', backgroundColor: 'var(--border-color-light)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: 8, outline: 0, width: '100%', fontSize: '0.88rem', boxSizing: 'border-box', cursor: 'not-allowed' }}
-                        />
-                      </div>
-                    </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                          <p style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Biaya Komisi Platform</p>
+                          <span style={{ padding: '3px 12px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 800, backgroundColor: 'rgba(139,92,246,0.08)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Persen (%)</span>
+                        </div>
 
-                    {/* QRIS Configuration Section — Single Global Admin QRIS */}
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>QRIS Configuration</p>
-                        <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, backgroundColor: 'rgba(82,183,136,0.12)', color: 'var(--brand-green)', border: '1px solid rgba(82,183,136,0.25)' }}>Global</span>
-                      </div>
-                      <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 14 }}>Satu QRIS admin yang digunakan untuk semua transaksi di seluruh rental.</p>
-
-                      <div style={{ borderRadius: 10, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', overflow: 'hidden' }}>
-                        {/* Preview + Upload */}
-                        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: '16px 16px 0' }}>
-                          <div
-                            onClick={() => document.getElementById('global-qris-img-input').click()}
-                            style={{ width: 80, height: 80, borderRadius: 8, border: '2px dashed var(--brand-green)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', overflow: 'hidden', backgroundColor: 'var(--bg-card)', flexShrink: 0 }}
-                          >
-                            {qrisImagePreview
-                              ? <img src={qrisImagePreview} alt="QRIS" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                              : <>
-                                  <i className="fa-solid fa-qrcode" style={{ fontSize: 24, color: 'var(--brand-green)' }} />
-                                  <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center', lineHeight: 1.3 }}>UPLOAD<br/>QRIS</span>
-                                </>
-                            }
+                        <div style={{ borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 8px 28px rgba(0,0,0,0.03)' }}>
+                          {/* Komisi hero display */}
+                          <div style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)', padding: '24px 24px 20px', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                            <div style={{ position: 'absolute', bottom: -30, right: 30, width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+                            <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Komisi per transaksi</p>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                              <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#ffffff', lineHeight: 1, letterSpacing: '-1px' }}>
+                                {Number(form.commissionRate ?? 12.5).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                              </span>
+                              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)' }}>%</span>
+                            </div>
+                            <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', margin: '8px 0 0 0' }}>Potongan dari total transaksi untuk pendapatan platform</p>
                           </div>
-                          <input type="file" id="global-qris-img-input" accept="image/*" style={{ display: 'none' }} onChange={handleQrisImageChange} />
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Gambar Kode QRIS</p>
-                            <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>Format JPG/PNG · Maks 2MB<br/>Klik kotak untuk ganti gambar.</p>
-                            {qrisImagePreview && (
-                              <button type="button" onClick={() => { setQrisImagePreview(null); setQrisImageFile(null); setGlobalQris(prev => ({ ...prev, imageUrl: null })) }}
-                                style={{ marginTop: 6, fontSize: '0.72rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>
-                                <i className="fa-solid fa-trash" /> Hapus gambar
-                              </button>
-                            )}
+
+                          {/* Input area */}
+                          <div style={{ padding: '20px 24px 16px' }}>
+                            <label style={{ display: 'block', marginBottom: 10, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Atur Persentase Komisi</label>
+                            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--border-color)', borderRadius: 12, overflow: 'hidden', transition: 'border-color 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
+                              onFocusCapture={(e) => e.currentTarget.style.borderColor = '#a78bfa'}
+                              onBlurCapture={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                            >
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 48, backgroundColor: 'var(--bg-secondary)', borderRight: '1.5px solid var(--border-color)', flexShrink: 0 }}>
+                                <i className="fa-solid fa-percent" style={{ color: '#8b5cf6', fontSize: 13 }} />
+                                <span style={{ fontWeight: 800, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>%</span>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                value={form.commissionRate ?? 12.5}
+                                onChange={e => setForm({ ...form, commissionRate: Math.min(100, Math.max(0, Number(e.target.value))) })}
+                                style={{ flex: 1, height: 48, padding: '0 16px', fontWeight: 700, fontSize: '1rem', border: 0, backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', outline: 0, minWidth: 0 }}
+                                placeholder="0"
+                              />
+                              <span style={{ padding: '0 16px', height: 48, display: 'inline-flex', alignItems: 'center', backgroundColor: 'var(--bg-secondary)', borderLeft: '1.5px solid var(--border-color)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                {Number(form.commissionRate ?? 12.5).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}% komisi
+                              </span>
+                            </div>
+
+                            {/* Quick preset buttons */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Preset:</span>
+                              {[5, 10, 12.5, 15, 20].map(preset => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => setForm({ ...form, commissionRate: preset })}
+                                  style={{
+                                    padding: '4px 12px', borderRadius: 8,
+                                    border: `1px solid ${form.commissionRate === preset ? '#8b5cf6' : 'var(--border-color)'}`,
+                                    backgroundColor: form.commissionRate === preset ? 'rgba(139,92,246,0.08)' : 'var(--bg-secondary)',
+                                    color: form.commissionRate === preset ? '#8b5cf6' : 'var(--text-secondary)',
+                                    fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => { if (form.commissionRate !== preset) { e.currentTarget.style.borderColor = '#a78bfa'; e.currentTarget.style.color = '#8b5cf6' } }}
+                                  onMouseLeave={(e) => { if (form.commissionRate !== preset) { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
+                                >
+                                  {preset}%
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Merchant Name */}
-                        <div style={{ padding: '12px 16px' }}>
-                          <label style={{ display: 'block', marginBottom: 6, fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Nama Merchant QRIS *</label>
-                          <input
-                            type="text"
-                            value={globalQris.merchantName}
-                            onChange={e => setGlobalQris(prev => ({ ...prev, merchantName: e.target.value }))}
-                            placeholder="Contoh: NatureRent Indonesia"
-                            style={{ width: '100%', minHeight: 40, padding: '0 12px', border: '1px solid var(--border-color)', borderRadius: 7, backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', outline: 0, fontSize: '0.86rem', boxSizing: 'border-box' }}
-                          />
-                          <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginTop: 4 }}>Nama yang tampil ke pembeli di semua rental saat pembayaran.</p>
-                        </div>
-
-                        {/* Status banner */}
-                        <div style={{ margin: '0 16px 12px', padding: '9px 12px', borderRadius: 8, backgroundColor: globalQris.imageUrl ? 'rgba(82,183,136,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${globalQris.imageUrl ? 'rgba(82,183,136,0.2)' : 'rgba(245,158,11,0.2)'}`, fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <i className={`fa-solid ${globalQris.imageUrl ? 'fa-circle-check' : 'fa-triangle-exclamation'}`} style={{ color: globalQris.imageUrl ? 'var(--brand-green)' : '#f59e0b' }} />
-                          {globalQris.imageUrl
-                            ? <span><strong style={{ color: 'var(--brand-green)' }}>QRIS aktif</strong> — Merchant: {globalQris.merchantName || '(belum diisi)'}</span>
-                            : <span><strong style={{ color: '#f59e0b' }}>QRIS belum dikonfigurasi</strong> — Upload gambar dan isi nama merchant.</span>
-                          }
-                        </div>
-
-                        {/* Save button */}
-                        <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'flex-end' }}>
-                          <button type="button" onClick={saveGlobalQris} disabled={qrisSaving}
-                            style={{ minHeight: 38, padding: '0 20px', borderRadius: 8, border: 0, backgroundColor: 'var(--brand-green)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 8, opacity: qrisSaving ? 0.75 : 1 }}>
-                            {qrisSaving
-                              ? <><div className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 2, borderTopColor: '#fff' }} /> Menyimpan...</>
-                              : <><i className="fa-solid fa-floppy-disk" /> Simpan QRIS</>
-                            }
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Biaya Layanan Section */}
-                    <div>
-                      <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Biaya layanan</p>
-                      <div style={{ borderRadius: 10, backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
-                          <div>
-                            <p style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>Persentase biaya layanan</p>
-                            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Dibebankan ke pengguna di setiap transaksi</p>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={form.serviceFee ?? 10}
-                              onChange={e => setForm({ ...form, serviceFee: Math.min(100, Math.max(0, Number(e.target.value))) })}
-                              style={{ width: 62, height: 36, textAlign: 'center', fontWeight: 700, fontSize: '0.92rem', border: '1px solid var(--border-color)', borderRadius: 7, backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', outline: 0 }}
-                            />
-                            <span style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>%</span>
+                          {/* Info footer with link to Komisi page */}
+                          <div style={{ margin: '0 24px 20px', padding: '10px 14px', borderRadius: 10, backgroundColor: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.14)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <i className="fa-solid fa-chart-pie" style={{ color: '#8b5cf6', fontSize: 13, marginTop: 2, flexShrink: 0 }} />
+                            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                              Komisi <strong style={{ color: 'var(--text-primary)' }}>{Number(form.commissionRate ?? 12.5).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%</strong> dari gross transaksi dipotong untuk platform. Lihat detail di halaman{' '}
+                              <a href="/komisi" style={{ color: '#8b5cf6', fontWeight: 800, textDecoration: 'none' }}>Kelola Komisi →</a>
+                            </p>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Contoh: transaksi Rp 100.000</span>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brand-green)' }}>
-                            Biaya layanan = Rp {((form.serviceFee ?? 10) * 1000).toLocaleString('id-ID')}
-                          </span>
-                        </div>
                       </div>
-                    </div>
 
-                    {/* Auto Cancel Toggle */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 16px', borderRadius: 10, backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ display: 'block', color: 'var(--text-primary)', fontSize: '0.86rem', marginBottom: 3, fontWeight: 700 }}>Auto cancel pesanan belum bayar</strong>
-                        <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.74rem' }}>Batalkan reservasi jika tidak dibayar dalam batas waktu</span>
-                      </div>
-                      <div
-                        onClick={() => setForm({ ...form, autoCancel: !form.autoCancel })}
-                        style={{ position: 'relative', width: 46, height: 26, flexShrink: 0, cursor: 'pointer' }}
-                      >
-                        <span style={{ position: 'absolute', inset: 0, borderRadius: 999, backgroundColor: form.autoCancel ? 'var(--brand-green)' : 'var(--border-color)', transition: 'background-color 0.2s ease' }} />
-                        <span style={{ position: 'absolute', width: 20, height: 20, top: 3, left: 3, borderRadius: '50%', backgroundColor: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.2)', transition: 'transform 0.2s ease', transform: form.autoCancel ? 'translateX(20px)' : 'none' }} />
-                      </div>
-                    </div>
-                  </div>
+                     {/* Auto Cancel Toggle */}
+                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '18px 20px', borderRadius: 14, backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px rgba(0,0,0,0.015)' }}>
+                       <div style={{ flex: 1 }}>
+                         <strong style={{ display: 'block', color: 'var(--text-primary)', fontSize: '0.86rem', marginBottom: 3, fontWeight: 800 }}>Auto cancel pesanan belum bayar</strong>
+                         <span style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.74rem', lineHeight: 1.45 }}>Batalkan reservasi jika tidak dibayar dalam batas waktu</span>
+                       </div>
+                       <div
+                         onClick={() => setForm({ ...form, autoCancel: !form.autoCancel })}
+                         style={{ position: 'relative', width: 48, height: 26, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.1s' }}
+                         onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                         onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                       >
+                         <span style={{ position: 'absolute', inset: 0, borderRadius: 999, backgroundColor: form.autoCancel ? 'var(--brand-green)' : 'var(--border-color)', transition: 'background-color 0.25s ease', boxShadow: form.autoCancel ? '0 2px 8px rgba(31, 90, 63, 0.25)' : 'none' }} />
+                         <span style={{ position: 'absolute', width: 20, height: 20, top: 3, left: form.autoCancel ? 25 : 3, borderRadius: '50%', backgroundColor: '#ffffff', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                       </div>
+                     </div>
+                   </div>
                 </div>
               </div>
             </div>
