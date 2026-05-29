@@ -7,6 +7,7 @@ import '../../core/services/cart_service.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
+import '../home/rental_detail_page.dart';
 
 class EquipmentDetailPage extends StatefulWidget {
   final String equipmentId;
@@ -37,14 +38,23 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
   }
 
   Future<void> _muatDetail() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final data = await _equipmentService.ambilDetailAlat(widget.equipmentId);
       if (!mounted) return;
-      setState(() { _alat = data; _isLoading = false; });
+      setState(() {
+        _alat = data;
+        _isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = 'Gagal memuat detail alat.'; _isLoading = false; });
+      setState(() {
+        _error = 'Gagal memuat detail alat.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -61,20 +71,24 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _error != null
-              ? _buildErrorState()
-              : _alat == null
-                  ? _buildNotFound()
-                  : _buildContent(),
+          ? _buildErrorState()
+          : _alat == null
+          ? _buildNotFound()
+          : _buildContent(),
     );
   }
 
@@ -137,8 +151,9 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                             padding: const EdgeInsets.only(bottom: 3, left: 4),
                             child: Text(
                               '/ Hari',
-                              style: AppTextStyles.bodyMedium
-                                  .copyWith(color: AppColors.textHint),
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textHint,
+                              ),
                             ),
                           ),
                         ],
@@ -147,7 +162,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                       const SizedBox(height: 24),
 
                       // ── Deskripsi (jika ada)
-                      if (alat.deskripsi != null && alat.deskripsi!.isNotEmpty) ...[
+                      if (alat.deskripsi != null &&
+                          alat.deskripsi!.isNotEmpty) ...[
                         Text(
                           'DESKRIPSI',
                           style: AppTextStyles.caption.copyWith(
@@ -209,6 +225,10 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                       // ── Ketersediaan card
                       _buildKetersediaanCard(alat),
 
+                      const SizedBox(height: 14),
+
+                      _buildRentalInfoCard(),
+
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -234,7 +254,10 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
             if (details.primaryVelocity! < 0) {
               setState(() => _fotoIndex = (_fotoIndex + 1) % gambar.length);
             } else {
-              setState(() => _fotoIndex = (_fotoIndex - 1 + gambar.length) % gambar.length);
+              setState(
+                () => _fotoIndex =
+                    (_fotoIndex - 1 + gambar.length) % gambar.length,
+              );
             }
           },
           child: NrImage(
@@ -248,13 +271,19 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
 
         // ── Gradient bawah
         Positioned(
-          bottom: 0, left: 0, right: 0, height: 80,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 80,
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.transparent, AppColors.background.withValues(alpha: 0.95)],
+                colors: [
+                  Colors.transparent,
+                  AppColors.background.withValues(alpha: 0.95),
+                ],
               ),
             ),
           ),
@@ -262,7 +291,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
 
         // ── Back button
         Positioned(
-          top: 44, left: 16,
+          top: 44,
+          left: 16,
           child: GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
@@ -271,8 +301,11 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                 color: Colors.black38,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
           ),
         ),
@@ -281,7 +314,9 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         // ── Foto indicator dots (jika lebih dari 1)
         if (gambar.length > 1)
           Positioned(
-            bottom: 12, left: 0, right: 0,
+            bottom: 12,
+            left: 0,
+            right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(gambar.length, (i) {
@@ -301,16 +336,16 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
 
         // ── Title di header
         Positioned(
-          top: 44, left: 0, right: 0,
+          top: 44,
+          left: 0,
+          right: 0,
           child: Center(
             child: Text(
               'Detail Peralatan',
               style: AppTextStyles.headlineMedium.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
-                shadows: [
-                  Shadow(color: Colors.black45, blurRadius: 8),
-                ],
+                shadows: [Shadow(color: Colors.black45, blurRadius: 8)],
               ),
             ),
           ),
@@ -365,13 +400,78 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                   alat.stock > 0
                       ? '${alat.stock} unit tersedia di ${widget.rental.namaRental}'
                       : 'Stok sedang habis',
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRentalInfoCard() {
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RentalDetailPage(rental: widget.rental),
+        ),
+      ),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            NrImage(
+              imageUrl: widget.rental.fotoBanner ?? widget.rental.fotoProfil,
+              width: 50,
+              height: 50,
+              borderRadius: BorderRadius.circular(12),
+              placeholderColor: AppColors.primaryDark,
+              placeholderIcon: Icons.storefront_rounded,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.rental.namaRental,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    widget.rental.alamat ?? 'Alamat toko belum tersedia',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textHint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(
+              Icons.info_outline_rounded,
+              color: AppColors.primaryDark,
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -386,7 +486,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12, offset: const Offset(0, -3),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
@@ -421,7 +522,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
         ),
@@ -436,13 +538,27 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline_rounded, size: 52, color: AppColors.textHint),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 52,
+              color: AppColors.textHint,
+            ),
             const SizedBox(height: 12),
-            Text(_error!, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+            Text(
+              _error!,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textHint,
+              ),
+            ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: _muatDetail,
-              child: Text('Coba Lagi', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary)),
+              child: Text(
+                'Coba Lagi',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
             ),
           ],
         ),
@@ -454,8 +570,10 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
-        child: Text('Alat tidak ditemukan.',
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+        child: Text(
+          'Alat tidak ditemukan.',
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+        ),
       ),
     );
   }
@@ -482,8 +600,8 @@ class _SpecChip extends StatelessWidget {
     final color = isDanger
         ? AppColors.error
         : isHighlight
-            ? AppColors.primary
-            : AppColors.textSecondary;
+        ? AppColors.primary
+        : AppColors.textSecondary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -497,10 +615,13 @@ class _SpecChip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 5),
-          Text(label,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: color, fontWeight: FontWeight.w600,
-              )),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
