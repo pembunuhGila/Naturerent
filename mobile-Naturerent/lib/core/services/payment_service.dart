@@ -97,9 +97,25 @@ class PaymentService {
         }
       }
 
+      // Ambil persentase komisi dari commission_settings
+      double komisiRate = 10.0;
+      try {
+        final comData = await AuthService.client
+            .from('commission_settings')
+            .select('percentage')
+            .order('updated_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        if (comData != null && comData['percentage'] != null) {
+          komisiRate = double.tryParse(comData['percentage'].toString()) ?? 10.0;
+        }
+      } catch (e) {
+        print('Gagal mengambil komisi dari DB: $e');
+      }
+
       _cached = PlatformSettings(
         biayaLayanan: flatBiayaLayanan,
-        komisiPersen: 10.0, // Persentase komisi platform default tetap 10%
+        komisiPersen: komisiRate,
         qrisImageUrl: null,
       );
 
