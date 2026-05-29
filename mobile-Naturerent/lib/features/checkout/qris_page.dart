@@ -47,8 +47,6 @@ class QrisPage extends StatefulWidget {
 class _QrisPageState extends State<QrisPage> {
   // Countdown 15 menit
   static const _durasi = Duration(minutes: 15);
-  static const _tarifDp = 0.3;
-
   final _picker = ImagePicker();
   late int _sisaDetik;
   Timer? _timer;
@@ -77,15 +75,7 @@ class _QrisPageState extends State<QrisPage> {
   // ── Kalkulasi harga ─────────────────────────────────────────────────────
   double get _biayaLayanan => (_settings?.biayaLayanan ?? 2000).toDouble();
   double get _subtotalSewa => widget.total;
-  double get _dp => _subtotalSewa * _tarifDp;
-  double get _sisaSewa => _subtotalSewa * (1 - _tarifDp);
-  // Biaya layanan dibayar bersama DP
-  double get _dpDibayarSekarang => _dp + _biayaLayanan + widget.deliveryFee;
-  // Pelunasan saat pengembalian (biaya layanan sudah dibayar)
-  double get _pelunasan => _sisaSewa;
   double get _totalAkhir => _subtotalSewa + _biayaLayanan + widget.deliveryFee;
-  int get _dpPercent => (_tarifDp * 100).round();
-  int get _sisaPercent => 100 - _dpPercent;
 
   @override
   void initState() {
@@ -190,7 +180,6 @@ class _QrisPageState extends State<QrisPage> {
         items: List<CartItem>.from(widget.items),
         biayaLayanan: _biayaLayanan,
         taxRate: 0,
-        dpPercent: _dpPercent.toDouble(),
         paymentProofBytes: paymentProofBytes,
         paymentProofExtension: paymentProofExtension,
         paymentProofContentType: paymentProofContentType,
@@ -416,14 +405,16 @@ class _QrisPageState extends State<QrisPage> {
                             ),
                             child: Column(
                               children: [
-                                Text('DIBAYAR SEKARANG (DP + Layanan)',
+                                Text('TOTAL PEMBAYARAN',
                                     style: AppTextStyles.caption.copyWith(
                                         color: AppColors.textHint,
                                         letterSpacing: 0.8,
                                         fontSize: 10)),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _loadingSettings ? '...' : _fmtRupiah(_dpDibayarSekarang),
+                                  _loadingSettings
+                                      ? '...'
+                                      : _fmtRupiah(_totalAkhir),
                                   style: AppTextStyles.displayLarge.copyWith(
                                     color: AppColors.primaryDark,
                                     fontWeight: FontWeight.w800,
@@ -454,7 +445,7 @@ class _QrisPageState extends State<QrisPage> {
                           ...[
                             '1. Buka aplikasi e-wallet atau m-banking',
                             '2. Pilih menu Scan QR / QRIS',
-                            '3. Scan QR dan bayar ${_fmtRupiah(_dpDibayarSekarang)} (DP $_dpPercent% + layanan${widget.isDelivery ? ' + delivery' : ''})',
+                            '3. Scan QR dan bayar ${_fmtRupiah(_totalAkhir)}',
                             '4. Screenshot atau simpan bukti pembayaran',
                             '5. Upload foto bukti lewat tombol di bawah',
                             '6. Pesanan masuk Riwayat menunggu verifikasi admin',
@@ -600,7 +591,7 @@ class _QrisPageState extends State<QrisPage> {
         ? qrisUrl
         : 'https://api.qrserver.com/v1/create-qr-code/'
             '?size=200x200'
-            '&data=NatureRent-${widget.namaRental}-${_dpDibayarSekarang.toInt()}'
+            '&data=NatureRent-${widget.namaRental}-${_totalAkhir.toInt()}'
             '&color=1B3A2D'
             '&bgcolor=FFFFFF';
 
@@ -671,8 +662,11 @@ class _QrisPageState extends State<QrisPage> {
       ),
       child: Column(
         children: [
-          _InfoRow(label: 'Subtotal sewa', value: _fmtRupiah(_subtotalSewa)),
-          _InfoRow(label: 'Biaya layanan', value: _loadingSettings ? '...' : _fmtRupiah(_biayaLayanan)),
+          _InfoRow(label: 'Total Harga Sewa', value: _fmtRupiah(_subtotalSewa)),
+          _InfoRow(
+            label: 'Biaya layanan',
+            value: _loadingSettings ? '...' : _fmtRupiah(_biayaLayanan),
+          ),
           if (widget.isDelivery)
             _InfoRow(
               label: widget.deliveryDistanceKm == null
@@ -681,17 +675,15 @@ class _QrisPageState extends State<QrisPage> {
               value: _fmtRupiah(widget.deliveryFee),
             ),
           const Divider(height: 14, color: AppColors.border),
-          _InfoRow(label: 'Total keseluruhan',
-              value: _loadingSettings ? '...' : _fmtRupiah(_totalAkhir), isStrong: true),
-          const Divider(height: 14, color: AppColors.border),
           _InfoRow(
-            label: 'Bayar sekarang (DP $_dpPercent% + layanan)',
-            value: _loadingSettings ? '...' : _fmtRupiah(_dpDibayarSekarang),
+            label: 'Total Pembayaran',
+            value: _loadingSettings ? '...' : _fmtRupiah(_totalAkhir),
             isStrong: true,
           ),
+          const Divider(height: 14, color: AppColors.border),
           _InfoRow(
-            label: 'Pelunasan $_sisaPercent% (saat pengembalian)',
-            value: _fmtRupiah(_pelunasan),
+            label: 'Status pembayaran',
+            value: 'Belum Dibayar',
           ),
         ],
       ),
