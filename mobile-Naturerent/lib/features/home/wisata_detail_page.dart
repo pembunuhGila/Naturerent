@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/wisata_location.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
@@ -24,16 +25,19 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
   final _mapController = MapController();
   final _rentalService = RentalService();
 
-  List<RentalProfile> _rentals = [];
+  List<RentalWithDistance> _rentals = [];
   bool _isLoading = true;
   bool _lokasiSaya = false;
   LatLng? _userLatLng;
 
   // Koordinat default wisata
-  LatLng get _wisataLatLng => LatLng(
-        widget.wisata.lat ?? -7.9425,
-        widget.wisata.lng ?? 112.9531,
-      );
+  LatLng get _wisataLatLng =>
+      LatLng(widget.wisata.lat ?? -7.9425, widget.wisata.lng ?? 112.9531);
+  bool get _wisataHasLocation =>
+      widget.wisata.lat != null && widget.wisata.lng != null;
+
+  List<RentalProfile> get _rentalProfiles =>
+      _rentals.map((r) => r.rental).toList();
 
   @override
   void initState() {
@@ -43,11 +47,10 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
 
   Future<void> _muatRental() async {
     try {
-      final data =
-          await _rentalService.ambilRentalDekatWisata(widget.wisata.id);
+      final data = await _rentalService.ambilRentalAktif();
       if (!mounted) return;
       setState(() {
-        _rentals = data;
+        _rentals = _urutkanRental(data);
         _isLoading = false;
       });
     } catch (_) {
@@ -78,6 +81,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
       setState(() {
         _userLatLng = latlng;
         _lokasiSaya = true;
+        _rentals = _urutkanRental(_rentalProfiles);
       });
       _mapController.move(latlng, 13.0);
     } catch (e) {
@@ -86,8 +90,29 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
   }
 
   void _pindahDestinasi() {
-    setState(() => _lokasiSaya = false);
+    setState(() {
+      _lokasiSaya = false;
+      _rentals = _urutkanRental(_rentalProfiles);
+    });
     _mapController.move(_wisataLatLng, 12.0);
+  }
+
+  List<RentalWithDistance> _urutkanRental(List<RentalProfile> rentals) {
+    final reference = _lokasiSaya
+        ? _userLatLng
+        : (_wisataHasLocation ? _wisataLatLng : null);
+    if (reference == null) {
+      return rentals
+          .map((r) => RentalWithDistance(rental: r, distanceKm: null))
+          .toList();
+    }
+
+    return LocationService.sortRentalsByDistance(
+      referenceLat: reference.latitude,
+      referenceLng: reference.longitude,
+      rentals: rentals,
+      includeUnknownLocation: true,
+    );
   }
 
   void _snack(String msg) {
@@ -97,10 +122,12 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
       body: Stack(
@@ -116,8 +143,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.naturerent.app',
               ),
               // Marker Wisata
@@ -131,7 +157,9 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primaryDark,
                             borderRadius: BorderRadius.circular(8),
@@ -145,41 +173,47 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                             ),
                           ),
                         ),
-                        const Icon(Icons.location_pin,
-                            color: AppColors.primaryDark, size: 28),
+                        const Icon(
+                          Icons.location_pin,
+                          color: AppColors.primaryDark,
+                          size: 28,
+                        ),
                       ],
                     ),
                   ),
                   // Marker Rental
-                  ..._rentals
+                  ..._rentalProfiles
                       .where((r) => r.lat != null && r.lng != null)
-                      .map((r) => Marker(
-                            point: LatLng(r.lat!, r.lng!),
-                            width: 44,
-                            height: 44,
-                            child: GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      EquipmentListPage(rental: r),
-                                ),
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: Colors.white, width: 2),
-                                ),
-                                child: const Icon(
-                                  Icons.storefront_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
+                      .map(
+                        (r) => Marker(
+                          point: LatLng(r.lat!, r.lng!),
+                          width: 44,
+                          height: 44,
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EquipmentListPage(rental: r),
                               ),
                             ),
-                          )),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.storefront_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   // Marker Lokasi User
                   if (_userLatLng != null)
                     Marker(
@@ -190,8 +224,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                         decoration: BoxDecoration(
                           color: Colors.blue,
                           shape: BoxShape.circle,
-                          border:
-                              Border.all(color: Colors.white, width: 3),
+                          border: Border.all(color: Colors.white, width: 3),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.blue.withValues(alpha: 0.4),
@@ -199,8 +232,11 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.person,
-                            color: Colors.white, size: 18),
+                        child: const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                 ],
@@ -215,8 +251,10 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -227,8 +265,11 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                           color: Colors.black45,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white, size: 16),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -241,7 +282,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                           shadows: [
-                            Shadow(color: Colors.black54, blurRadius: 8)
+                            Shadow(color: Colors.black54, blurRadius: 8),
                           ],
                         ),
                         maxLines: 1,
@@ -265,15 +306,20 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black45,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           children: const [
-                            Icon(Icons.storefront_rounded,
-                                color: Colors.white, size: 16),
+                            Icon(
+                              Icons.storefront_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                             SizedBox(width: 6),
                             Text(
                               'Rental',
@@ -342,8 +388,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
               return Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black12,
@@ -375,24 +420,27 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                             children: [
                               Text(
                                 'Rental di Area Ini',
-                                style: AppTextStyles.headlineLarge
-                                    .copyWith(fontSize: 17),
+                                style: AppTextStyles.headlineLarge.copyWith(
+                                  fontSize: 17,
+                                ),
                               ),
                               Text(
                                 _isLoading
                                     ? 'Memuat...'
-                                    : '${_rentals.length} rental tersedia',
+                                    : '${_rentals.length} rental terurut ${_lokasiSaya ? 'dari lokasimu' : 'dari destinasi'}',
                                 style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.textSecondary),
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.1),
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -412,45 +460,48 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                       child: _isLoading
                           ? const Center(
                               child: CircularProgressIndicator(
-                                  color: AppColors.primary))
+                                color: AppColors.primary,
+                              ),
+                            )
                           : _rentals.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.store_outlined,
-                                          size: 40,
-                                          color: AppColors.textHint),
-                                      const SizedBox(height: 8),
-                                      Text('Belum ada rental di area ini',
-                                          style: AppTextStyles.bodyMedium
-                                              .copyWith(
-                                                  color:
-                                                      AppColors.textHint)),
-                                    ],
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.store_outlined,
+                                    size: 40,
+                                    color: AppColors.textHint,
                                   ),
-                                )
-                              : ListView.separated(
-                                  controller: scrollCtrl,
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 8, 16, 24),
-                                  separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 8),
-                                  itemCount: _rentals.length,
-                                  itemBuilder: (_, i) =>
-                                      _RentalBottomCard(
-                                        rental: _rentals[i],
-                                        wisataLatLng: _wisataLatLng,
-                                        onTap: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => EquipmentListPage(
-                                                rental: _rentals[i]),
-                                          ),
-                                        ),
-                                      ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Belum ada rental di area ini',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.textHint,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              controller: scrollCtrl,
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 8),
+                              itemCount: _rentals.length,
+                              itemBuilder: (_, i) => _RentalBottomCard(
+                                rental: _rentals[i].rental,
+                                jarak: _rentals[i].distanceKm,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EquipmentListPage(
+                                      rental: _rentals[i].rental,
+                                    ),
+                                  ),
                                 ),
+                              ),
+                            ),
                     ),
                   ],
                 ),
@@ -471,11 +522,12 @@ class _ToggleBtn extends StatelessWidget {
   final IconData icon;
   final bool isActive;
   final VoidCallback onTap;
-  const _ToggleBtn(
-      {required this.label,
-      required this.icon,
-      required this.isActive,
-      required this.onTap});
+  const _ToggleBtn({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -483,8 +535,7 @@ class _ToggleBtn extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(30),
@@ -492,17 +543,17 @@ class _ToggleBtn extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 14,
-                color:
-                    isActive ? Colors.white : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? Colors.white : AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
               style: AppTextStyles.bodySmall.copyWith(
                 color: isActive ? Colors.white : AppColors.textSecondary,
-                fontWeight:
-                    isActive ? FontWeight.w700 : FontWeight.w400,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
           ],
@@ -517,21 +568,17 @@ class _ToggleBtn extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _RentalBottomCard extends StatelessWidget {
   final RentalProfile rental;
-  final LatLng wisataLatLng;
+  final double? jarak;
   final VoidCallback onTap;
-  const _RentalBottomCard(
-      {required this.rental,
-      required this.wisataLatLng,
-      required this.onTap});
+  const _RentalBottomCard({
+    required this.rental,
+    required this.jarak,
+    required this.onTap,
+  });
 
-  String get _jarakKm {
-    if (rental.lat == null || rental.lng == null) return '—';
-    final d = const Distance().as(
-      LengthUnit.Kilometer,
-      wisataLatLng,
-      LatLng(rental.lat!, rental.lng!),
-    );
-    return '${d.toStringAsFixed(1)} km';
+  String get _jarakText {
+    if (jarak == null) return 'Lokasi belum tersedia';
+    return LocationService.formatJarak(jarak!);
   }
 
   @override
@@ -563,27 +610,58 @@ class _RentalBottomCard extends StatelessWidget {
                 children: [
                   Text(
                     rental.namaRental,
-                    style: AppTextStyles.headlineMedium
-                        .copyWith(fontWeight: FontWeight.w700),
+                    style: AppTextStyles.headlineMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    rental.alamat ?? 'Alamat belum tersedia',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.near_me_rounded,
-                          size: 12, color: AppColors.textHint),
+                      const Icon(
+                        Icons.near_me_rounded,
+                        size: 12,
+                        color: AppColors.textHint,
+                      ),
                       const SizedBox(width: 3),
-                      Text(_jarakKm,
-                          style: AppTextStyles.bodySmall
-                              .copyWith(color: AppColors.textHint)),
+                      Expanded(
+                        child: Text(
+                          _jarakText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textHint,
+                          ),
+                        ),
+                      ),
+                      if (rental.isActive)
+                        Text(
+                          'AKTIF',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textHint, size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textHint,
+              size: 20,
+            ),
           ],
         ),
       ),
