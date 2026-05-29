@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/equipment.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/services/destination_suggestion_service.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -24,6 +25,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _rentalService = RentalService();
+  final _destinationSuggestionService = DestinationSuggestionService();
   final _equipmentService = EquipmentService();
 
   List<Equipment> _alat = [];
@@ -74,11 +76,15 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     try {
       final rental = await _rentalService.pastikanRentalSayaAda();
       final alat = await _equipmentService.ambilSemuaAlatByRental(rental.id);
+      final suggestedDestinations = await _loadNearbyDestinations(rental);
       if (!mounted) return;
       setState(() {
         _rentalId = rental.id;
         _rentalProfile = rental; // Simpan lengkap
         _alat = alat;
+        if (suggestedDestinations.isNotEmpty) {
+          _suggestedDestinations = suggestedDestinations;
+        }
         _loading = false;
       });
     } catch (_) {
@@ -92,6 +98,52 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
 
   void _comingSoon(String fitur) {
     NrToast.show(context, '$fitur segera hadir.', type: NrToastType.info);
+  }
+
+  Future<List<DestinationInfo>> _loadNearbyDestinations(
+    RentalProfile rental,
+  ) async {
+    if (rental.lat == null || rental.lng == null) return [];
+
+    try {
+      final nearest = await _destinationSuggestionService.ambilSaranUntukRental(
+        rental,
+        limit: 10,
+      );
+      return nearest
+          .map((wd) => DestinationInfo(
+                id: wd.wisata.id,
+                title: wd.wisata.nama,
+                distance: wd.jarakFormatted,
+                detailDistance: '${wd.jarakFormatted} dari rental',
+                icon: _iconForKategori(wd.wisata.kategori),
+                color: _colorForKategori(wd.wisata.kategori),
+                lat: wd.wisata.lat,
+                lng: wd.wisata.lng,
+              ))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  IconData _iconForKategori(String? kategori) {
+    return switch (kategori?.toLowerCase()) {
+      'gunung' => Icons.terrain_rounded,
+      'ranu' || 'danau' => Icons.water_rounded,
+      'hutan' => Icons.forest_rounded,
+      'pantai' => Icons.beach_access_rounded,
+      'air terjun' || 'curug' => Icons.waterfall_chart_rounded,
+      _ => Icons.landscape_rounded,
+    };
+  }
+
+  Color _colorForKategori(String? kategori) {
+    return switch (kategori?.toLowerCase()) {
+      'gunung' => const Color(0xFF336A77),
+      'pantai' => const Color(0xFF336A77),
+      _ => const Color(0xFF18743A),
+    };
   }
 
   Future<void> _bukaTambahAlat() async {
