@@ -71,7 +71,7 @@ export default function TransaksiDetailPage() {
       try {
         const { data: row } = await supabase
           .from('bookings')
-          .select('*, rental_profiles(nama_rental, owner_id, alamat, qris_image_url, qris_merchant_name)')
+          .select('*, rental_profiles(nama_rental, owner_id, alamat, qris_image_url, qris_merchant_name), deliveries(*)')
           .eq('id', id)
           .single()
         if (row) {
@@ -103,6 +103,7 @@ export default function TransaksiDetailPage() {
             alamat: row.rental_profiles?.alamat || row.alamat || '-',
             qris_image_url: row.rental_profiles?.qris_image_url || null,
             qris_merchant_name: row.rental_profiles?.qris_merchant_name || null,
+            delivery: row.deliveries && row.deliveries.length > 0 ? row.deliveries[0] : null,
           }
         }
       } catch (e) {
@@ -254,6 +255,69 @@ export default function TransaksiDetailPage() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Delivery / Pickup Information Card */}
+                <div style={{ marginBottom: 24, padding: 20, borderRadius: 12, border: '1.5px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                    <i className={data.tipe_pengiriman === 'delivery' ? "fa-solid fa-truck" : "fa-solid fa-store"} style={{ color: 'var(--brand-green)', fontSize: 16 }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                      {data.tipe_pengiriman === 'delivery' ? 'Informasi Pengiriman (Delivery)' : 'Informasi Pengambilan (Self Pickup)'}
+                    </span>
+                    <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, backgroundColor: data.tipe_pengiriman === 'delivery' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: data.tipe_pengiriman === 'delivery' ? '#3b82f6' : 'var(--brand-green)', border: data.tipe_pengiriman === 'delivery' ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(16,185,129,0.3)', marginLeft: 'auto', textTransform: 'uppercase' }}>
+                      {data.tipe_pengiriman === 'delivery' ? 'Delivery' : 'Self Pickup'}
+                    </span>
+                  </div>
+
+                  {data.tipe_pengiriman === 'delivery' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Alamat Pengiriman:</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>{data.delivery?.alamat_kirim || '-'}</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Nama Kurir:</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>{data.delivery?.nama_kurir || 'Belum Ditugaskan'}</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Status Pengiriman:</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                          <span className={`badge ${
+                            data.delivery?.status === 'delivered' || data.delivery?.status === 'returned' ? 'badge-success' :
+                            data.delivery?.status === 'on_the_way' || data.delivery?.status === 'returning' ? 'badge-blue' : 'badge-warning'
+                          }`} style={{ textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 800 }}>
+                            {data.delivery?.status || 'Waiting'}
+                          </span>
+                        </span>
+                      </div>
+                      {data.delivery?.scheduled_at && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Jadwal Pengiriman:</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>{formatDate(data.delivery.scheduled_at)}</span>
+                        </div>
+                      )}
+                      {data.delivery?.catatan && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Catatan Kurir:</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{data.delivery.catatan}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Metode:</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>Ambil Sendiri ke Toko Rental</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 10 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Alamat Rental:</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>{data.alamat || '-'}</span>
+                      </div>
+                      <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+                        Penyewa akan datang langsung ke alamat toko rental di atas untuk mengambil dan mengembalikan peralatan sesuai jadwal sewa.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
               <div className="detail-grid" style={{ marginBottom: 24 }}>
