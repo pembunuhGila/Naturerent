@@ -227,8 +227,12 @@ class _LoginPageState extends State<LoginPage>
         isCompact ? 22 : 26,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.ownerCardBackground,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -434,6 +438,8 @@ class _LoginPageState extends State<LoginPage>
     bool compact = false,
   }) {
     final radius = compact ? 14.0 : 12.0;
+    final fieldBorderColor =
+        compact ? AppColors.ownerBorderColor : AppColors.border;
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTextStyles.bodyMedium.copyWith(
@@ -448,18 +454,18 @@ class _LoginPageState extends State<LoginPage>
           : null,
       suffixIconConstraints: const BoxConstraints(),
       filled: true,
-      fillColor: compact ? const Color(0xFFFAFBF8) : AppColors.surface,
+      fillColor: compact ? AppColors.ownerCardBackground : AppColors.surface,
       contentPadding: EdgeInsets.symmetric(
         horizontal: compact ? 16 : 16,
         vertical: compact ? 14 : 16,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
-        borderSide: const BorderSide(color: Color(0xFFD7DDD2)),
+        borderSide: BorderSide(color: fieldBorderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
-        borderSide: const BorderSide(color: Color(0xFFD7DDD2)),
+        borderSide: BorderSide(color: fieldBorderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
@@ -689,10 +695,10 @@ class _LoginRoleConfig {
         buttonText: 'Masuk sebagai Mitra',
         registerPrompt: 'Belum bergabung?  ',
         emailLabel: 'EMAIL ATAU USERNAME',
-        accentColor: Color(0xFF18743A),
+        accentColor: AppColors.ownerPrimaryGreen,
         titleColor: Color(0xFF202321),
         labelColor: Color(0xFF666D64),
-        backgroundColor: Color(0xFFF5F4F0),
+        backgroundColor: AppColors.ownerPageBackground,
         showGoogleLogin: false,
       ),
       UserRole.penyewa => const _LoginRoleConfig(
