@@ -40,6 +40,8 @@ class AdminOrder {
   final DateTime tanggalMulai;
   final DateTime tanggalSelesai;
   final double totalBayar;
+  final double commissionAmount;
+  final double netToOwner;
   final String status;
   final String? paymentStatus;
   final String? paymentProofUrl;
@@ -54,6 +56,8 @@ class AdminOrder {
     required this.tanggalMulai,
     required this.tanggalSelesai,
     required this.totalBayar,
+    required this.commissionAmount,
+    required this.netToOwner,
     required this.status,
     this.paymentStatus,
     this.paymentProofUrl,
@@ -128,6 +132,8 @@ class AdminOrder {
       tanggalMulai: DateTime.parse(map['tgl_mulai'] as String),
       tanggalSelesai: DateTime.parse(map['tgl_selesai'] as String),
       totalBayar: (map['total_bayar'] as num?)?.toDouble() ?? 0,
+      commissionAmount: (map['commission_amount'] as num?)?.toDouble() ?? 0,
+      netToOwner: (map['net_to_owner'] as num?)?.toDouble() ?? 0,
       status: map['status'] as String? ?? 'pending',
       paymentStatus: map['payment_status'] as String?,
       paymentProofUrl: map['payment_proof_url'] as String?,
