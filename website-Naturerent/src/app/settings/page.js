@@ -5,10 +5,8 @@ import Toast, { useToast } from '@/components/Toast'
 import { createClient } from '@/lib/supabase'
 import AuthGuard from '@/components/AuthGuard'
 
-const DEFAULT_QRIS_LIST = [
-  { id: 'qr-1', name: 'QRIS Utama', merchant: 'NatureRents', qrId: 'QR-2024-001', active: true, image: null },
-  { id: 'qr-2', name: 'QRIS Cabang Surabaya', merchant: 'NatureRents SBY', qrId: 'QR-2024-002', active: false, image: null },
-]
+// Global admin QRIS default
+const DEFAULT_GLOBAL_QRIS = { merchantName: '', imageUrl: null }
 
 const DEFAULT_SETTINGS = {
   appName: 'NatureRent',
@@ -24,7 +22,6 @@ const DEFAULT_SETTINGS = {
   serviceFee: 10,
   currency: 'IDR',
   autoCancel: true,
-  qrisList: DEFAULT_QRIS_LIST
 }
 
 // Helper for lighten/darken color hexes
@@ -162,13 +159,8 @@ export default function SettingsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [form, setForm] = useState(DEFAULT_SETTINGS)
 
-  // Dynamic QRIS list from Supabase (rental_profiles)
-  const [rentalQrisList, setRentalQrisList] = useState([])
-  const [qrisLoading, setQrisLoading] = useState(true)
-  // QRIS edit modal state (edit per rental)
-  const [qrisModal, setQrisModal] = useState(false)
-  const [qrisEditing, setQrisEditing] = useState(null) // rental row being edited
-  const [qrisMerchant, setQrisMerchant] = useState('')
+  // Single global admin QRIS state
+  const [globalQris, setGlobalQris] = useState(DEFAULT_GLOBAL_QRIS)
   const [qrisImageFile, setQrisImageFile] = useState(null)
   const [qrisImagePreview, setQrisImagePreview] = useState(null)
   const [qrisSaving, setQrisSaving] = useState(false)
@@ -190,32 +182,24 @@ export default function SettingsPage() {
         }
       }
 
-      // Fetch QRIS list from Supabase rental_profiles
-      fetchRentalQris(supabase)
+      // Fetch global QRIS from Supabase platform_settings
+      fetchGlobalQris(supabase)
     }
     init()
   }, [])
 
-  const fetchRentalQris = async (supabaseClient) => {
-    setQrisLoading(true)
+  const fetchGlobalQris = async (supabaseClient) => {
     const sb = supabaseClient || createClient()
     const { data, error } = await sb
-      .from('rental_profiles')
-      .select('id, nama_rental, qris_image_url, qris_merchant_name, is_active')
-      .order('nama_rental', { ascending: true })
-    if (!error && data) {
-      setRentalQrisList(data)
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'global_qris')
+      .single()
+    if (!error && data?.value) {
+      const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value
+      setGlobalQris({ merchantName: parsed.merchant_name || '', imageUrl: parsed.image_url || null })
+      setQrisImagePreview(parsed.image_url || null)
     }
-    setQrisLoading(false)
-  }
-
-  // Open edit QRIS modal for a specific rental
-  const openEditQris = (rental) => {
-    setQrisEditing(rental)
-    setQrisMerchant(rental.qris_merchant_name || '')
-    setQrisImagePreview(rental.qris_image_url || null)
-    setQrisImageFile(null)
-    setQrisModal(true)
   }
 
   const handleQrisImageChange = (e) => {
@@ -226,17 +210,16 @@ export default function SettingsPage() {
     setQrisImagePreview(URL.createObjectURL(file))
   }
 
-  const saveQris = async () => {
-    if (!qrisEditing) return
-    if (!qrisMerchant.trim()) { addToast('Nama merchant wajib diisi!', 'error'); return }
+  const saveGlobalQris = async () => {
+    if (!globalQris.merchantName.trim()) { addToast('Nama merchant wajib diisi!', 'error'); return }
     setQrisSaving(true)
     const supabase = createClient()
-    let imageUrl = qrisEditing.qris_image_url || null
+    let imageUrl = globalQris.imageUrl || null
 
     // Upload new image to Supabase Storage if a new file was selected
     if (qrisImageFile) {
       const fileExt = qrisImageFile.name.split('.').pop()
-      const filePath = `${qrisEditing.id}/qris.${fileExt}`
+      const filePath = `global/qris.${fileExt}`
       const { error: uploadError } = await supabase.storage
         .from('qris-images')
         .upload(filePath, qrisImageFile, { upsert: true, contentType: qrisImageFile.type })
@@ -249,20 +232,20 @@ export default function SettingsPage() {
       imageUrl = urlData?.publicUrl || null
     }
 
-    // Save merchant name + image URL to rental_profiles
-    const { error: updateError } = await supabase
-      .from('rental_profiles')
-      .update({ qris_merchant_name: qrisMerchant.trim(), qris_image_url: imageUrl })
-      .eq('id', qrisEditing.id)
+    // Save to platform_settings table with key = 'global_qris'
+    const payload = { merchant_name: globalQris.merchantName.trim(), image_url: imageUrl }
+    const { error: upsertError } = await supabase
+      .from('platform_settings')
+      .upsert({ key: 'global_qris', value: JSON.stringify(payload) }, { onConflict: 'key' })
 
     setQrisSaving(false)
-    if (updateError) {
-      addToast('Gagal menyimpan QRIS: ' + updateError.message, 'error')
+    if (upsertError) {
+      addToast('Gagal menyimpan QRIS: ' + upsertError.message, 'error')
       return
     }
-    addToast('QRIS berhasil diperbarui!', 'success')
-    setQrisModal(false)
-    fetchRentalQris()
+    setGlobalQris(prev => ({ ...prev, imageUrl }))
+    setQrisImageFile(null)
+    addToast('QRIS global berhasil diperbarui!', 'success')
   }
 
   // Real-time appearance switcher (Preview Mode)
@@ -624,61 +607,75 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* QRIS Configuration Section */}
+                    {/* QRIS Configuration Section — Single Global Admin QRIS */}
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>QRIS configuration</p>
-                        <button type="button" onClick={() => fetchRentalQris()}
-                          style={{ background: 'none', border: 'none', color: 'var(--brand-green)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <i className="fa-solid fa-arrows-rotate" /> Refresh
-                        </button>
+                        <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>QRIS Configuration</p>
+                        <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, backgroundColor: 'rgba(82,183,136,0.12)', color: 'var(--brand-green)', border: '1px solid rgba(82,183,136,0.25)' }}>Global</span>
                       </div>
-                      <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 14 }}>Setiap rental memiliki QRIS sendiri. Klik edit untuk mengatur QRIS masing-masing rental.</p>
+                      <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 14 }}>Satu QRIS admin yang digunakan untuk semua transaksi di seluruh rental.</p>
 
-                      {qrisLoading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                          <div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                          Memuat data rental...
-                        </div>
-                      ) : rentalQrisList.length === 0 ? (
-                        <div style={{ padding: '14px 16px', borderRadius: 10, backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center' }}>
-                          Belum ada rental terdaftar.
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {rentalQrisList.map(rental => (
-                            <div key={rental.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
-                              {/* QR Thumbnail */}
-                              <div style={{ width: 46, height: 46, borderRadius: 8, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                                {rental.qris_image_url
-                                  ? <img src={rental.qris_image_url} alt={rental.nama_rental} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                  : <i className="fa-solid fa-qrcode" style={{ fontSize: 20, color: 'var(--text-muted)' }} />
-                                }
-                              </div>
-                              {/* Info */}
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                  <span style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rental.nama_rental}</span>
-                                  <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, flexShrink: 0, backgroundColor: rental.is_active ? 'rgba(82,183,136,0.15)' : 'rgba(156,163,175,0.15)', color: rental.is_active ? 'var(--brand-green)' : 'var(--text-muted)', border: `1px solid ${rental.is_active ? 'rgba(82,183,136,0.3)' : 'rgba(156,163,175,0.2)'}` }}>
-                                    {rental.is_active ? 'Aktif' : 'Nonaktif'}
-                                  </span>
-                                </div>
-                                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                                  {rental.qris_merchant_name
-                                    ? <>Merchant: {rental.qris_merchant_name} · <span style={{ color: rental.qris_image_url ? 'var(--brand-green)' : '#f59e0b', fontWeight: 600 }}>{rental.qris_image_url ? '✓ QRIS tersedia' : '⚠ Belum ada gambar QRIS'}</span></>
-                                    : <span style={{ color: '#f59e0b', fontWeight: 600 }}>⚠ QRIS belum dikonfigurasi</span>
-                                  }
-                                </span>
-                              </div>
-                              {/* Edit button */}
-                              <button type="button" onClick={() => openEditQris(rental)} title="Set QRIS"
-                                style={{ width: 32, height: 32, border: '1px solid var(--border-color)', borderRadius: 7, backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>
-                                <i className="fa-solid fa-pen-to-square" />
+                      <div style={{ borderRadius: 10, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', overflow: 'hidden' }}>
+                        {/* Preview + Upload */}
+                        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: '16px 16px 0' }}>
+                          <div
+                            onClick={() => document.getElementById('global-qris-img-input').click()}
+                            style={{ width: 80, height: 80, borderRadius: 8, border: '2px dashed var(--brand-green)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', overflow: 'hidden', backgroundColor: 'var(--bg-card)', flexShrink: 0 }}
+                          >
+                            {qrisImagePreview
+                              ? <img src={qrisImagePreview} alt="QRIS" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              : <>
+                                  <i className="fa-solid fa-qrcode" style={{ fontSize: 24, color: 'var(--brand-green)' }} />
+                                  <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center', lineHeight: 1.3 }}>UPLOAD<br/>QRIS</span>
+                                </>
+                            }
+                          </div>
+                          <input type="file" id="global-qris-img-input" accept="image/*" style={{ display: 'none' }} onChange={handleQrisImageChange} />
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Gambar Kode QRIS</p>
+                            <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>Format JPG/PNG · Maks 2MB<br/>Klik kotak untuk ganti gambar.</p>
+                            {qrisImagePreview && (
+                              <button type="button" onClick={() => { setQrisImagePreview(null); setQrisImageFile(null); setGlobalQris(prev => ({ ...prev, imageUrl: null })) }}
+                                style={{ marginTop: 6, fontSize: '0.72rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>
+                                <i className="fa-solid fa-trash" /> Hapus gambar
                               </button>
-                            </div>
-                          ))}
+                            )}
+                          </div>
                         </div>
-                      )}
+
+                        {/* Merchant Name */}
+                        <div style={{ padding: '12px 16px' }}>
+                          <label style={{ display: 'block', marginBottom: 6, fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Nama Merchant QRIS *</label>
+                          <input
+                            type="text"
+                            value={globalQris.merchantName}
+                            onChange={e => setGlobalQris(prev => ({ ...prev, merchantName: e.target.value }))}
+                            placeholder="Contoh: NatureRent Indonesia"
+                            style={{ width: '100%', minHeight: 40, padding: '0 12px', border: '1px solid var(--border-color)', borderRadius: 7, backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', outline: 0, fontSize: '0.86rem', boxSizing: 'border-box' }}
+                          />
+                          <p style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginTop: 4 }}>Nama yang tampil ke pembeli di semua rental saat pembayaran.</p>
+                        </div>
+
+                        {/* Status banner */}
+                        <div style={{ margin: '0 16px 12px', padding: '9px 12px', borderRadius: 8, backgroundColor: globalQris.imageUrl ? 'rgba(82,183,136,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${globalQris.imageUrl ? 'rgba(82,183,136,0.2)' : 'rgba(245,158,11,0.2)'}`, fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <i className={`fa-solid ${globalQris.imageUrl ? 'fa-circle-check' : 'fa-triangle-exclamation'}`} style={{ color: globalQris.imageUrl ? 'var(--brand-green)' : '#f59e0b' }} />
+                          {globalQris.imageUrl
+                            ? <span><strong style={{ color: 'var(--brand-green)' }}>QRIS aktif</strong> — Merchant: {globalQris.merchantName || '(belum diisi)'}</span>
+                            : <span><strong style={{ color: '#f59e0b' }}>QRIS belum dikonfigurasi</strong> — Upload gambar dan isi nama merchant.</span>
+                          }
+                        </div>
+
+                        {/* Save button */}
+                        <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button type="button" onClick={saveGlobalQris} disabled={qrisSaving}
+                            style={{ minHeight: 38, padding: '0 20px', borderRadius: 8, border: 0, backgroundColor: 'var(--brand-green)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 8, opacity: qrisSaving ? 0.75 : 1 }}>
+                            {qrisSaving
+                              ? <><div className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 2, borderTopColor: '#fff' }} /> Menyimpan...</>
+                              : <><i className="fa-solid fa-floppy-disk" /> Simpan QRIS</>
+                            }
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Biaya Layanan Section */}
@@ -754,78 +751,10 @@ export default function SettingsPage() {
       </main>
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      {/* QRIS Edit Modal — per rental */}
-      {qrisModal && qrisEditing && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.35)', border: '1px solid var(--border-color)' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div>
-                <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 800, marginBottom: 2 }}>Atur QRIS Rental</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{qrisEditing.nama_rental}</p>
-              </div>
-              <button type="button" onClick={() => setQrisModal(false)} style={{ border: 0, background: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer' }}>
-                <i className="fa-solid fa-xmark" />
-              </button>
-            </div>
+      {/* No QRIS modal needed — single inline form above */}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* QR Image Upload */}
-              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                <div
-                  onClick={() => document.getElementById('qris-img-input').click()}
-                  style={{ width: 96, height: 96, borderRadius: 10, border: '2px dashed var(--brand-green)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', overflow: 'hidden', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}
-                >
-                  {qrisImagePreview
-                    ? <img src={qrisImagePreview} alt="QRIS" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    : <>
-                        <i className="fa-solid fa-qrcode" style={{ fontSize: 28, color: 'var(--brand-green)' }} />
-                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center' }}>KLIK UPLOAD<br/>GAMBAR QRIS</span>
-                      </>
-                  }
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Gambar Kode QRIS</p>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>Upload gambar QR code dari penyedia QRIS (BCA, Mandiri, GoPay, dll.).<br/>Format: JPG/PNG, maks 2MB</p>
-                  {qrisImagePreview && (
-                    <button type="button" onClick={() => { setQrisImagePreview(null); setQrisImageFile(null) }}
-                      style={{ marginTop: 8, fontSize: '0.72rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
-                      <i className="fa-solid fa-trash" /> Hapus gambar
-                    </button>
-                  )}
-                </div>
-              </div>
-              <input type="file" id="qris-img-input" accept="image/*" style={{ display: 'none' }} onChange={handleQrisImageChange} />
-
-              {/* Merchant Name */}
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Nama Merchant QRIS *</label>
-                <input type="text" value={qrisMerchant} onChange={e => setQrisMerchant(e.target.value)} placeholder="e.g. Pandawa Outdoor, NatureRents SBY"
-                  style={{ width: '100%', minHeight: 42, padding: '0 14px', border: '1px solid var(--border-color)', borderRadius: 8, backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 0, fontSize: '0.86rem', boxSizing: 'border-box' }} />
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Nama yang tampil ke pembeli saat pembayaran</p>
-              </div>
-
-              {/* Info box */}
-              <div style={{ padding: '10px 14px', borderRadius: 9, backgroundColor: 'rgba(82,183,136,0.08)', border: '1px solid rgba(82,183,136,0.2)', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                <i className="fa-solid fa-circle-info" style={{ color: 'var(--brand-green)', marginRight: 6 }} />
-                Gambar QRIS ini akan ditampilkan kepada pembeli saat melakukan pembayaran untuk transaksi di <strong>{qrisEditing.nama_rental}</strong>.
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button type="button" onClick={() => setQrisModal(false)}
-                style={{ flex: 1, minHeight: 42, borderRadius: 9, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontWeight: 700, cursor: 'pointer', fontSize: '0.84rem' }}>
-                Batal
-              </button>
-              <button type="button" onClick={saveQris} disabled={qrisSaving}
-                style={{ flex: 2, minHeight: 42, borderRadius: 9, border: 0, backgroundColor: 'var(--brand-green)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '0.84rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: qrisSaving ? 0.75 : 1 }}>
-                {qrisSaving ? <><div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: '#fff' }} /> Menyimpan...</> : <><i className="fa-solid fa-floppy-disk" /> Simpan QRIS</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
+
     </AuthGuard>
   )
 }
