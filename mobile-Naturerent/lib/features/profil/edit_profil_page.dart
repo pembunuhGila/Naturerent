@@ -1073,17 +1073,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
             fontSize: 20,
           ),
         ),
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE0E5DE)),
-          ),
-          child: const Icon(Icons.notifications_none_rounded,
-              color: Color(0xFF202321), size: 18),
-        ),
+        const SizedBox(width: 38, height: 38),
       ],
     );
   }
