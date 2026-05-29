@@ -211,7 +211,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? AppColors.error : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.ownerPrimaryGreen,
       ),
     );
   }
@@ -235,7 +235,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -249,7 +249,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primary,
+                        color: AppColors.ownerPrimaryGreen,
                       ),
                     );
                   }
@@ -326,11 +326,11 @@ class _OwnerOrdersTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF8F8F5),
+      color: AppColors.ownerPageBackground,
       child: TabBar(
-        labelColor: const Color(0xFF18743A),
+        labelColor: AppColors.ownerPrimaryGreen,
         unselectedLabelColor: const Color(0xFF626A60),
-        indicatorColor: const Color(0xFF18743A),
+        indicatorColor: AppColors.ownerPrimaryGreen,
         indicatorWeight: 3,
         labelStyle: AppTextStyles.caption.copyWith(
           fontWeight: FontWeight.w900,
@@ -373,7 +373,7 @@ class _OrdersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: AppColors.ownerPrimaryGreen,
       onRefresh: onRefresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
@@ -418,7 +418,7 @@ class _HistoryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: AppColors.ownerPrimaryGreen,
       onRefresh: onRefresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
@@ -462,7 +462,7 @@ class _IncomeTab extends StatelessWidget {
     final net = gross - commission;
 
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: AppColors.ownerPrimaryGreen,
       onRefresh: onRefresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
@@ -539,7 +539,10 @@ class _TitleRow extends StatelessWidget {
           onPressed: onReload,
           style: IconButton.styleFrom(
             backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFFE0E5DE)),
+            side: const BorderSide(
+              color: AppColors.ownerBorderColor,
+              width: AppColors.ownerBorderWidth,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
@@ -575,7 +578,10 @@ class _SummaryStrip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E5DE)),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
       ),
       child: Row(
         children: [
@@ -623,12 +629,12 @@ class _SummaryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: const Color(0xFF18743A), size: 20),
+        Icon(icon, color: AppColors.ownerPrimaryGreen, size: 20),
         const SizedBox(height: 8),
         Text(
           value,
           style: AppTextStyles.headlineLarge.copyWith(
-            color: const Color(0xFF18743A),
+            color: AppColors.ownerPrimaryGreen,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -790,14 +796,14 @@ class _OwnerOrderCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (processing)
-            const LinearProgressIndicator(color: AppColors.primary)
+            const LinearProgressIndicator(color: AppColors.ownerPrimaryGreen)
           else if (onAction != null)
             SizedBox(
               width: double.infinity,
               height: 44,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF087022),
+                  backgroundColor: AppColors.ownerPrimaryGreen,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(7),
                   ),
@@ -838,7 +844,10 @@ class _HistoryOrderCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE0E5DE)),
+          border: Border.all(
+            color: AppColors.ownerBorderColor,
+            width: AppColors.ownerBorderWidth,
+          ),
         ),
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,7 +882,7 @@ class _HistoryOrderCard extends StatelessWidget {
               const _SuccessBadge(label: 'SELESAI'),
             ],
           ),
-          const Divider(height: 24, color: Color(0xFFE0E5DE)),
+          const Divider(height: 24, color: AppColors.ownerBorderColor),
           Row(
             children: [
               _EquipmentThumb(imageUrl: item?.imageUrl),
@@ -903,7 +912,7 @@ class _HistoryOrderCard extends StatelessWidget {
               ),
             ],
           ),
-          const Divider(height: 24, color: Color(0xFFE0E5DE)),
+          const Divider(height: 24, color: AppColors.ownerBorderColor),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -937,7 +946,7 @@ class _HistoryOrderCard extends StatelessWidget {
                   Text(
                     _formatCurrency(net),
                     style: AppTextStyles.headlineMedium.copyWith(
-                      color: const Color(0xFF087022),
+                      color: AppColors.ownerPrimaryGreen,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -961,7 +970,7 @@ class _OwnerOrderDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final item = order.items.isNotEmpty ? order.items.first : null;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: ListView(
@@ -973,7 +982,7 @@ class _OwnerOrderDetailPage extends StatelessWidget {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(
                     Icons.arrow_back_rounded,
-                    color: Color(0xFF18743A),
+                    color: AppColors.ownerPrimaryGreen,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -993,7 +1002,10 @@ class _OwnerOrderDetailPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE0E5DE)),
+                border: Border.all(
+                  color: AppColors.ownerBorderColor,
+                  width: AppColors.ownerBorderWidth,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1046,7 +1058,7 @@ class _OwnerOrderDetailPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Divider(height: 28, color: Color(0xFFE0E5DE)),
+                  const Divider(height: 28, color: AppColors.ownerBorderColor),
                   _DetailInfoRow(
                     icon: Icons.calendar_month_outlined,
                     label:
@@ -1085,8 +1097,12 @@ class _OwnerRentalTimeline extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F3F0),
+        color: AppColors.ownerCardBackground,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1121,11 +1137,11 @@ class _OwnerTimelineItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dotColor = step.isDone
-        ? const Color(0xFF315C3B)
-        : const Color(0xFFE0E5DE);
+        ? AppColors.ownerPrimaryGreen
+        : AppColors.ownerBorderColor;
     final lineColor = step.isDone
-        ? const Color(0xFF315C3B)
-        : const Color(0xFFE0E5DE);
+        ? AppColors.ownerPrimaryGreen
+        : AppColors.ownerBorderColor;
     final titleColor = step.isDone
         ? const Color(0xFF202321)
         : const Color(0xFF8A9189);
@@ -1242,13 +1258,13 @@ class _OrderStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFD8F8E1),
+        color: AppColors.ownerSoftGreen,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         _detailStatusLabel(status),
         style: AppTextStyles.caption.copyWith(
-          color: const Color(0xFF18743A),
+          color: AppColors.ownerPrimaryGreen,
           fontSize: 10,
           fontWeight: FontWeight.w900,
         ),
@@ -1268,7 +1284,7 @@ class _IncomeSummaryCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
       decoration: BoxDecoration(
-        color: const Color(0xFF2E8435),
+        color: AppColors.ownerPrimaryGreen,
         borderRadius: BorderRadius.circular(9),
       ),
       child: Column(
@@ -1320,7 +1336,10 @@ class _IncomeDetailCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE0E5DE)),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1353,7 +1372,7 @@ class _IncomeDetailCard extends StatelessWidget {
               const _SuccessBadge(label: 'Berhasil'),
             ],
           ),
-          const Divider(height: 24, color: Color(0xFFE0E5DE)),
+          const Divider(height: 24, color: AppColors.ownerBorderColor),
           Row(
             children: [
               Expanded(
@@ -1389,7 +1408,7 @@ class _IncomeDetailCard extends StatelessWidget {
               Text(
                 _formatCurrency(net),
                 style: AppTextStyles.bodyMedium.copyWith(
-                  color: const Color(0xFF087022),
+                  color: AppColors.ownerPrimaryGreen,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1419,13 +1438,13 @@ class _SuccessBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFD8F8E1),
+        color: AppColors.ownerSoftGreen,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
         style: AppTextStyles.caption.copyWith(
-          color: const Color(0xFF18743A),
+          color: AppColors.ownerPrimaryGreen,
           fontWeight: FontWeight.w900,
           fontSize: 10,
         ),
@@ -1462,7 +1481,7 @@ class _EquipmentThumb extends StatelessWidget {
       color: const Color(0xFFE8EFE7),
       child: const Icon(
         Icons.hiking_rounded,
-        color: Color(0xFF18743A),
+        color: AppColors.ownerPrimaryGreen,
         size: 24,
       ),
     );
@@ -1517,7 +1536,10 @@ class _StateBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E5DE)),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
       ),
       child: Column(
         children: [
