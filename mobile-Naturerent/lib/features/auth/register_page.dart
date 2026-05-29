@@ -382,7 +382,7 @@ class _RegisterPageState extends State<RegisterPage>
         backgroundColor: AppColors.surface,
         icon: const Icon(
           Icons.storefront_rounded,
-          color: Color(0xFF18743A),
+          color: AppColors.ownerPrimaryGreen,
           size: 48,
         ),
         title: const Text(
@@ -415,7 +415,7 @@ class _RegisterPageState extends State<RegisterPage>
               );
             },
             style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFF18743A),
+              backgroundColor: AppColors.ownerPrimaryGreen,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -470,7 +470,7 @@ class _RegisterPageState extends State<RegisterPage>
 
     return Scaffold(
       backgroundColor: widget.role == UserRole.pemilik
-          ? const Color(0xFFF8F8F5)
+          ? AppColors.ownerPageBackground
           : AppColors.background,
       body: SafeArea(
         child: FadeTransition(
@@ -593,8 +593,12 @@ class _RegisterPageState extends State<RegisterPage>
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.ownerCardBackground,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -781,13 +785,12 @@ class _RegisterPageState extends State<RegisterPage>
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleRegister,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF18743A),
-                disabledBackgroundColor: const Color(
-                  0xFF18743A,
-                ).withValues(alpha: 0.55),
+                backgroundColor: AppColors.ownerPrimaryGreen,
+                disabledBackgroundColor:
+                    AppColors.ownerPrimaryGreen.withValues(alpha: 0.55),
                 foregroundColor: Colors.white,
                 elevation: 8,
-                shadowColor: const Color(0xFF18743A).withValues(alpha: 0.2),
+                shadowColor: AppColors.ownerPrimaryGreen.withValues(alpha: 0.2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -831,7 +834,7 @@ class _RegisterPageState extends State<RegisterPage>
                 child: Text(
                   'Masuk',
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: const Color(0xFF18743A),
+                    color: AppColors.ownerPrimaryGreen,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1181,12 +1184,16 @@ class _BrandMark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.park_rounded, color: Color(0xFF103D20), size: 28),
+        const Icon(
+          Icons.park_rounded,
+          color: AppColors.ownerPrimaryGreen,
+          size: 28,
+        ),
         const SizedBox(width: 10),
         Text(
           'NatureRent',
           style: AppTextStyles.headlineLarge.copyWith(
-            color: const Color(0xFF103D20),
+            color: AppColors.ownerPrimaryGreen,
             fontSize: 21,
             fontWeight: FontWeight.w900,
           ),
@@ -1213,7 +1220,7 @@ class _MitraSection extends StatelessWidget {
         Text(
           title,
           style: AppTextStyles.bodyLarge.copyWith(
-            color: const Color(0xFF18743A),
+            color: AppColors.ownerPrimaryGreen,
             fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
@@ -1300,23 +1307,29 @@ class _MitraTextFieldState extends State<_MitraTextField> {
                   )
                 : null,
             filled: true,
-            fillColor: const Color(0xFFF2F4F1),
+            fillColor: AppColors.ownerCardBackground,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 15,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(
-                color: Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 width: 1.3,
               ),
             ),
@@ -1390,23 +1403,29 @@ class _MitraDropdownField extends StatelessWidget {
             ),
             prefixIcon: Icon(icon, color: const Color(0xFF748078), size: 17),
             filled: true,
-            fillColor: const Color(0xFFF2F4F1),
+            fillColor: AppColors.ownerCardBackground,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 15,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(
-                color: Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 width: 1.3,
               ),
             ),
@@ -1470,12 +1489,13 @@ class _OwnerUploadButton extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F4F1),
+              color: AppColors.ownerCardBackground,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: image == null
-                    ? const Color(0xFFE0E5DE)
-                    : const Color(0xFF18743A),
+                    ? AppColors.ownerBorderColor
+                    : AppColors.ownerPrimaryGreen,
+                width: AppColors.ownerBorderWidth,
               ),
             ),
             child: Row(
@@ -1484,12 +1504,12 @@ class _OwnerUploadButton extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE4EFE7),
+                    color: AppColors.ownerSoftGreen,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.upload_file_rounded,
-                    color: Color(0xFF18743A),
+                    color: AppColors.ownerPrimaryGreen,
                     size: 21,
                   ),
                 ),
