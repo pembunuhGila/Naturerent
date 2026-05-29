@@ -22,12 +22,13 @@ class AktivitasPage extends StatefulWidget {
 }
 
 class _AktivitasPageState extends State<AktivitasPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabCtrl;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabCtrl = TabController(
       length: 3,
       vsync: this,
@@ -38,8 +39,16 @@ class _AktivitasPageState extends State<AktivitasPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      OrderActivityService().muatDariDatabase();
+    }
   }
 
   @override
@@ -470,7 +479,7 @@ class _StatusBadge extends StatelessWidget {
       ActivityOrderStatus.confirmed => 'ACC',
       ActivityOrderStatus.processing => 'PROSES',
       ActivityOrderStatus.rented => 'AKTIF',
-      ActivityOrderStatus.returned => 'KEMBALI',
+      ActivityOrderStatus.returned => 'SELESAI',
       ActivityOrderStatus.completed => 'SELESAI',
       ActivityOrderStatus.cancelled => 'BATAL',
     };
@@ -479,7 +488,7 @@ class _StatusBadge extends StatelessWidget {
       ActivityOrderStatus.confirmed => AppColors.primary,
       ActivityOrderStatus.processing => AppColors.primary,
       ActivityOrderStatus.rented => AppColors.primary,
-      ActivityOrderStatus.returned => AppColors.textSecondary,
+      ActivityOrderStatus.returned => AppColors.success,
       ActivityOrderStatus.completed => AppColors.success,
       ActivityOrderStatus.cancelled => AppColors.error,
     };
@@ -561,8 +570,8 @@ int _itemCount(ActivityOrder order) {
   return order.items.fold<int>(0, (sum, item) => sum + item.qty);
 }
 
-void _openOrderDetail(BuildContext context, ActivityOrder order) {
-  Navigator.of(context).push(
+Future<void> _openOrderDetail(BuildContext context, ActivityOrder order) async {
+  await Navigator.of(context).push(
     MaterialPageRoute(
       builder: (_) => PesananDetailPage(
         namaRental: order.namaRental,
@@ -572,11 +581,25 @@ void _openOrderDetail(BuildContext context, ActivityOrder order) {
         items: order.items,
         nomorPesanan: order.nomorPesanan,
         statusLabel: _statusDetailLabel(order.status),
+        statusKey: _statusDbKey(order.status),
         paymentProofUrl: order.paymentProofUrl,
         paymentProofBytes: order.paymentProofBytes,
       ),
     ),
   );
+  OrderActivityService().muatDariDatabase();
+}
+
+String _statusDbKey(ActivityOrderStatus status) {
+  return switch (status) {
+    ActivityOrderStatus.pending => 'pending',
+    ActivityOrderStatus.confirmed => 'confirmed',
+    ActivityOrderStatus.processing => 'processing',
+    ActivityOrderStatus.rented => 'rented',
+    ActivityOrderStatus.returned => 'returned',
+    ActivityOrderStatus.completed => 'completed',
+    ActivityOrderStatus.cancelled => 'cancelled',
+  };
 }
 
 String _statusDetailLabel(ActivityOrderStatus status) {
@@ -585,7 +608,7 @@ String _statusDetailLabel(ActivityOrderStatus status) {
     ActivityOrderStatus.confirmed => 'DISETUJUI ADMIN',
     ActivityOrderStatus.processing => 'DIPROSES',
     ActivityOrderStatus.rented => 'PESANAN AKTIF',
-    ActivityOrderStatus.returned => 'DIKEMBALIKAN',
+    ActivityOrderStatus.returned => 'SELESAI',
     ActivityOrderStatus.completed => 'SELESAI',
     ActivityOrderStatus.cancelled => 'DIBATALKAN ADMIN',
   };
@@ -601,8 +624,7 @@ String _statusDescription(ActivityOrderStatus status) {
       'Peralatan sedang disiapkan oleh pemilik rental.',
     ActivityOrderStatus.rented =>
       'Pesanan sedang aktif. Jangan lupa pelunasan saat pengembalian.',
-    ActivityOrderStatus.returned =>
-      'Alat sudah dikembalikan dan menunggu penyelesaian.',
+    ActivityOrderStatus.returned => 'Pesanan selesai. Peralatan sudah dikembalikan.',
     ActivityOrderStatus.completed => 'Pesanan selesai.',
     ActivityOrderStatus.cancelled => 'Pesanan dibatalkan oleh admin.',
   };
