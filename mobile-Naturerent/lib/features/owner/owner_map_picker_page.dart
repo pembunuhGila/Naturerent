@@ -116,18 +116,18 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarColor: Colors.white,
+        statusBarColor: AppColors.ownerPageBackground,
         statusBarIconBrightness: Brightness.dark,
       ),
     );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.ownerPageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.ownerPageBackground,
         foregroundColor: const Color(0xFF202321),
         elevation: 0,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: AppColors.ownerPageBackground,
         titleSpacing: 0,
         title: Text(
           'Pilih Titik Lokasi',
@@ -214,7 +214,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                       'Lng: ${_selectedPoint.longitude.toStringAsFixed(6)}',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primaryDark,
+                        color: AppColors.ownerPrimaryGreen,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0,
@@ -228,7 +228,7 @@ class _OwnerMapPickerPageState extends State<OwnerMapPickerPage> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context, _selectedPoint),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: AppColors.ownerPrimaryGreen,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -288,13 +288,13 @@ class _GpsLocationButton extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.primary,
+                      color: AppColors.ownerPrimaryGreen,
                     ),
                   )
                 else
                   const Icon(
                     Icons.my_location_rounded,
-                    color: AppColors.primary,
+                    color: AppColors.ownerPrimaryGreen,
                     size: 20,
                   ),
                 const SizedBox(width: 8),
@@ -302,7 +302,7 @@ class _GpsLocationButton extends StatelessWidget {
                   loadingGps ? 'Mengecek GPS...' : 'Cek Lokasi Sesuai GPS',
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primaryDark,
+                    color: AppColors.ownerPrimaryGreen,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
@@ -328,7 +328,7 @@ class _StorePin extends StatelessWidget {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            color: AppColors.ownerPrimaryGreen,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 4),
             boxShadow: const [
@@ -343,7 +343,7 @@ class _StorePin extends StatelessWidget {
         ),
         CustomPaint(
           size: const Size(18, 12),
-          painter: _TrianglePainter(color: AppColors.primary),
+          painter: _TrianglePainter(color: AppColors.ownerPrimaryGreen),
         ),
       ],
     );
