@@ -64,6 +64,7 @@ export default function TransaksiPage() {
   const [ownerFilter, setOwnerFilter] = useState('Semua Pemilik')
   const [ownerOptions, setOwnerOptions] = useState(['Semua Pemilik'])
   const [userEmail, setUserEmail] = useState('')
+  const [commissionRate, setCommissionRate] = useState(12.5)
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -137,6 +138,27 @@ export default function TransaksiPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setUserEmail(user?.email || '')
+
+      // Load saved commission rate from localStorage if exists
+      const savedRate = localStorage.getItem('naturerent_commission_rate')
+      if (savedRate) {
+        setCommissionRate(Number(savedRate))
+      }
+
+      // Fetch live commission rate from Supabase database
+      try {
+        const comRes = await fetch('/api/commission-settings')
+        if (comRes.ok) {
+          const comData = await comRes.json()
+          if (comData?.percentage !== undefined) {
+            const dbRate = Number(comData.percentage)
+            setCommissionRate(dbRate)
+            localStorage.setItem('naturerent_commission_rate', String(dbRate))
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching commission rate from DB:', err)
+      }
 
       // Dynamically load all owners from DB and merge with mock rentals
       try {
@@ -259,7 +281,7 @@ export default function TransaksiPage() {
                     <th>USER</th>
                     <th>PEMILIK RENTAL</th>
                     <th>TOTAL</th>
-                    <th>KOMISI (10%)</th>
+                    <th>KOMISI</th>
                     <th>STATUS</th>
                     <th>AKSI</th>
                   </tr>
@@ -275,7 +297,7 @@ export default function TransaksiPage() {
                       <td style={{ fontWeight: 600 }}>{row.user_name || '-'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{row.rental_name || '-'}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(row.total_amount || row.total)}</td>
-                      <td style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{formatCurrency((row.total_amount || row.total) * 0.1)}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{formatCurrency((row.total_amount || row.total) * (commissionRate / 100))}</td>
                       <td>{statusBadge(row.status)}</td>
                       <td>
                         <div className="action-cell">
