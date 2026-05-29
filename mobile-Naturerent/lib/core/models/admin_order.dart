@@ -64,6 +64,20 @@ class AdminOrder {
   bool get menungguAdmin => status == 'pending';
   bool get disetujuiAdmin => status == 'confirmed';
   bool get dibatalkanAdmin => status == 'cancelled';
+  bool get pembayaranLunas {
+    final normalized = paymentStatus?.toLowerCase().trim();
+    return normalized == 'lunas' ||
+        normalized == 'paid' ||
+        normalized == 'settled' ||
+        normalized == 'success' ||
+        normalized == 'dp_under_review' ||
+        normalized == 'dp_confirmed';
+  }
+
+  String get statusPembayaranLabel =>
+      pembayaranLunas
+          ? 'Status Pembayaran: Lunas'
+          : 'Status Pembayaran: Belum Dibayar';
 
   String get statusLabel {
     return switch (status) {

@@ -1055,6 +1055,11 @@ class _OwnerOrderDetailPage extends StatelessWidget {
                     icon: Icons.payments_outlined,
                     label: _formatCurrency(order.totalBayar),
                   ),
+                  const SizedBox(height: 10),
+                  _DetailInfoRow(
+                    icon: Icons.verified_outlined,
+                    label: order.statusPembayaranLabel,
+                  ),
                 ],
               ),
             ),
