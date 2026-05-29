@@ -1,9 +1,10 @@
 import 'auth_service.dart';
 
 // ─────────────────────────────────────────────
-//  Model: RentalQrisInfo
+//  Model: RentalQrisInfo (deprecated — pakai GlobalQrisInfo)
 // ─────────────────────────────────────────────
 /// Info QRIS milik satu rental spesifik dari tabel rental_profiles.
+/// @deprecated: Admin beralih ke satu QRIS global. Gunakan [GlobalQrisInfo].
 class RentalQrisInfo {
   final String rentalId;
   final String namaRental;
@@ -19,6 +20,23 @@ class RentalQrisInfo {
 
   bool get hasQris =>
       qrisImageUrl != null && qrisImageUrl!.isNotEmpty;
+}
+
+// ─────────────────────────────────────────────
+//  Model: GlobalQrisInfo
+// ─────────────────────────────────────────────
+/// QRIS tunggal milik admin platform, berlaku untuk semua rental.
+/// Di-fetch dari tabel platform_settings (key = 'global_qris').
+class GlobalQrisInfo {
+  final String? imageUrl;
+  final String? merchantName;
+
+  const GlobalQrisInfo({this.imageUrl, this.merchantName});
+
+  bool get hasQris => imageUrl != null && imageUrl!.isNotEmpty;
+
+  /// Default ketika admin belum mengatur QRIS.
+  static const GlobalQrisInfo empty = GlobalQrisInfo();
 }
 
 // ─────────────────────────────────────────────
@@ -130,7 +148,46 @@ class PaymentService {
     invalidateCache();
   }
 
-  // ── Ambil info QRIS untuk satu rental spesifik ──────────────────────
+  // ── Ambil QRIS global admin (satu QRIS untuk semua rental) ───────────────
+  /// Fetch dari platform_settings dengan key = 'global_qris'.
+  /// Value disimpan sebagai JSON string: {"merchant_name": "...", "image_url": "..."}.
+  Future<GlobalQrisInfo> ambilGlobalQris() async {
+    try {
+      final data = await AuthService.client
+          .from('platform_settings')
+          .select('value')
+          .eq('key', 'global_qris')
+          .maybeSingle();
+
+      if (data == null || data['value'] == null) return GlobalQrisInfo.empty;
+
+      // value bisa berupa String JSON atau Map (tergantung tipe kolom Supabase)
+      Map<String, dynamic> parsed;
+      final raw = data['value'];
+      if (raw is Map) {
+        parsed = Map<String, dynamic>.from(raw);
+      } else {
+        // Parse string JSON
+        // ignore: avoid_dynamic_calls
+        parsed = <String, dynamic>{};
+        // Minimal safe parse tanpa dart:convert di core
+        final str = raw.toString();
+        final merchantMatch = RegExp(r'"merchant_name":"([^"]*)"').firstMatch(str);
+        final imageMatch = RegExp(r'"image_url":"([^"]*)"').firstMatch(str);
+        parsed['merchant_name'] = merchantMatch?.group(1);
+        parsed['image_url'] = imageMatch?.group(1);
+      }
+
+      return GlobalQrisInfo(
+        merchantName: parsed['merchant_name'] as String?,
+        imageUrl: parsed['image_url'] as String?,
+      );
+    } catch (_) {
+      return GlobalQrisInfo.empty;
+    }
+  }
+
+  // ── Ambil info QRIS untuk satu rental spesifik (deprecated) ─────────────
   /// Fetch `qris_image_url` dan `qris_merchant_name` langsung dari
   /// tabel `rental_profiles` untuk rental tertentu.
   Future<RentalQrisInfo?> ambilQrisRental(String rentalId) async {
