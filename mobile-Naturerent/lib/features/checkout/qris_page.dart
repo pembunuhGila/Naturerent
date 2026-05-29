@@ -22,6 +22,10 @@ class QrisPage extends StatefulWidget {
   final double? deliveryDistanceKm;
   final Map<String, double>? deliveryFeesByRentalId;
 
+  /// Map dari rentalId ke RentalQrisInfo — sudah di-fetch oleh CheckoutPage
+  /// sebelum navigasi ke sini, agar QRIS masing-masing rental tampil.
+  final Map<String, RentalQrisInfo> rentalQrisMap;
+
   const QrisPage({
     super.key,
     required this.total,
@@ -33,6 +37,7 @@ class QrisPage extends StatefulWidget {
     this.deliveryFee = 0,
     this.deliveryDistanceKm,
     this.deliveryFeesByRentalId,
+    this.rentalQrisMap = const {},
   });
 
   @override
@@ -50,6 +55,24 @@ class _QrisPageState extends State<QrisPage> {
   bool _isMenyimpanBooking = false;
   PlatformSettings? _settings;
   bool _loadingSettings = true;
+
+  // Index QRIS yang sedang ditampilkan (untuk multi-rental)
+  int _selectedQrisIndex = 0;
+
+  // ── Daftar rental unik dari cart items
+  List<CartItem> get _uniqueRentalItems {
+    final seen = <String>{};
+    return widget.items.where((i) => seen.add(i.rental.id)).toList();
+  }
+
+  // ── QRIS yang sedang aktif ditampilkan
+  RentalQrisInfo? get _activeQris {
+    final rentals = _uniqueRentalItems;
+    if (rentals.isEmpty) return null;
+    if (_selectedQrisIndex >= rentals.length) return null;
+    final rentalId = rentals[_selectedQrisIndex].rental.id;
+    return widget.rentalQrisMap[rentalId];
+  }
 
   // ── Kalkulasi harga ─────────────────────────────────────────────────────
   double get _biayaLayanan => (_settings?.biayaLayanan ?? 2000).toDouble();
@@ -255,6 +278,9 @@ class _QrisPageState extends State<QrisPage> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
+    final rentalList = _uniqueRentalItems;
+    final isMultiRental = rentalList.length > 1;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -278,6 +304,12 @@ class _QrisPageState extends State<QrisPage> {
                 ],
               ),
               const SizedBox(height: 28),
+
+              // ── Tab pilih rental jika multi-rental
+              if (isMultiRental) ...[
+                _buildRentalTabs(rentalList),
+                const SizedBox(height: 16),
+              ],
 
               // ── QR Card
               Container(
@@ -311,9 +343,13 @@ class _QrisPageState extends State<QrisPage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('NatureRent',
-                                  style: AppTextStyles.headlineLarge.copyWith(
-                                      color: Colors.white, fontSize: 16)),
+                              Text(
+                                _activeQris?.qrisMerchantName?.isNotEmpty == true
+                                    ? _activeQris!.qrisMerchantName!
+                                    : widget.namaRental,
+                                style: AppTextStyles.headlineLarge.copyWith(
+                                    color: Colors.white, fontSize: 16),
+                              ),
                               Text('Scan & Bayar',
                                   style: AppTextStyles.caption
                                       .copyWith(color: Colors.white70)),
@@ -348,7 +384,7 @@ class _QrisPageState extends State<QrisPage> {
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
-                          // QR Code (generated from free API)
+                          // QR Code
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -496,46 +532,131 @@ class _QrisPageState extends State<QrisPage> {
     );
   }
 
+  /// Tab selector jika ada beberapa rental di keranjang
+  Widget _buildRentalTabs(List<CartItem> rentalItems) {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: rentalItems.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, idx) {
+          final rental = rentalItems[idx].rental;
+          final qrisInfo = widget.rentalQrisMap[rental.id];
+          final isActive = _selectedQrisIndex == idx;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedQrisIndex = idx),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.primaryDark
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isActive ? AppColors.primaryDark : AppColors.border,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    qrisInfo?.hasQris == true
+                        ? Icons.qr_code_2_rounded
+                        : Icons.warning_amber_rounded,
+                    size: 13,
+                    color: isActive
+                        ? Colors.white
+                        : (qrisInfo?.hasQris == true
+                            ? AppColors.primary
+                            : Colors.orange),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    rental.namaRental,
+                    style: AppTextStyles.caption.copyWith(
+                      color: isActive ? Colors.white : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildQrisImage() {
-    final qrisUrl = _settings?.qrisImageUrl;
-    final url = (qrisUrl == null || qrisUrl.isEmpty)
-        ? 'https://api.qrserver.com/v1/create-qr-code/'
+    final activeQris = _activeQris;
+    final qrisUrl = activeQris?.qrisImageUrl;
+    final hasRentalQris = qrisUrl != null && qrisUrl.isNotEmpty;
+
+    // Gunakan QRIS milik rental jika tersedia;
+    // fallback ke QR code dummy jika QRIS belum dikonfigurasi.
+    final url = hasRentalQris
+        ? qrisUrl
+        : 'https://api.qrserver.com/v1/create-qr-code/'
             '?size=200x200'
             '&data=NatureRent-${widget.namaRental}-${_dpDibayarSekarang.toInt()}'
             '&color=1B3A2D'
-            '&bgcolor=FFFFFF'
-        : qrisUrl;
+            '&bgcolor=FFFFFF';
 
-    return Image.network(
-      url,
-      width: 200,
-      height: 200,
-      fit: BoxFit.contain,
-      loadingBuilder: (_, child, progress) {
-        if (progress == null) return child;
-        return const SizedBox(
+    return Stack(
+      alignment: Alignment.topRight,
+      children: [
+        Image.network(
+          url,
           width: 200,
           height: 200,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2,
+          fit: BoxFit.contain,
+          loadingBuilder: (_, child, progress) {
+            if (progress == null) return child;
+            return const SizedBox(
+              width: 200,
+              height: 200,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stack) => Container(
+            width: 200,
+            height: 200,
+            color: AppColors.background,
+            child: const Center(
+              child: Icon(
+                Icons.qr_code_2_rounded,
+                size: 100,
+                color: AppColors.primaryDark,
+              ),
             ),
           ),
-        );
-      },
-      errorBuilder: (context, error, stack) => Container(
-        width: 200,
-        height: 200,
-        color: AppColors.background,
-        child: const Center(
-          child: Icon(
-            Icons.qr_code_2_rounded,
-            size: 100,
-            color: AppColors.primaryDark,
-          ),
         ),
-      ),
+        // Badge "QRIS Belum Diatur" jika belum ada QRIS rental
+        if (!hasRentalQris)
+          Container(
+            margin: const EdgeInsets.all(4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade700,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'Demo',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
