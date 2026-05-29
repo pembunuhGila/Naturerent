@@ -755,6 +755,7 @@ export default function DestinasiWisataPage() {
     let query = supabase
       .from('wisata_locations')
       .select('id, nama, deskripsi, foto_url, kategori, lat, lng, created_at', { count: 'exact' })
+      .neq('kategori', 'QRIS')
       .order('created_at', { ascending: false })
       .range(from, to)
 
