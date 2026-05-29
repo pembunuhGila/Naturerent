@@ -616,7 +616,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildMitraProfile() {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -805,7 +805,7 @@ class _ProfilPageState extends State<ProfilPage> {
             ],
           ),
         ),
-        const Divider(color: Color(0xFFEAEDE7), height: 1),
+        const Divider(color: AppColors.ownerBorderColor, height: 1),
       ],
     );
   }
@@ -824,7 +824,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildInitialAvatar() {
     return Container(
-      color: const Color(0xFF18743A),
+      color: AppColors.ownerPrimaryGreen,
       alignment: Alignment.center,
       child: Text(
         _inisial,
@@ -841,7 +841,12 @@ class _ProfilPageState extends State<ProfilPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEAEDE7))),
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.ownerBorderColor,
+            width: AppColors.ownerBorderWidth,
+          ),
+        ),
       ),
       child: Row(
         children: const [
@@ -851,7 +856,7 @@ class _ProfilPageState extends State<ProfilPage> {
             child: _MitraStatItem(
               label: 'STATUS',
               value: 'AKTIF',
-              valueColor: Color(0xFF18743A),
+              valueColor: AppColors.ownerPrimaryGreen,
             ),
           ),
         ],
@@ -931,7 +936,7 @@ class _VerticalSoftDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: 1, height: 32, color: const Color(0xFFEAEDE7));
+    return Container(width: 1, height: 32, color: AppColors.ownerBorderColor);
   }
 }
 
@@ -954,10 +959,10 @@ class _MitraInfoItem extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: const BoxDecoration(
-            color: Color(0xFFF1F7F2),
+            color: AppColors.ownerSoftGreen,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFF315C3B), size: 21),
+          child: Icon(icon, color: AppColors.ownerPrimaryGreen, size: 21),
         ),
         const SizedBox(width: 24),
         Expanded(
@@ -1010,8 +1015,12 @@ class _MitraMenuTile extends StatelessWidget {
       child: Container(
         height: 94,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F6F4),
+          color: AppColors.ownerCardBackground,
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.ownerBorderColor,
+            width: AppColors.ownerBorderWidth,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1057,7 +1066,7 @@ class _RoundActionIcon extends StatelessWidget {
             ),
           ],
         ),
-        child: Icon(icon, color: const Color(0xFF123D1D), size: 20),
+        child: Icon(icon, color: AppColors.ownerPrimaryGreen, size: 20),
       ),
     );
   }
@@ -1078,11 +1087,14 @@ class _TinyEditButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFEAEDE7)),
+          border: Border.all(
+            color: AppColors.ownerBorderColor,
+            width: AppColors.ownerBorderWidth,
+          ),
         ),
         child: const Icon(
           Icons.edit_rounded,
-          color: Color(0xFF123D1D),
+          color: AppColors.ownerPrimaryGreen,
           size: 13,
         ),
       ),
