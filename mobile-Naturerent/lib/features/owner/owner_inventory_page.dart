@@ -479,32 +479,48 @@ class _NearbyDestinationSection extends StatelessWidget {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Saran Destinasi Terdekat',
-                style: AppTextStyles.headlineMedium.copyWith(
-                  color: const Color(0xFF202321),
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
+              Expanded(
+                child: Text(
+                  'Saran Destinasi Terdekat',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: const Color(0xFF202321),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               if (showSeeAll)
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OwnerNearbyDestinationsPage(
-                        destinations: destinations,
+                Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OwnerNearbyDestinationsPage(
+                          destinations: destinations,
+                        ),
                       ),
                     ),
-                  ),
-                  child: Text(
-                    'Lihat Semua',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: const Color(0xFF18743A),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
+                    style: TextButton.styleFrom(
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                    ),
+                    child: Text(
+                      'Lihat Semua',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: const Color(0xFF18743A),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
