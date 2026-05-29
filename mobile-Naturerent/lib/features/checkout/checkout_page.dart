@@ -121,12 +121,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (!mounted) return;
 
-    // Fetch QRIS per-rental dari Supabase sebelum navigasi ke QrisPage
-    final rentalIds = _cart.groupedByRental.map((g) => g.rental.id).toList();
-    final rentalQrisMap = await PaymentService().ambilQrisMultipleRental(rentalIds);
+    // Fetch QRIS global admin dari Supabase platform_settings
+    final globalQris = await PaymentService().ambilGlobalQris();
 
     if (!mounted) return;
-    _bukaQris(deliveryResult ?? _deliveryResult, rentalQrisMap);
+    _bukaQris(deliveryResult ?? _deliveryResult, globalQris);
   }
 
   Future<bool> _pastikanKtpTerisi() async {
@@ -225,7 +224,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   void _bukaQris(
     DeliveryLocationResult? deliveryResult,
-    Map<String, RentalQrisInfo> rentalQrisMap,
+    GlobalQrisInfo globalQris,
   ) {
     Navigator.push(
       context,
@@ -245,7 +244,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               _metodeAmbil == 1 ? deliveryResult?.totalDistanceKm : null,
           deliveryFeesByRentalId:
               _metodeAmbil == 1 ? deliveryResult?.feesByRentalId : null,
-          rentalQrisMap: rentalQrisMap,
+          globalQris: globalQris,
         ),
       ),
     );
