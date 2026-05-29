@@ -16,6 +16,7 @@ class PesananDetailPage extends StatefulWidget {
   final List<CartItem> items;
   final String? nomorPesanan;
   final String? statusLabel;
+  final String? statusKey;
   final String? paymentProofUrl;
   final Uint8List? paymentProofBytes;
 
@@ -28,6 +29,7 @@ class PesananDetailPage extends StatefulWidget {
     required this.items,
     this.nomorPesanan,
     this.statusLabel,
+    this.statusKey,
     this.paymentProofUrl,
     this.paymentProofBytes,
   });
@@ -487,34 +489,49 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
 
   // ─── Timeline progress rental
   Widget _buildTimeline() {
+    final rank = _statusRank(widget.statusKey);
     final steps = [
       _TimelineStep(
         icon: Icons.check_rounded,
         title: 'Bukti DP diupload',
         subtitle: 'Admin NatureRent memeriksa foto bukti pembayaran DP 30% yang kamu upload.',
         isDone: true,
-        isActive: true,
+        isActive: rank == 0,
       ),
       _TimelineStep(
         icon: Icons.verified_rounded,
         title: 'Menunggu ACC admin',
         subtitle: 'Setelah admin validasi pembayaran, pesanan diteruskan ke pemilik rental.',
-        isDone: false,
-        isActive: false,
+        isDone: rank >= 1,
+        isActive: rank == 1,
       ),
       _TimelineStep(
         icon: Icons.inventory_2_outlined,
         title: 'Alat diproses',
         subtitle: 'Peralatan disiapkan, dicek, dan siap diambil pada ${_fmtTgl(widget.tanggalMulai)}.',
-        isDone: false,
-        isActive: false,
+        isDone: rank >= 2,
+        isActive: rank == 2,
+      ),
+      _TimelineStep(
+        icon: Icons.shopping_bag_rounded,
+        title: 'Pesanan sedang disewa',
+        subtitle: 'Peralatan sudah berada di tanganmu sampai ${_fmtTgl(widget.tanggalSelesai)}.',
+        isDone: rank >= 3,
+        isActive: rank == 3,
+      ),
+      _TimelineStep(
+        icon: Icons.assignment_return_rounded,
+        title: 'Peralatan dikembalikan',
+        subtitle: 'Peralatan sudah dikembalikan ke pemilik rental dan sedang diperiksa.',
+        isDone: rank >= 4,
+        isActive: rank == 4,
       ),
       _TimelineStep(
         icon: Icons.payments_rounded,
-        title: 'Pelunasan saat pengembalian',
-        subtitle: 'Bayar sisa 70% sewa beserta biaya aplikasi pada ${_fmtTgl(widget.tanggalSelesai)}.',
-        isDone: false,
-        isActive: false,
+        title: 'Selesai',
+        subtitle: 'Pesanan selesai. Terima kasih sudah menggunakan NatureRent.',
+        isDone: rank >= 5,
+        isActive: rank >= 5,
       ),
     ];
 
@@ -597,6 +614,18 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       ],
     );
   }
+}
+
+int _statusRank(String? status) {
+  return switch (status) {
+    'confirmed' => 1,
+    'processing' => 2,
+    'rented' => 3,
+    'returned' => 5,
+    'completed' => 5,
+    'cancelled' => 0,
+    _ => 0,
+  };
 }
 
 class _TimelineStep {
