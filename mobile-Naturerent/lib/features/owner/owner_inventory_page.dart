@@ -142,7 +142,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     return switch (kategori?.toLowerCase()) {
       'gunung' => const Color(0xFF336A77),
       'pantai' => const Color(0xFF336A77),
-      _ => const Color(0xFF18743A),
+      _ => AppColors.ownerPrimaryGreen,
     };
   }
 
@@ -202,7 +202,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -211,7 +211,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
             const OwnerHeaderWidget(),
             Expanded(
               child: RefreshIndicator(
-                color: const Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 onRefresh: _muatAlat,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(32, 28, 24, 130),
@@ -286,7 +286,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
         TabBar(
           controller: _tabController,
           onTap: (_) => setState(() {}),
-          labelColor: const Color(0xFF18743A),
+          labelColor: AppColors.ownerPrimaryGreen,
           unselectedLabelColor: const Color(0xFF496171),
           labelStyle: AppTextStyles.bodyMedium.copyWith(
             fontSize: 16,
@@ -296,10 +296,10 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
-          indicatorColor: const Color(0xFF18743A),
+          indicatorColor: AppColors.ownerPrimaryGreen,
           indicatorWeight: 2,
           indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: const Color(0xFFE0E5DE),
+          dividerColor: AppColors.ownerBorderColor,
           tabs: const [
             Tab(text: 'Tempat Rental'),
             Tab(text: 'Kelola Peralatan'),
@@ -342,7 +342,7 @@ class _RentalManageTab extends StatelessWidget {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF18743A),
+              backgroundColor: AppColors.ownerPrimaryGreen,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(7),
@@ -378,6 +378,10 @@ class _RentalProfileCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.035),
@@ -397,13 +401,13 @@ class _RentalProfileCard extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE4EFE7),
+                  color: AppColors.ownerSoftGreen,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   'BASE AKTIF',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF18743A),
+                    color: AppColors.ownerPrimaryGreen,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1,
@@ -413,7 +417,7 @@ class _RentalProfileCard extends StatelessWidget {
               const SizedBox(width: 10),
               const Icon(
                 Icons.verified_rounded,
-                color: Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 size: 17,
               ),
             ],
@@ -434,7 +438,7 @@ class _RentalProfileCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.location_on_outlined,
-                color: Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 size: 24,
               ),
               const SizedBox(width: 8),
@@ -473,8 +477,12 @@ class _NearbyDestinationSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F5),
+        color: AppColors.ownerPageBackground,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
       ),
       child: Column(
         children: [
@@ -517,7 +525,7 @@ class _NearbyDestinationSection extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: const Color(0xFF18743A),
+                        color: AppColors.ownerPrimaryGreen,
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
                       ),
@@ -562,6 +570,10 @@ class _SmallDestinationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
       ),
       child: Row(
         children: [
@@ -632,7 +644,7 @@ class _EquipmentManageTab extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(
-              child: CircularProgressIndicator(color: Color(0xFF18743A)),
+              child: CircularProgressIndicator(color: AppColors.ownerPrimaryGreen),
             ),
           )
         else if (error != null)
@@ -683,9 +695,9 @@ class _EquipmentManageTab extends StatelessWidget {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF18743A),
+                backgroundColor: AppColors.ownerPrimaryGreen,
                 elevation: 14,
-                shadowColor: const Color(0xFF18743A).withValues(alpha: 0.25),
+                shadowColor: AppColors.ownerPrimaryGreen.withValues(alpha: 0.25),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(9),
                 ),
@@ -717,6 +729,10 @@ class _EquipmentEmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -766,6 +782,10 @@ class _EquipmentProductCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -800,7 +820,7 @@ class _EquipmentProductCard extends StatelessWidget {
                   TextSpan(
                     text: item.price,
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: const Color(0xFF18743A),
+                      color: AppColors.ownerPrimaryGreen,
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1008,13 +1028,13 @@ class _OwnerEquipmentItem {
   };
 
   Color get badgeColor => switch (status) {
-    _EquipmentStatus.available => const Color(0xFFE4EFE7),
+    _EquipmentStatus.available => AppColors.ownerSoftGreen,
     _EquipmentStatus.low => const Color(0xFFC65787),
     _EquipmentStatus.empty => const Color(0xFFFFE0E0),
   };
 
   Color get badgeTextColor => switch (status) {
-    _EquipmentStatus.available => const Color(0xFF18743A),
+    _EquipmentStatus.available => AppColors.ownerPrimaryGreen,
     _EquipmentStatus.low => Colors.white,
     _EquipmentStatus.empty => const Color(0xFFD65B66),
   };
@@ -1061,7 +1081,7 @@ IconData _iconForCategory(String text) {
 }
 
 Color _visualColorForStatus(_EquipmentStatus status) => switch (status) {
-  _EquipmentStatus.available => const Color(0xFF18743A),
+  _EquipmentStatus.available => AppColors.ownerPrimaryGreen,
   _EquipmentStatus.low => const Color(0xFF1A2420),
   _EquipmentStatus.empty => const Color(0xFFF7F7F4),
 };
@@ -1077,7 +1097,7 @@ class OwnerNearbyDestinationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
