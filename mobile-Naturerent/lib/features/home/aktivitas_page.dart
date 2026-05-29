@@ -310,7 +310,7 @@ class _NotificationCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     waiting
-                        ? 'Bukti DP sudah diupload. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
+                        ? 'Bukti pembayaran lunas sudah diupload. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
                         : _statusDescription(order.status),
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
@@ -623,7 +623,7 @@ String _statusDescription(ActivityOrderStatus status) {
     ActivityOrderStatus.processing =>
       'Peralatan sedang disiapkan oleh pemilik rental.',
     ActivityOrderStatus.rented =>
-      'Pesanan sedang aktif. Jangan lupa pelunasan saat pengembalian.',
+      'Pesanan sedang aktif hingga tanggal pengembalian.',
     ActivityOrderStatus.returned => 'Pesanan selesai. Peralatan sudah dikembalikan.',
     ActivityOrderStatus.completed => 'Pesanan selesai.',
     ActivityOrderStatus.cancelled => 'Pesanan dibatalkan oleh admin.',
