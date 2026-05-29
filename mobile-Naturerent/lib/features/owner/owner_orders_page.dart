@@ -137,6 +137,42 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     }
   }
 
+  Future<void> _markReady(AdminOrder order) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tandai Pesanan Siap'),
+        content: Text(
+          'Tandai bahwa pesanan ${order.bookingCode ?? order.id} telah selesai diproses dan siap diambil atau dikirim?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tandai Siap'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+
+    setState(() => _processingId = order.id);
+    try {
+      await _rentalService.tandaiPesananSiap(order.id);
+      if (!mounted) return;
+      _showMessage('Notifikasi dikirim ke penyewa: pesanan siap diambil/dikirim.');
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Gagal menandai siap: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _processingId = null);
+    }
+  }
+
   void _showMessage(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -209,6 +245,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
                                 order: order,
                                 processing: _processingId == order.id,
                                 onConfirm: () => _confirmOrder(order),
+                                onMarkReady: () => _markReady(order),
                                 onConfirmReturn: () => _confirmReturn(order),
                               ),
                             ),
@@ -366,12 +403,14 @@ class _OwnerOrderCard extends StatelessWidget {
   final AdminOrder order;
   final bool processing;
   final VoidCallback onConfirm;
+  final VoidCallback onMarkReady;
   final VoidCallback onConfirmReturn;
 
   const _OwnerOrderCard({
     required this.order,
     required this.processing,
     required this.onConfirm,
+    required this.onMarkReady,
     required this.onConfirmReturn,
   });
 
@@ -439,6 +478,17 @@ class _OwnerOrderCard extends StatelessWidget {
                     onPressed: onConfirm,
                     icon: const Icon(Icons.check_rounded, size: 18),
                     label: const Text('Konfirmasi Transaksi'),
+                  )
+          else if (order.status == 'processing')
+            processing
+                ? const LinearProgressIndicator(color: AppColors.primary)
+                : FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                    onPressed: onMarkReady,
+                    icon: const Icon(Icons.local_shipping_rounded, size: 18),
+                    label: const Text('Tandai Siap Ambil/Kirim'),
                   )
           else if (order.status == 'rented')
             processing
