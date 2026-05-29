@@ -22,9 +22,8 @@ class QrisPage extends StatefulWidget {
   final double? deliveryDistanceKm;
   final Map<String, double>? deliveryFeesByRentalId;
 
-  /// Map dari rentalId ke RentalQrisInfo — sudah di-fetch oleh CheckoutPage
-  /// sebelum navigasi ke sini, agar QRIS masing-masing rental tampil.
-  final Map<String, RentalQrisInfo> rentalQrisMap;
+  /// QRIS global admin yang berlaku untuk semua rental, sudah di-fetch oleh CheckoutPage.
+  final GlobalQrisInfo globalQris;
 
   const QrisPage({
     super.key,
@@ -37,7 +36,7 @@ class QrisPage extends StatefulWidget {
     this.deliveryFee = 0,
     this.deliveryDistanceKm,
     this.deliveryFeesByRentalId,
-    this.rentalQrisMap = const {},
+    this.globalQris = GlobalQrisInfo.empty,
   });
 
   @override
@@ -53,24 +52,6 @@ class _QrisPageState extends State<QrisPage> {
   bool _isMenyimpanBooking = false;
   PlatformSettings? _settings;
   bool _loadingSettings = true;
-
-  // Index QRIS yang sedang ditampilkan (untuk multi-rental)
-  int _selectedQrisIndex = 0;
-
-  // ── Daftar rental unik dari cart items
-  List<CartItem> get _uniqueRentalItems {
-    final seen = <String>{};
-    return widget.items.where((i) => seen.add(i.rental.id)).toList();
-  }
-
-  // ── QRIS yang sedang aktif ditampilkan
-  RentalQrisInfo? get _activeQris {
-    final rentals = _uniqueRentalItems;
-    if (rentals.isEmpty) return null;
-    if (_selectedQrisIndex >= rentals.length) return null;
-    final rentalId = rentals[_selectedQrisIndex].rental.id;
-    return widget.rentalQrisMap[rentalId];
-  }
 
   // ── Kalkulasi harga ─────────────────────────────────────────────────────
   double get _biayaLayanan => (_settings?.biayaLayanan ?? 2000).toDouble();
@@ -267,9 +248,6 @@ class _QrisPageState extends State<QrisPage> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    final rentalList = _uniqueRentalItems;
-    final isMultiRental = rentalList.length > 1;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -294,13 +272,7 @@ class _QrisPageState extends State<QrisPage> {
               ),
               const SizedBox(height: 28),
 
-              // ── Tab pilih rental jika multi-rental
-              if (isMultiRental) ...[
-                _buildRentalTabs(rentalList),
-                const SizedBox(height: 16),
-              ],
-
-              // ── QR Card
+              // ── QR Card (single global QRIS)
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -333,8 +305,8 @@ class _QrisPageState extends State<QrisPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _activeQris?.qrisMerchantName?.isNotEmpty == true
-                                    ? _activeQris!.qrisMerchantName!
+                                widget.globalQris.merchantName?.isNotEmpty == true
+                                    ? widget.globalQris.merchantName!
                                     : widget.namaRental,
                                 style: AppTextStyles.headlineLarge.copyWith(
                                     color: Colors.white, fontSize: 16),
@@ -523,71 +495,14 @@ class _QrisPageState extends State<QrisPage> {
     );
   }
 
-  /// Tab selector jika ada beberapa rental di keranjang
-  Widget _buildRentalTabs(List<CartItem> rentalItems) {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: rentalItems.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, idx) {
-          final rental = rentalItems[idx].rental;
-          final qrisInfo = widget.rentalQrisMap[rental.id];
-          final isActive = _selectedQrisIndex == idx;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedQrisIndex = idx),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primaryDark
-                    : AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive ? AppColors.primaryDark : AppColors.border,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    qrisInfo?.hasQris == true
-                        ? Icons.qr_code_2_rounded
-                        : Icons.warning_amber_rounded,
-                    size: 13,
-                    color: isActive
-                        ? Colors.white
-                        : (qrisInfo?.hasQris == true
-                            ? AppColors.primary
-                            : Colors.orange),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    rental.namaRental,
-                    style: AppTextStyles.caption.copyWith(
-                      color: isActive ? Colors.white : AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildQrisImage() {
-    final activeQris = _activeQris;
-    final qrisUrl = activeQris?.qrisImageUrl;
-    final hasRentalQris = qrisUrl != null && qrisUrl.isNotEmpty;
+    final qrisUrl = widget.globalQris.imageUrl;
+    final hasGlobalQris = qrisUrl != null && qrisUrl.isNotEmpty;
 
-    // Gunakan QRIS milik rental jika tersedia;
-    // fallback ke QR code dummy jika QRIS belum dikonfigurasi.
-    final url = hasRentalQris
+    // Gunakan QRIS global admin jika tersedia;
+    // fallback ke QR code dummy jika admin belum mengatur QRIS.
+    final url = hasGlobalQris
         ? qrisUrl
         : 'https://api.qrserver.com/v1/create-qr-code/'
             '?size=200x200'
@@ -629,8 +544,8 @@ class _QrisPageState extends State<QrisPage> {
             ),
           ),
         ),
-        // Badge "QRIS Belum Diatur" jika belum ada QRIS rental
-        if (!hasRentalQris)
+        // Badge "Demo" jika QRIS global belum dikonfigurasi admin
+        if (!hasGlobalQris)
           Container(
             margin: const EdgeInsets.all(4),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
