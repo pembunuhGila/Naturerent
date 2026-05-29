@@ -256,7 +256,12 @@ class _ProfilPageState extends State<ProfilPage> {
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.of(context).padding.bottom + 132,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
