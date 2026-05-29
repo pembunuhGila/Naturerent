@@ -9,6 +9,7 @@ import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../checkout/checkout_page.dart';
 import '../equipment/equipment_list_page.dart';
+import 'rental_detail_page.dart';
 
 class RentalPage extends StatefulWidget {
   /// Jika [wisataId] diisi, hanya tampilkan rental dekat wisata tersebut.
@@ -200,6 +201,14 @@ class _RentalPageState extends State<RentalPage> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => EquipmentListPage(
+                            rental: _rentalFiltered[i].rental,
+                          ),
+                        ),
+                      ),
+                      onDetail: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RentalDetailPage(
                             rental: _rentalFiltered[i].rental,
                           ),
                         ),
@@ -516,11 +525,13 @@ class _RentalCard extends StatelessWidget {
   final RentalProfile rental;
   final double? jarak;
   final VoidCallback onTap;
+  final VoidCallback onDetail;
 
   const _RentalCard({
     required this.rental,
     required this.jarak,
     required this.onTap,
+    required this.onDetail,
   });
 
   String get _jarakStr {
@@ -633,18 +644,39 @@ class _RentalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.primaryDark,
-                    size: 22,
-                  ),
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: onDetail,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: AppColors.primaryDark,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSoft,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textHint,
+                        size: 22,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
