@@ -321,6 +321,10 @@ class _OrderCard extends StatelessWidget {
             icon: Icons.payments_rounded,
             label: _formatCurrency(order.totalBayar),
           ),
+          _InfoLine(
+            icon: Icons.verified_rounded,
+            label: order.statusPembayaranLabel,
+          ),
           const SizedBox(height: 4),
           OutlinedButton.icon(
             onPressed: onViewProof,
