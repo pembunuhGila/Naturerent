@@ -14,6 +14,10 @@ class RentalProfile {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // QRIS per-rental (diatur admin di System Settings > QRIS Configuration)
+  final String? qrisImageUrl;     // URL gambar QRIS milik rental ini
+  final String? qrisMerchantName; // Nama merchant QRIS rental ini
+
   // Opsional: dari join ke rental_settings
   final Map<String, dynamic>? settings;
 
@@ -31,6 +35,8 @@ class RentalProfile {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.qrisImageUrl,
+    this.qrisMerchantName,
     this.settings,
   });
 
@@ -49,6 +55,8 @@ class RentalProfile {
       isActive: map['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      qrisImageUrl: map['qris_image_url'] as String?,
+      qrisMerchantName: map['qris_merchant_name'] as String?,
       settings: map['rental_settings'] as Map<String, dynamic>?,
     );
   }
