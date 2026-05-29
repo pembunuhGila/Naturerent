@@ -16,7 +16,7 @@ class OwnerDashboardPage extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.ownerPageBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -41,7 +41,7 @@ class OwnerDashboardPage extends StatelessWidget {
             Text(
               'Rp 12.450.000',
               style: AppTextStyles.displayLarge.copyWith(
-                color: const Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 fontSize: 38,
                 fontWeight: FontWeight.w900,
                 height: 1,
@@ -56,7 +56,7 @@ class OwnerDashboardPage extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE4EFE7),
+                  color: AppColors.ownerSoftGreen,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Row(
@@ -64,14 +64,14 @@ class OwnerDashboardPage extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.trending_up_rounded,
-                      color: Color(0xFF18743A),
+                      color: AppColors.ownerPrimaryGreen,
                       size: 16,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       '12% DARI BULAN LALU',
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF18743A),
+                        color: AppColors.ownerPrimaryGreen,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                         letterSpacing: 0.2,
@@ -98,7 +98,7 @@ class OwnerDashboardPage extends StatelessWidget {
                 Text(
                   'LIHAT SEMUA',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF18743A),
+                    color: AppColors.ownerPrimaryGreen,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.3,
@@ -126,7 +126,7 @@ class OwnerDashboardPage extends StatelessWidget {
 const _transactions = [
   _TransactionItem(
     icon: Icons.terrain_rounded,
-    imageColor: Color(0xFF18743A),
+    imageColor: AppColors.ownerPrimaryGreen,
     title: 'Tenda Dome 4P\nAlpine',
     subtitle: 'Sewa 3 Hari • 24 Okt',
     amount: '+Rp\n270.000',
@@ -142,7 +142,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.soup_kitchen_rounded,
-    imageColor: Color(0xFF18743A),
+    imageColor: AppColors.ownerPrimaryGreen,
     title: 'Paket Memasak\nUltralight',
     subtitle: 'Sewa 1 Hari • 22 Okt',
     amount: '+Rp\n45.000',
@@ -150,7 +150,7 @@ const _transactions = [
   ),
   _TransactionItem(
     icon: Icons.cabin_rounded,
-    imageColor: Color(0xFF18743A),
+    imageColor: AppColors.ownerPrimaryGreen,
     title: 'Penyewaan Tenda\nDome 4P',
     subtitle: 'Sewa 2 hari • 25 Okt',
     amount: '+Rp\n450.000',
@@ -197,6 +197,10 @@ class _RevenueChartCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -222,8 +226,12 @@ class _RevenueChartCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF2F4F1),
+                  color: AppColors.ownerCardBackground,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.ownerBorderColor,
+                    width: AppColors.ownerBorderWidth,
+                  ),
                 ),
                 child: Text(
                   'Bulan ini',
@@ -283,8 +291,8 @@ class _ChartBar extends StatelessWidget {
                 height: data.height,
                 decoration: BoxDecoration(
                   color: data.isDark
-                      ? const Color(0xFF18743A)
-                      : const Color(0xFFE4EFE7),
+                      ? AppColors.ownerPrimaryGreen
+                      : AppColors.ownerSoftGreen,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(4),
                   ),
@@ -297,7 +305,7 @@ class _ChartBar extends StatelessWidget {
             data.label,
             style: AppTextStyles.caption.copyWith(
               color: data.isDark
-                  ? const Color(0xFF18743A)
+                  ? AppColors.ownerPrimaryGreen
                   : const Color(0xFF496171),
               fontSize: 11,
               fontWeight: FontWeight.w900,
@@ -331,6 +339,10 @@ class _TransactionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -386,7 +398,7 @@ class _TransactionCard extends StatelessWidget {
                 item.amount,
                 textAlign: TextAlign.right,
                 style: AppTextStyles.headlineMedium.copyWith(
-                  color: const Color(0xFF18743A),
+                  color: AppColors.ownerPrimaryGreen,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   height: 1.15,
@@ -397,7 +409,7 @@ class _TransactionCard extends StatelessWidget {
                 item.note,
                 style: AppTextStyles.caption.copyWith(
                   color: item.isSuccess
-                      ? const Color(0xFF18743A)
+                      ? AppColors.ownerPrimaryGreen
                       : const Color(0xFF496171),
                   fontSize: item.isSuccess ? 10 : 11,
                   fontWeight: FontWeight.w900,
