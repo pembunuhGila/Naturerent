@@ -11,6 +11,8 @@ class RentalService {
   RentalService._internal();
 
   static SupabaseClient get client => AuthService.client;
+  static const String rentalSelect =
+      '*, users!owner_id(nama_lengkap, email, no_wa), rental_settings(*)';
 
   // ──────────────────────────────────────────────────────────
   //  WISATA LOCATIONS
@@ -38,7 +40,7 @@ class RentalService {
   Future<List<RentalProfile>> ambilRentalAktif() async {
     final data = await client
         .from('rental_profiles')
-        .select('*, rental_settings(*)')
+        .select(rentalSelect)
         .eq('is_active', true)
         .order('created_at', ascending: false);
 
@@ -54,7 +56,7 @@ class RentalService {
 
     final data = await client
         .from('rental_profiles')
-        .select('*, rental_settings(*)')
+        .select(rentalSelect)
         .eq('owner_id', user.id)
         .maybeSingle();
 
@@ -86,7 +88,7 @@ class RentalService {
     final data = await client
         .from('rental_profiles')
         .insert(payload)
-        .select('*, rental_settings(*)')
+        .select(rentalSelect)
         .single();
 
     return RentalProfile.fromMap(data);
@@ -137,7 +139,7 @@ class RentalService {
         .update(payload)
         .eq('id', rental.id)
         .eq('owner_id', user.id)
-        .select('*, rental_settings(*)')
+        .select(rentalSelect)
         .single();
 
     return RentalProfile.fromMap(data);
@@ -167,7 +169,7 @@ class RentalService {
         .update(payload)
         .eq('id', rentalId)
         .eq('owner_id', user.id)
-        .select('*, rental_settings(*)')
+        .select(rentalSelect)
         .single();
 
     return RentalProfile.fromMap(data);
@@ -260,7 +262,7 @@ class RentalService {
 
     final data = await client
         .from('rental_profiles')
-        .select('*, rental_settings(*)')
+        .select(rentalSelect)
         .eq('is_active', true);
 
     final rentals = (data as List)
@@ -320,7 +322,7 @@ class RentalService {
 
     final data = await client
         .from('rental_favorites')
-        .select('rental_profiles(*, rental_settings(*))')
+        .select('rental_profiles($rentalSelect)')
         .eq('user_id', user.id)
         .order('created_at', ascending: false);
 
