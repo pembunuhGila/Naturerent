@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
@@ -32,81 +32,125 @@ class RentalPage extends StatefulWidget {
 class _RentalPageState extends State<RentalPage> {
   final _rentalService = RentalService();
 
-  List<RentalProfile> _rentalFiltered = [];
+  List<RentalProfile> _semuaRental = [];
+  List<RentalWithDistance> _rentalFiltered = [];
   bool _isLoading = true;
   String? _error;
-  bool _lokasiSaya = false;
+  late bool _lokasiSaya;
   Position? _userPos;
-
-
 
   @override
   void initState() {
     super.initState();
+    _lokasiSaya = widget.wisataId == null;
     _muatRental();
   }
 
   // ──────────────────────────────────────────────────────────
 
   Future<void> _muatRental() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
-      final data = (widget.wisataId != null && !_lokasiSaya)
-          ? await _rentalService.ambilRentalDekatWisata(widget.wisataId!)
-          : await _rentalService.ambilRentalAktif();
+      final data = await _rentalService.ambilRentalAktif();
+      if (_lokasiSaya) {
+        final latestPos = await _ambilPosisiSaya(
+          showMessages: widget.wisataId == null && _userPos == null,
+        );
+        if (latestPos != null) _userPos = latestPos;
+      }
       if (!mounted) return;
       setState(() {
-        _rentalFiltered = data;
+        _semuaRental = data;
+        _rentalFiltered = _urutkanRental(data);
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = 'Gagal memuat data rental.'; _isLoading = false; });
+      setState(() {
+        _error = 'Gagal memuat data rental.';
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _switchLokasiSaya() async {
+    final pos = await _ambilPosisiSaya();
+    if (pos == null || !mounted) return;
+
+    setState(() {
+      _userPos = pos;
+      _lokasiSaya = true;
+      _rentalFiltered = _urutkanRental(_semuaRental);
+    });
+  }
+
+  Future<Position?> _ambilPosisiSaya({bool showMessages = true}) async {
     try {
       bool svcEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!svcEnabled) { _snack('Aktifkan GPS terlebih dahulu.'); return; }
+      if (!svcEnabled) {
+        if (showMessages) _snack('Aktifkan GPS terlebih dahulu.');
+        return null;
+      }
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        _snack('Izin lokasi ditolak.');
-        return;
+      if (perm == LocationPermission.denied) {
+        if (showMessages) _snack('Izin lokasi ditolak.');
+        return null;
       }
-      final pos = await Geolocator.getCurrentPosition();
-      if (!mounted) return;
-      setState(() { _userPos = pos; _lokasiSaya = true; });
-      _muatRental();
+      if (perm == LocationPermission.deniedForever) {
+        if (showMessages) {
+          _snack('Izin lokasi diblokir. Buka pengaturan aplikasi.');
+        }
+        return null;
+      }
+
+      return Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
     } catch (_) {
-      _snack('Gagal mendapatkan lokasi.');
+      if (showMessages) _snack('Gagal mendapatkan lokasi.');
+      return null;
     }
   }
 
   void _switchDestinasi() {
-    setState(() => _lokasiSaya = false);
-    _muatRental();
+    if (widget.wisataLat == null || widget.wisataLng == null) {
+      _snack('Pilih destinasi dulu untuk melihat rental terdekat.');
+      return;
+    }
+
+    setState(() {
+      _lokasiSaya = false;
+      _rentalFiltered = _urutkanRental(_semuaRental);
+    });
   }
 
   void _snack(String msg) {
     NrToast.show(context, msg, type: NrToastType.info);
   }
 
-  /// Hitung jarak km dari wisata ke rental (jika koordinat tersedia)
-  double? _hitungJarak(RentalProfile r) {
+  List<RentalWithDistance> _urutkanRental(List<RentalProfile> rentals) {
     final lat = _lokasiSaya ? _userPos?.latitude : widget.wisataLat;
     final lng = _lokasiSaya ? _userPos?.longitude : widget.wisataLng;
-    if (lat == null || lng == null || r.lat == null || r.lng == null) {
-      return null;
+    if (lat == null || lng == null) {
+      return rentals
+          .map((r) => RentalWithDistance(rental: r, distanceKm: null))
+          .toList();
     }
-    return const Distance().as(
-      LengthUnit.Kilometer,
-      LatLng(lat, lng),
-      LatLng(r.lat!, r.lng!),
+
+    return LocationService.sortRentalsByDistance(
+      referenceLat: lat,
+      referenceLng: lng,
+      rentals: rentals,
+      includeUnknownLocation: true,
     );
   }
 
@@ -114,10 +158,12 @@ class _RentalPageState extends State<RentalPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -148,13 +194,14 @@ class _RentalPageState extends State<RentalPage> {
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (_, i) => _RentalCard(
-                      rental: _rentalFiltered[i],
-                      jarak: _hitungJarak(_rentalFiltered[i]),
+                      rental: _rentalFiltered[i].rental,
+                      jarak: _rentalFiltered[i].distanceKm,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              EquipmentListPage(rental: _rentalFiltered[i]),
+                          builder: (_) => EquipmentListPage(
+                            rental: _rentalFiltered[i].rental,
+                          ),
                         ),
                       ),
                     ),
@@ -182,14 +229,18 @@ class _RentalPageState extends State<RentalPage> {
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Container(
-                width: 38, height: 38,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 16, color: AppColors.textPrimary),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 16,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -233,14 +284,18 @@ class _RentalPageState extends State<RentalPage> {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Row(
         children: [
-          const Icon(Icons.location_on_outlined,
-              color: AppColors.primary, size: 16),
+          const Icon(
+            Icons.location_on_outlined,
+            color: AppColors.primary,
+            size: 16,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 children: [
                   const TextSpan(text: 'Menampilkan rental di sekitar '),
                   TextSpan(
@@ -272,6 +327,26 @@ class _RentalPageState extends State<RentalPage> {
   }
 
   Widget _buildToggle() {
+    if (widget.wisataId == null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: _ToggleTab(
+            label: 'Lokasi Saya',
+            isActive: _lokasiSaya,
+            onTap: _switchLokasiSaya,
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Container(
@@ -284,16 +359,20 @@ class _RentalPageState extends State<RentalPage> {
         ),
         child: Row(
           children: [
-            Expanded(child: _ToggleTab(
-              label: 'Lokasi Saya',
-              isActive: _lokasiSaya,
-              onTap: _switchLokasiSaya,
-            )),
-            Expanded(child: _ToggleTab(
-              label: 'Dekat Destinasi',
-              isActive: !_lokasiSaya,
-              onTap: _switchDestinasi,
-            )),
+            Expanded(
+              child: _ToggleTab(
+                label: 'Lokasi Saya',
+                isActive: _lokasiSaya,
+                onTap: _switchLokasiSaya,
+              ),
+            ),
+            Expanded(
+              child: _ToggleTab(
+                label: 'Dekat Destinasi',
+                isActive: !_lokasiSaya,
+                onTap: _switchDestinasi,
+              ),
+            ),
           ],
         ),
       ),
@@ -309,21 +388,32 @@ class _RentalPageState extends State<RentalPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Rental Terdekat',
-                  style: AppTextStyles.headlineLarge
-                      .copyWith(color: AppColors.textPrimary)),
               Text(
-                _isLoading
-                    ? 'Memuat...'
-                    : '${_rentalFiltered.length} rental tersedia',
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.textSecondary),
+                'Rental Terdekat',
+                style: AppTextStyles.headlineLarge.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                _sectionSubtitle,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  String get _sectionSubtitle {
+    if (_isLoading) return 'Memuat...';
+    if (_lokasiSaya && _userPos == null) {
+      return 'Lokasi belum tersedia';
+    }
+    final source = _lokasiSaya ? 'dari lokasimu' : 'dari destinasi';
+    return '${_rentalFiltered.length} rental tersedia, terurut $source';
   }
 
   Widget _buildEmptyState() {
@@ -333,9 +423,12 @@ class _RentalPageState extends State<RentalPage> {
         children: [
           const Icon(Icons.store_outlined, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
-          Text('Belum ada rental',
-              style: AppTextStyles.headlineMedium
-                  .copyWith(color: AppColors.textHint)),
+          Text(
+            'Belum ada rental',
+            style: AppTextStyles.headlineMedium.copyWith(
+              color: AppColors.textHint,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             'Data rental akan muncul setelah\npemilik mendaftarkan usahanya.',
@@ -352,18 +445,27 @@ class _RentalPageState extends State<RentalPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 52, color: AppColors.textHint),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 52,
+            color: AppColors.textHint,
+          ),
           const SizedBox(height: 12),
-          Text(_error!,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+          ),
           const SizedBox(height: 16),
           TextButton.icon(
             onPressed: _muatRental,
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            label: Text('Coba Lagi',
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.primary)),
+            label: Text(
+              'Coba Lagi',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ],
       ),
@@ -378,8 +480,11 @@ class _ToggleTab extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback onTap;
-  const _ToggleTab(
-      {required this.label, required this.isActive, required this.onTap});
+  const _ToggleTab({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -419,8 +524,8 @@ class _RentalCard extends StatelessWidget {
   });
 
   String get _jarakStr {
-    if (jarak == null) return rental.alamat ?? 'Lokasi belum tersedia';
-    return '${jarak!.toStringAsFixed(1)} km';
+    if (jarak == null) return 'Lokasi belum tersedia';
+    return LocationService.formatJarak(jarak!);
   }
 
   @override
@@ -435,7 +540,8 @@ class _RentalCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8, offset: const Offset(0, 2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -449,7 +555,8 @@ class _RentalCard extends StatelessWidget {
                 // ── Foto rental
                 NrImage(
                   imageUrl: rental.fotoBanner,
-                  width: 72, height: 72,
+                  width: 72,
+                  height: 72,
                   borderRadius: BorderRadius.circular(12),
                   placeholderColor: AppColors.primaryDark,
                   placeholderIcon: Icons.storefront_rounded,
@@ -473,6 +580,28 @@ class _RentalCard extends StatelessWidget {
                       const SizedBox(height: 10),
                       Row(
                         children: [
+                          const Icon(
+                            Icons.place_outlined,
+                            size: 16,
+                            color: AppColors.textHint,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              rental.alamat ?? 'Alamat belum tersedia',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      Row(
+                        children: [
                           Icon(
                             jarak == null
                                 ? Icons.location_on_outlined
@@ -492,6 +621,12 @@ class _RentalCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          if (rental.isActive)
+                            const _Badge(
+                              label: 'AKTIF',
+                              color: AppColors.primary,
+                            ),
                         ],
                       ),
                     ],
