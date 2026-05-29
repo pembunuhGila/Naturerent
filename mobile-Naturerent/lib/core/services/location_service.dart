@@ -1,4 +1,5 @@
-import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart';
+import '../models/rental_profile.dart';
 import '../models/wisata_location.dart';
 
 /// Helper service untuk kalkulasi jarak geografis dan pencarian destinasi terdekat.
@@ -7,44 +8,76 @@ class LocationService {
   factory LocationService() => _instance;
   LocationService._internal();
 
-  /// Hitung jarak antara dua titik koordinat menggunakan rumus Haversine.
+  /// Hitung jarak antara dua titik koordinat.
   /// Mengembalikan jarak dalam kilometer.
-  ///
-  /// Contoh: calculateDistanceKm(-8.05, 112.96, -8.10, 113.00)
   static double calculateDistanceKm(
     double lat1,
     double lon1,
     double lat2,
     double lon2,
   ) {
-    const double earthRadiusKm = 6371.0;
-
-    final dLat = _toRad(lat2 - lat1);
-    final dLon = _toRad(lon2 - lon1);
-
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRad(lat1)) *
-            math.cos(_toRad(lat2)) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return earthRadiusKm * c;
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000;
   }
-
-  static double _toRad(double deg) => deg * math.pi / 180.0;
 
   /// Format jarak ke string yang readable.
   /// Contoh: 0.8 → "800 m", 2.5 → "2.5 km"
   static String formatJarak(double distanceKm) {
     if (distanceKm < 1.0) {
       return '${(distanceKm * 1000).round()} m';
-    } else if (distanceKm < 10.0) {
-      // Satu desimal
-      return '${distanceKm.toStringAsFixed(1)} km';
-    } else {
-      return '${distanceKm.round()} km';
     }
+    return '${distanceKm.toStringAsFixed(1)} km';
+  }
+
+  static double? distanceToRentalKm({
+    required double referenceLat,
+    required double referenceLng,
+    required RentalProfile rental,
+  }) {
+    if (rental.lat == null || rental.lng == null) return null;
+
+    return calculateDistanceKm(
+      referenceLat,
+      referenceLng,
+      rental.lat!,
+      rental.lng!,
+    );
+  }
+
+  /// Urutkan rental dari titik referensi. Rental tanpa koordinat ditaruh bawah.
+  static List<RentalWithDistance> sortRentalsByDistance({
+    required double referenceLat,
+    required double referenceLng,
+    required List<RentalProfile> rentals,
+    bool includeUnknownLocation = true,
+  }) {
+    final result = rentals
+        .where(
+          (r) => includeUnknownLocation || (r.lat != null && r.lng != null),
+        )
+        .map(
+          (r) => RentalWithDistance(
+            rental: r,
+            distanceKm: distanceToRentalKm(
+              referenceLat: referenceLat,
+              referenceLng: referenceLng,
+              rental: r,
+            ),
+          ),
+        )
+        .toList();
+
+    result.sort((a, b) {
+      final da = a.distanceKm;
+      final db = b.distanceKm;
+      if (da == null && db == null) {
+        return a.rental.namaRental.compareTo(b.rental.namaRental);
+      }
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.compareTo(db);
+    });
+
+    return result;
   }
 
   /// Ambil N destinasi wisata terdekat dari titik koordinat rental.
@@ -82,15 +115,26 @@ class LocationService {
   }
 }
 
-/// Model hasil perhitungan jarak — pasangan wisata + jarak km.
+/// Model hasil perhitungan jarak rental dari titik referensi.
+class RentalWithDistance {
+  final RentalProfile rental;
+  final double? distanceKm;
+
+  const RentalWithDistance({required this.rental, required this.distanceKm});
+
+  String get jarakFormatted {
+    final distance = distanceKm;
+    if (distance == null) return 'Lokasi belum tersedia';
+    return LocationService.formatJarak(distance);
+  }
+}
+
+/// Model hasil perhitungan jarak wisata dari titik referensi.
 class WisataWithDistance {
   final WisataLocation wisata;
   final double distanceKm;
 
-  const WisataWithDistance({
-    required this.wisata,
-    required this.distanceKm,
-  });
+  const WisataWithDistance({required this.wisata, required this.distanceKm});
 
   /// Jarak sudah diformat dalam string (m / km).
   String get jarakFormatted => LocationService.formatJarak(distanceKm);
