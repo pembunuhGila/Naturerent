@@ -20,6 +20,7 @@ class RentalService {
     final data = await client
         .from('wisata_locations')
         .select('id, nama, deskripsi, foto_url, kategori, lat, lng, created_at')
+        .neq('kategori', 'QRIS')
         .order('kategori')
         .order('nama');
 
