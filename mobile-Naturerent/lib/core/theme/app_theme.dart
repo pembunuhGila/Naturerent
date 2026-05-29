@@ -8,6 +8,15 @@ class AppColors {
   static const Color primaryMedium = Color(0xFF1E5C30);
   static const Color primaryHover = Color(0xFF266038);
 
+  // Owner / pemilik rental brand color
+  static const Color ownerPrimaryGreen = Color(0xFF14532D);
+  static const Color ownerPageBackground = Color(0xFFFFFFFF);
+  static const Color ownerCardBackground = Color(0xFFFFFFFF);
+  static const Color ownerBorderColor = Color(0xFFD1D5DB);
+  static const double ownerBorderWidth = 1.3;
+  static const Color ownerSoftGreen = Color(0xFFEAF3EC);
+  static const Color ownerPrimarySoft = Color(0xFFEAF3EC);
+
   // Background
   static const Color background = Color(0xFFF8FAFC);
   static const Color surface = Color(0xFFFFFFFF);
