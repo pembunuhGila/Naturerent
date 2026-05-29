@@ -8,6 +8,7 @@ import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../checkout/checkout_page.dart';
+import '../home/rental_detail_page.dart';
 import 'equipment_detail_page.dart';
 
 class EquipmentListPage extends StatefulWidget {
@@ -35,7 +36,10 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   }
 
   Future<void> _muatData() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _equipmentService.ambilAlatByRental(widget.rental.id),
@@ -44,13 +48,16 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
       if (!mounted) return;
       setState(() {
         _semuaAlat = results[0] as List<Equipment>;
-        _kategori  = results[1] as List<Map<String, dynamic>>;
+        _kategori = results[1] as List<Map<String, dynamic>>;
         _alatFiltered = _semuaAlat;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = 'Gagal memuat data. Tarik untuk muat ulang.'; _isLoading = false; });
+      setState(() {
+        _error = 'Gagal memuat data. Tarik untuk muat ulang.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -66,25 +73,37 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   // ── Icon untuk tiap kategori berdasarkan nama
   IconData _iconKategori(String? nama) {
     switch (nama?.toLowerCase()) {
-      case 'tenda':           return Icons.cabin_rounded;
-      case 'sleeping bag':    return Icons.airline_seat_flat_rounded;
-      case 'carrier / tas':   return Icons.backpack_rounded;
-      case 'matras':          return Icons.horizontal_rule_rounded;
-      case 'kompor & masak':  return Icons.outdoor_grill_rounded;
-      case 'lampu & senter':  return Icons.flashlight_on_rounded;
-      case 'pakaian':         return Icons.checkroom_rounded;
-      case 'navigasi':        return Icons.explore_rounded;
-      case 'p3k':             return Icons.medical_services_rounded;
-      default:                return Icons.category_rounded;
+      case 'tenda':
+        return Icons.cabin_rounded;
+      case 'sleeping bag':
+        return Icons.airline_seat_flat_rounded;
+      case 'carrier / tas':
+        return Icons.backpack_rounded;
+      case 'matras':
+        return Icons.horizontal_rule_rounded;
+      case 'kompor & masak':
+        return Icons.outdoor_grill_rounded;
+      case 'lampu & senter':
+        return Icons.flashlight_on_rounded;
+      case 'pakaian':
+        return Icons.checkroom_rounded;
+      case 'navigasi':
+        return Icons.explore_rounded;
+      case 'p3k':
+        return Icons.medical_services_rounded;
+      default:
+        return Icons.category_rounded;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -107,7 +126,9 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               // ── Content
               if (_isLoading)
                 const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
                 )
               else if (_error != null)
                 SliverFillRemaining(child: _buildErrorState())
@@ -163,27 +184,55 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: 38, height: 38,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded,
-                      size: 16, color: AppColors.textPrimary),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 16,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   widget.rental.namaRental,
-                  style: AppTextStyles.headlineLarge
-                      .copyWith(color: AppColors.textPrimary),
+                  style: AppTextStyles.headlineLarge.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               // Cart icon with badge
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RentalDetailPage(rental: widget.rental),
+                  ),
+                ),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.textPrimary,
+                    size: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               ValueListenableBuilder<int>(
                 valueListenable: CartService().count,
                 builder: (_, count, widget) => Stack(
@@ -192,23 +241,27 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (_) => const CheckoutPage()),
+                        MaterialPageRoute(builder: (_) => const CheckoutPage()),
                       ),
                       child: Container(
-                        width: 38, height: 38,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child: const Icon(Icons.shopping_bag_outlined,
-                            color: AppColors.textPrimary, size: 18),
+                        child: const Icon(
+                          Icons.shopping_bag_outlined,
+                          color: AppColors.textPrimary,
+                          size: 18,
+                        ),
                       ),
                     ),
                     if (count > 0)
                       Positioned(
-                        top: -4, right: -4,
+                        top: -4,
+                        right: -4,
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
@@ -243,49 +296,80 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
+            child: Column(
               children: [
-                // Foto banner rental
-                NrImage(
-                  imageUrl: widget.rental.fotoBanner,
-                  width: 56, height: 56,
-                  borderRadius: BorderRadius.circular(12),
-                  placeholderColor: AppColors.primaryDark,
-                  placeholderIcon: Icons.storefront_rounded,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.rental.namaRental,
-                        style: AppTextStyles.headlineLarge.copyWith(
-                          color: AppColors.textPrimary,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
+                Row(
+                  children: [
+                    // Foto banner rental
+                    NrImage(
+                      imageUrl: widget.rental.fotoBanner,
+                      width: 56,
+                      height: 56,
+                      borderRadius: BorderRadius.circular(12),
+                      placeholderColor: AppColors.primaryDark,
+                      placeholderIcon: Icons.storefront_rounded,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on_outlined,
-                              color: AppColors.textHint, size: 13),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              widget.rental.alamat ?? 'Lokasi tidak tersedia',
-                              style: AppTextStyles.bodySmall
-                                  .copyWith(color: AppColors.textHint),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            widget.rental.namaRental,
+                            style: AppTextStyles.headlineLarge.copyWith(
+                              color: AppColors.textPrimary,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                color: AppColors.textHint,
+                                size: 13,
+                              ),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  widget.rental.alamat ??
+                                      'Lokasi tidak tersedia',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.textHint,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RentalDetailPage(rental: widget.rental),
+                      ),
+                    ),
+                    icon: const Icon(Icons.storefront_rounded, size: 18),
+                    label: const Text('Lihat Detail Toko'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryDark,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -312,7 +396,8 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               : _selectedKategoriId == kategori?['id'];
 
           return GestureDetector(
-            onTap: () => _filterKategori(isAll ? null : kategori?['id'] as String?),
+            onTap: () =>
+                _filterKategori(isAll ? null : kategori?['id'] as String?),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 58,
@@ -327,16 +412,24 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    isAll ? Icons.grid_view_rounded : _iconKategori(kategori?['nama'] as String?),
+                    isAll
+                        ? Icons.grid_view_rounded
+                        : _iconKategori(kategori?['nama'] as String?),
                     size: 20,
                     color: isSelected ? Colors.white : AppColors.textSecondary,
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    isAll ? 'Semua' : (kategori?['nama'] as String? ?? '').split(' ').first,
+                    isAll
+                        ? 'Semua'
+                        : (kategori?['nama'] as String? ?? '').split(' ').first,
                     style: AppTextStyles.caption.copyWith(
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                      color: isSelected
+                          ? Colors.white
+                          : AppColors.textSecondary,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w400,
                       fontSize: 9,
                     ),
                     maxLines: 1,
@@ -358,11 +451,18 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
         children: [
           Icon(Icons.inventory_2_outlined, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
-          Text('Belum ada alat', style: AppTextStyles.headlineMedium.copyWith(color: AppColors.textHint)),
+          Text(
+            'Belum ada alat',
+            style: AppTextStyles.headlineMedium.copyWith(
+              color: AppColors.textHint,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('Rental ini belum menambahkan\nperalatan camping.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+          Text(
+            'Rental ini belum menambahkan\nperalatan camping.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+          ),
         ],
       ),
     );
@@ -375,13 +475,21 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
         children: [
           Icon(Icons.wifi_off_rounded, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
-          Text(_error!, textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+          ),
           const SizedBox(height: 16),
           TextButton.icon(
             onPressed: _muatData,
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            label: Text('Coba Lagi', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary)),
+            label: Text(
+              'Coba Lagi',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ],
       ),
@@ -392,6 +500,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
 // ──────────────────────────────────────────────────────────
 //  CARD ALAT
 // ──────────────────────────────────────────────────────────
+// ignore: unused_element
 class _AlatCard extends StatelessWidget {
   final Equipment alat;
   final String namaRental;
@@ -425,7 +534,8 @@ class _AlatCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8, offset: const Offset(0, 2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -439,7 +549,8 @@ class _AlatCard extends StatelessWidget {
                 // ── Foto alat
                 NrImage(
                   imageUrl: alat.gambarprimaryUrl,
-                  width: 88, height: 88,
+                  width: 88,
+                  height: 88,
                   borderRadius: BorderRadius.circular(12),
                   placeholderColor: const Color(0xFF2D4A2D),
                   placeholderIcon: Icons.inventory_2_outlined,
@@ -468,8 +579,11 @@ class _AlatCard extends StatelessWidget {
                       // Nama rental
                       Text(
                         namaRental,
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
 
                       const SizedBox(height: 8),
@@ -491,8 +605,9 @@ class _AlatCard extends StatelessWidget {
                                 ),
                                 TextSpan(
                                   text: '/hr',
-                                  style: AppTextStyles.bodySmall
-                                      .copyWith(color: AppColors.textHint),
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.textHint,
+                                  ),
                                 ),
                               ],
                             ),
@@ -501,7 +616,10 @@ class _AlatCard extends StatelessWidget {
                           // Badge kategori
                           if (alat.namaKategori != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
@@ -520,50 +638,58 @@ class _AlatCard extends StatelessWidget {
                       const SizedBox(height: 6),
 
                       // Stok tersedia
-                          Row(
-                          children: [
-                            Icon(
-                              alat.stock > 0 ? Icons.check_circle_outline_rounded : Icons.cancel_outlined,
-                              size: 13,
-                              color: alat.stock > 0 ? AppColors.primary : AppColors.error,
+                      Row(
+                        children: [
+                          Icon(
+                            alat.stock > 0
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.cancel_outlined,
+                            size: 13,
+                            color: alat.stock > 0
+                                ? AppColors.primary
+                                : AppColors.error,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              alat.stock > 0
+                                  ? '${alat.stock} unit tersedia'
+                                  : 'Stok habis',
+                              style: AppTextStyles.caption.copyWith(
+                                color: alat.stock > 0
+                                    ? AppColors.primary
+                                    : AppColors.error,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
+                          ),
+                          // ── Tombol Sewa
+                          GestureDetector(
+                            onTap: alat.stock > 0 ? onSewa : null,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: alat.stock > 0
+                                    ? AppColors.primaryDark
+                                    : AppColors.border,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                               child: Text(
-                                alat.stock > 0
-                                    ? '${alat.stock} unit tersedia'
-                                    : 'Stok habis',
+                                'Sewa',
                                 style: AppTextStyles.caption.copyWith(
-                                  color: alat.stock > 0 ? AppColors.primary : AppColors.error,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            // ── Tombol Sewa
-                            GestureDetector(
-                              onTap: alat.stock > 0 ? onSewa : null,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 5),
-                                decoration: BoxDecoration(
                                   color: alat.stock > 0
-                                      ? AppColors.primaryDark
-                                      : AppColors.border,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Sewa',
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: alat.stock > 0
-                                        ? Colors.white
-                                        : AppColors.textHint,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                      ? Colors.white
+                                      : AppColors.textHint,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -625,8 +751,10 @@ class _AlatShowcaseCard extends StatelessWidget {
                   left: 10,
                   top: 10,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: alat.stock > 0
                           ? Colors.white.withValues(alpha: 0.9)
@@ -636,8 +764,9 @@ class _AlatShowcaseCard extends StatelessWidget {
                     child: Text(
                       alat.stock > 0 ? 'TERSEDIA' : 'STOK HABIS',
                       style: AppTextStyles.caption.copyWith(
-                        color:
-                            alat.stock > 0 ? AppColors.primaryDark : Colors.white,
+                        color: alat.stock > 0
+                            ? AppColors.primaryDark
+                            : Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                       ),
@@ -712,8 +841,9 @@ class _AlatShowcaseCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color:
-                          alat.stock > 0 ? AppColors.primaryDark : AppColors.border,
+                      color: alat.stock > 0
+                          ? AppColors.primaryDark
+                          : AppColors.border,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
