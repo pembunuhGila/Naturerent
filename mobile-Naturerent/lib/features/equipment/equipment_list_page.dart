@@ -124,7 +124,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                         MaterialPageRoute(
                           builder: (_) => EquipmentDetailPage(
                             equipmentId: _alatFiltered[i].id,
-                            namaRental: widget.rental.namaRental,
+                            rental: widget.rental,
                           ),
                         ),
                       ),
