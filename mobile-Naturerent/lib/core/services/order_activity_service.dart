@@ -256,7 +256,8 @@ class OrderActivityService {
       orders.value = grouped.entries
           .map((entry) => _mapGroup(entry.key, entry.value))
           .toList(growable: false);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Gagal memuat aktivitas pesanan: $e');
       // Jika policy Supabase belum siap, pakai data lokal yang sudah ada.
     }
   }
@@ -450,11 +451,12 @@ class OrderActivityService {
     if (statuses.contains(ActivityOrderStatus.processing)) {
       return ActivityOrderStatus.processing;
     }
+    if (statuses.contains(ActivityOrderStatus.returned) ||
+        statuses.contains(ActivityOrderStatus.completed)) {
+      return ActivityOrderStatus.completed;
+    }
     if (statuses.contains(ActivityOrderStatus.rented)) {
       return ActivityOrderStatus.rented;
-    }
-    if (statuses.contains(ActivityOrderStatus.returned)) {
-      return ActivityOrderStatus.returned;
     }
     return ActivityOrderStatus.completed;
   }
