@@ -37,6 +37,8 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           tgl_mulai,
           tgl_selesai,
           total_bayar,
+          commission_amount,
+          net_to_owner,
           status,
           payment_status,
           payment_proof_url,
@@ -826,7 +828,7 @@ class _HistoryOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = order.items.isNotEmpty ? order.items.first : null;
-    final net = _netIncome(order.totalBayar);
+    final net = order.netToOwner;
 
     return InkWell(
       onTap: onTap,
@@ -1310,8 +1312,8 @@ class _IncomeDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final commission = order.totalBayar * 0.1;
-    final net = _netIncome(order.totalBayar);
+    final commission = order.commissionAmount;
+    final net = order.netToOwner;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1356,7 +1358,7 @@ class _IncomeDetailCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Potongan Komisi (10%)',
+                  'Komisi',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: const Color(0xFF7D847D),
                     fontWeight: FontWeight.w700,
