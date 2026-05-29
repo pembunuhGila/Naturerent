@@ -26,6 +26,7 @@ GRANT ALL PRIVILEGES ON TABLE public.users TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.rental_profiles TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.bookings TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.commission_settings TO anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON TABLE public.deliveries TO anon, authenticated, service_role;
 
 -- C. Berikan hak akses ke seluruh sekuensial (untuk auto-increment ID jika ada)
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
@@ -48,6 +49,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rental_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.commission_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deliveries ENABLE ROW LEVEL SECURITY;
 
 -- B. Buat Fungsi Helper untuk mengecek apakah user yang sedang login adalah admin
 -- Fungsi ini membaca kolom 'role' pada tabel 'public.users' secara aman.
@@ -147,6 +149,17 @@ CREATE POLICY "Admin full access on commission_settings" ON public.commission_se
 -- 2. Izin SELECT untuk semua pengguna terautentikasi (agar database trigger bisa membaca tarif komisi saat checkout)
 DROP POLICY IF EXISTS "Allow select for all authenticated users on commission_settings" ON public.commission_settings;
 CREATE POLICY "Allow select for all authenticated users on commission_settings" ON public.commission_settings
+    FOR SELECT TO authenticated USING (true);
+
+-- G. KEBIJAKAN AKSES PADA TABEL 'deliveries'
+-- 1. Akses CRUD penuh untuk Admin
+DROP POLICY IF EXISTS "Admin full access on deliveries" ON public.deliveries;
+CREATE POLICY "Admin full access on deliveries" ON public.deliveries
+    FOR ALL TO authenticated USING (public.is_admin() = true) WITH CHECK (public.is_admin() = true);
+
+-- 2. Izin SELECT untuk semua pengguna terautentikasi (agar pemilik rental/pelanggan bisa melihat status pengiriman)
+DROP POLICY IF EXISTS "Allow select for all authenticated users on deliveries" ON public.deliveries;
+CREATE POLICY "Allow select for all authenticated users on deliveries" ON public.deliveries
     FOR SELECT TO authenticated USING (true);
 
 -- ----------------------------------------------------------------------------
