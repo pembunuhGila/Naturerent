@@ -10,6 +10,7 @@ import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../equipment/equipment_list_page.dart';
+import 'rental_page.dart';
 
 class WisataDetailPage extends StatefulWidget {
   final WisataLocation wisata;
@@ -245,6 +246,45 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RentalPage(
+                              wisataId: widget.wisata.id,
+                              namaWisata: widget.wisata.nama,
+                              wisataLat: widget.wisata.lat,
+                              wisataLng: widget.wisata.lng,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.storefront_rounded,
+                                color: Colors.white, size: 16),
+                            SizedBox(width: 6),
+                            Text(
+                              'Rental',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
