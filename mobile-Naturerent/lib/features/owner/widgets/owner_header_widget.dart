@@ -33,7 +33,7 @@ class OwnerHeaderWidget extends StatelessWidget {
               onTap: () => Navigator.maybePop(context),
               child: const Icon(
                 Icons.arrow_back_rounded,
-                color: Color(0xFF18743A),
+                color: AppColors.ownerPrimaryGreen,
                 size: 22,
               ),
             ),
@@ -42,7 +42,7 @@ class OwnerHeaderWidget extends StatelessWidget {
           if (showBrandIcon) ...[
             const Icon(
               Icons.park_rounded,
-              color: Color(0xFF18743A),
+              color: AppColors.ownerPrimaryGreen,
               size: 24,
             ),
             const SizedBox(width: 7),
@@ -50,7 +50,7 @@ class OwnerHeaderWidget extends StatelessWidget {
           Text(
             title,
             style: AppTextStyles.headlineMedium.copyWith(
-              color: const Color(0xFF18743A),
+              color: AppColors.ownerPrimaryGreen,
               fontSize: showBrandIcon ? 18 : 21,
               fontWeight: FontWeight.w900,
             ),
