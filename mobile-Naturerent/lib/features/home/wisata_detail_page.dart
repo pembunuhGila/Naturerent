@@ -11,6 +11,7 @@ import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
 import '../equipment/equipment_list_page.dart';
+import 'rental_detail_page.dart';
 import 'rental_page.dart';
 
 class WisataDetailPage extends StatefulWidget {
@@ -500,6 +501,14 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                                     ),
                                   ),
                                 ),
+                                onDetail: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RentalDetailPage(
+                                      rental: _rentals[i].rental,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                     ),
@@ -570,10 +579,12 @@ class _RentalBottomCard extends StatelessWidget {
   final RentalProfile rental;
   final double? jarak;
   final VoidCallback onTap;
+  final VoidCallback onDetail;
   const _RentalBottomCard({
     required this.rental,
     required this.jarak,
     required this.onTap,
+    required this.onDetail,
   });
 
   String get _jarakText {
@@ -657,10 +668,21 @@ class _RentalBottomCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textHint,
-              size: 20,
+            GestureDetector(
+              onTap: onDetail,
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.primaryDark,
+                  size: 18,
+                ),
+              ),
             ),
           ],
         ),
