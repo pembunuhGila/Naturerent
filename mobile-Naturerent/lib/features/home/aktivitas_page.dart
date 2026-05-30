@@ -53,10 +53,12 @@ class _AktivitasPageState extends State<AktivitasPage>
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -125,8 +127,9 @@ class _AktivitasPageState extends State<AktivitasPage>
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
-                unselectedLabelStyle:
-                    AppTextStyles.bodySmall.copyWith(fontSize: 12),
+                unselectedLabelStyle: AppTextStyles.bodySmall.copyWith(
+                  fontSize: 12,
+                ),
                 indicator: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -170,14 +173,15 @@ class _TabNotifikasi extends StatelessWidget {
           return const _EmptyTab(
             icon: Icons.notifications_none_rounded,
             judul: 'Belum ada notifikasi',
-            pesan: 'Notifikasi pesanan dan update aktivitas\nakan muncul di sini.',
+            pesan:
+                'Notifikasi pesanan dan update aktivitas\nakan muncul di sini.',
           );
         }
 
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
           itemCount: orders.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) =>
               _NotificationCard(order: orders[index]),
         );
@@ -194,9 +198,7 @@ class _TabPesananAktif extends StatelessWidget {
     return ValueListenableBuilder<List<ActivityOrder>>(
       valueListenable: OrderActivityService().orders,
       builder: (context, orders, _) {
-        final aktif = orders
-            .where(_isActiveOrder)
-            .toList(growable: false);
+        final aktif = orders.where(_isActiveOrder).toList(growable: false);
 
         if (aktif.isEmpty) {
           return const _EmptyTab(
@@ -209,7 +211,7 @@ class _TabPesananAktif extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
           itemCount: aktif.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) => _OrderCard(order: aktif[index]),
         );
       },
@@ -240,7 +242,7 @@ class _TabRiwayat extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
           itemCount: riwayat.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) => _OrderCard(order: riwayat[index]),
         );
       },
@@ -292,7 +294,9 @@ class _NotificationCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    waiting ? 'Menunggu Verifikasi' : _statusDetailLabel(order.status),
+                    waiting
+                        ? 'Menunggu Verifikasi'
+                        : _statusDetailLabel(order.status),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w800,
@@ -344,7 +348,9 @@ class _OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final item = order.items.isNotEmpty ? order.items.first : null;
     final rentalCount = _rentalCount(order);
-    final title = rentalCount > 1 ? '$rentalCount Toko Rental' : order.namaRental;
+    final title = rentalCount > 1
+        ? '$rentalCount Toko Rental'
+        : order.namaRental;
     final subtitle = '${_itemCount(order)} item disewa';
 
     return InkWell(
@@ -624,7 +630,8 @@ String _statusDescription(ActivityOrderStatus status) {
       'Peralatan sedang disiapkan oleh pemilik rental.',
     ActivityOrderStatus.rented =>
       'Pesanan sedang aktif hingga tanggal pengembalian.',
-    ActivityOrderStatus.returned => 'Pesanan selesai. Peralatan sudah dikembalikan.',
+    ActivityOrderStatus.returned =>
+      'Pesanan selesai. Peralatan sudah dikembalikan.',
     ActivityOrderStatus.completed => 'Pesanan selesai.',
     ActivityOrderStatus.cancelled => 'Pesanan dibatalkan oleh admin.',
   };
