@@ -25,6 +25,47 @@ class RentalProfile {
   // Opsional: dari join ke rental_settings
   final Map<String, dynamic>? settings;
 
+  String? get openTime => _readOperationalTime(settings, [
+    'open_time',
+    'jam_buka',
+    'buka',
+    'open',
+    'start',
+    'from',
+  ]);
+
+  String? get closeTime => _readOperationalTime(settings, [
+    'close_time',
+    'jam_tutup',
+    'tutup',
+    'close',
+    'end',
+    'to',
+  ]);
+
+  String? get operationalHours {
+    final open = openTime;
+    final close = closeTime;
+    if (open != null && close != null) return '$open - $close WIB';
+
+    final raw = settings?['jam_operasional'];
+    if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+    if (raw is Map) {
+      final text = _firstNonEmpty([
+        raw['operational_hours']?.toString(),
+        raw['jam_operasional']?.toString(),
+        raw['label']?.toString(),
+        raw['text']?.toString(),
+      ]);
+      if (text != null) return text;
+    }
+
+    return _firstNonEmpty([
+      settings?['operational_hours']?.toString(),
+      settings?['jam_operasional_text']?.toString(),
+    ]);
+  }
+
   const RentalProfile({
     required this.id,
     required this.ownerId,
@@ -83,4 +124,58 @@ class RentalProfile {
       settings: settings,
     );
   }
+}
+
+String? _readOperationalTime(
+  Map<String, dynamic>? settings,
+  List<String> keys,
+) {
+  if (settings == null) return null;
+
+  for (final key in keys) {
+    final value = settings[key];
+    if (value == null) continue;
+    final normalized = _normalizeTime(value.toString());
+    if (normalized != null) return normalized;
+  }
+
+  final raw = settings['jam_operasional'];
+  if (raw is Map) {
+    for (final key in keys) {
+      final value = raw[key];
+      if (value == null) continue;
+      final normalized = _normalizeTime(value.toString());
+      if (normalized != null) return normalized;
+    }
+  } else if (raw is String) {
+    final match = RegExp(
+      r'(\d{1,2}[:.]\d{2})\s*[-–]\s*(\d{1,2}[:.]\d{2})',
+    ).firstMatch(raw);
+    if (match != null) {
+      final wantsClose = keys.any(
+        (key) => key.contains('close') || key.contains('tutup') || key == 'to',
+      );
+      return _normalizeTime(match.group(wantsClose ? 2 : 1)!);
+    }
+  }
+
+  return null;
+}
+
+String? _normalizeTime(String value) {
+  final match = RegExp(r'(\d{1,2})[:.](\d{2})').firstMatch(value);
+  if (match == null) return null;
+  final hour = int.tryParse(match.group(1)!);
+  final minute = int.tryParse(match.group(2)!);
+  if (hour == null || minute == null || hour > 23 || minute > 59) {
+    return null;
+  }
+  return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+}
+
+String? _firstNonEmpty(List<String?> values) {
+  for (final value in values) {
+    if (value != null && value.trim().isNotEmpty) return value.trim();
+  }
+  return null;
 }
