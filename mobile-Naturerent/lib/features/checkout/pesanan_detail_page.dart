@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../shell/main_shell.dart';
+import 'return_detail_page.dart';
 
 class PesananDetailPage extends StatefulWidget {
   final String namaRental;
@@ -73,17 +73,32 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     // Generate nomor pesanan acak: e.g. #A7B2-XK
     final r = Random();
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final part1 =
-        List.generate(4, (_) => chars[r.nextInt(chars.length)]).join();
-    final part2 =
-        List.generate(2, (_) => chars[r.nextInt(chars.length)]).join();
+    final part1 = List.generate(
+      4,
+      (_) => chars[r.nextInt(chars.length)],
+    ).join();
+    final part2 = List.generate(
+      2,
+      (_) => chars[r.nextInt(chars.length)],
+    ).join();
     _nomorPesanan = '$part1-$part2';
   }
 
   String _fmtTgl(DateTime dt) {
     const b = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     return '${dt.day} ${b[dt.month]} ${dt.year}';
   }
@@ -100,10 +115,12 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -127,13 +144,20 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                         (r) => false,
                       );
                     },
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 20),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Riwayat Pesanan',
-                      style: AppTextStyles.headlineLarge.copyWith(
-                          color: AppColors.textPrimary, fontSize: 20)),
+                  Text(
+                    'Riwayat Pesanan',
+                    style: AppTextStyles.headlineLarge.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -152,29 +176,35 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                   // ── Timeline
                   _buildTimeline(),
                   const SizedBox(height: 24),
+                  if (_canShowReturnOption) ...[
+                    _buildReturnOptions(),
+                    const SizedBox(height: 24),
+                  ],
 
                   // ── Kembali ke Beranda button
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () =>
-                          Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                            builder: (_) => const MainShell()),
+                      onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const MainShell()),
                         (r) => false,
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryDark,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: 0,
                       ),
-                      child: Text('Kembali ke Beranda',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15)),
+                      child: Text(
+                        'Kembali ke Beranda',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -187,9 +217,12 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   }
 
   // ─── Order card
+  bool get _canShowReturnOption => widget.statusKey == 'rented';
+
   Widget _buildPaymentProofCard() {
     final hasBytes = widget.paymentProofBytes != null;
-    final hasUrl = widget.paymentProofUrl != null &&
+    final hasUrl =
+        widget.paymentProofUrl != null &&
         widget.paymentProofUrl!.trim().isNotEmpty;
 
     return Container(
@@ -238,13 +271,10 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               constraints: const BoxConstraints(minHeight: 180, maxHeight: 360),
               color: AppColors.surfaceVariant,
               child: hasBytes
-                  ? Image.memory(
-                      widget.paymentProofBytes!,
-                      fit: BoxFit.cover,
-                    )
+                  ? Image.memory(widget.paymentProofBytes!, fit: BoxFit.cover)
                   : hasUrl
-                      ? _buildProofImageFromUrl(widget.paymentProofUrl!)
-                      : _buildProofPlaceholder(),
+                  ? _buildProofImageFromUrl(widget.paymentProofUrl!)
+                  : _buildProofPlaceholder(),
             ),
           ),
           const SizedBox(height: 10),
@@ -276,7 +306,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     return Image.network(
       url,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => _buildProofPlaceholder(),
+      errorBuilder: (_, _, _) => _buildProofPlaceholder(),
     );
   }
 
@@ -321,24 +351,32 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('PESANAN #$_nomorPesanan',
-                  style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5)),
+              Text(
+                'PESANAN #$_nomorPesanan',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryDark,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(widget.statusLabel ?? 'MENUNGGU ADMIN',
-                    style: AppTextStyles.caption.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 10,
-                        letterSpacing: 0.8)),
+                child: Text(
+                  widget.statusLabel ?? 'MENUNGGU ADMIN',
+                  style: AppTextStyles.caption.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 10,
+                    letterSpacing: 0.8,
+                  ),
+                ),
               ),
             ],
           ),
@@ -355,28 +393,38 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Total Pembayaran',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textHint)),
+                  Text(
+                    'Total Pembayaran',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textHint,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(_fmtRupiah(widget.total),
-                      style: AppTextStyles.headlineMedium.copyWith(
-                          color: AppColors.primaryDark,
-                          fontWeight: FontWeight.w800)),
+                  Text(
+                    _fmtRupiah(widget.total),
+                    style: AppTextStyles.headlineMedium.copyWith(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Periode Sewa',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textHint)),
+                  Text(
+                    'Periode Sewa',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textHint,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     '${_fmtTgl(widget.tanggalMulai)} – ${_fmtTgl(widget.tanggalSelesai)}',
                     style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600),
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -385,8 +433,11 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.verified_rounded,
-                  size: 16, color: AppColors.primaryDark),
+              const Icon(
+                Icons.verified_rounded,
+                size: 16,
+                color: AppColors.primaryDark,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Status Pembayaran: Lunas',
@@ -410,8 +461,11 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.storefront_rounded,
-                  size: 16, color: AppColors.primary),
+              const Icon(
+                Icons.storefront_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -442,7 +496,8 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
             borderRadius: BorderRadius.circular(10),
             child: NrImage(
               imageUrl: item.equipment.gambarprimaryUrl,
-              width: 72, height: 72,
+              width: 72,
+              height: 72,
               fit: BoxFit.cover,
             ),
           ),
@@ -455,7 +510,9 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                 if (item.equipment.namaKategori != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 2),
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
                     margin: const EdgeInsets.only(bottom: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primaryDark,
@@ -464,36 +521,55 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                     child: Text(
                       item.equipment.namaKategori!.toUpperCase(),
                       style: AppTextStyles.caption.copyWith(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5),
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
-                Text(item.equipment.nama,
-                    style: AppTextStyles.headlineMedium
-                        .copyWith(fontWeight: FontWeight.w700, fontSize: 15)),
-                const SizedBox(height: 4),
-                Row(children: [
-                  Text(
-                    _fmtRupiah(item.equipment.hargaPerHari),
-                    style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w700),
+                Text(
+                  item.equipment.nama,
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
                   ),
-                  Text(' / Hari',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textHint)),
-                ]),
+                ),
                 const SizedBox(height: 4),
-                Row(children: [
-                  const Icon(Icons.inventory_2_outlined,
-                      size: 12, color: AppColors.textHint),
-                  const SizedBox(width: 4),
-                  Text('${item.qty} Item',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textSecondary)),
-                ]),
+                Row(
+                  children: [
+                    Text(
+                      _fmtRupiah(item.equipment.hargaPerHari),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      ' / Hari',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textHint,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 12,
+                      color: AppColors.textHint,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${item.qty} Item',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -503,6 +579,38 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   }
 
   // ─── Timeline progress rental
+  Widget _buildReturnOptions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _groups
+          .map(
+            (group) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ReturnOptionCard(
+                rentalName: group.rental.namaRental,
+                itemCount: group.items.fold<int>(
+                  0,
+                  (sum, item) => sum + item.qty,
+                ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ReturnDetailPage(
+                      rental: group.rental,
+                      items: group.items,
+                      returnDate: widget.tanggalSelesai,
+                      statusLabel:
+                          widget.statusLabel ?? 'Menunggu Pengembalian',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   Widget _buildTimeline() {
     final rank = _statusRank(widget.statusKey);
     final steps = [
@@ -517,28 +625,32 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       _TimelineStep(
         icon: Icons.verified_rounded,
         title: 'Menunggu ACC admin',
-        subtitle: 'Setelah admin validasi pembayaran, pesanan diteruskan ke pemilik rental.',
+        subtitle:
+            'Setelah admin validasi pembayaran, pesanan diteruskan ke pemilik rental.',
         isDone: rank >= 1,
         isActive: rank == 1,
       ),
       _TimelineStep(
         icon: Icons.inventory_2_outlined,
         title: 'Alat diproses',
-        subtitle: 'Peralatan disiapkan, dicek, dan siap diambil pada ${_fmtTgl(widget.tanggalMulai)}.',
+        subtitle:
+            'Peralatan disiapkan, dicek, dan siap diambil pada ${_fmtTgl(widget.tanggalMulai)}.',
         isDone: rank >= 2,
         isActive: rank == 2,
       ),
       _TimelineStep(
         icon: Icons.shopping_bag_rounded,
         title: 'Pesanan sedang disewa',
-        subtitle: 'Peralatan sudah berada di tanganmu sampai ${_fmtTgl(widget.tanggalSelesai)}.',
+        subtitle:
+            'Peralatan sudah berada di tanganmu sampai ${_fmtTgl(widget.tanggalSelesai)}.',
         isDone: rank >= 3,
         isActive: rank == 3,
       ),
       _TimelineStep(
         icon: Icons.assignment_return_rounded,
         title: 'Peralatan dikembalikan',
-        subtitle: 'Peralatan sudah dikembalikan ke pemilik rental dan sedang diperiksa.',
+        subtitle:
+            'Peralatan sudah dikembalikan ke pemilik rental dan sedang diperiksa.',
         isDone: rank >= 4,
         isActive: rank == 4,
       ),
@@ -561,9 +673,13 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Proses Rental',
-              style: AppTextStyles.headlineMedium
-                  .copyWith(fontWeight: FontWeight.w700, fontSize: 16)),
+          Text(
+            'Proses Rental',
+            style: AppTextStyles.headlineMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
           const SizedBox(height: 20),
           ...steps.asMap().entries.map((e) {
             final isLast = e.key == steps.length - 1;
@@ -578,8 +694,9 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     final Color dotColor = step.isDone
         ? AppColors.primaryDark
         : AppColors.border;
-    final Color textColor =
-        step.isDone ? AppColors.textPrimary : AppColors.textHint;
+    final Color textColor = step.isDone
+        ? AppColors.textPrimary
+        : AppColors.textHint;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -588,18 +705,22 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
         Column(
           children: [
             Container(
-              width: 34, height: 34,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: dotColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(step.icon,
-                  size: 16,
-                  color: step.isDone ? Colors.white : AppColors.textHint),
+              child: Icon(
+                step.icon,
+                size: 16,
+                color: step.isDone ? Colors.white : AppColors.textHint,
+              ),
             ),
             if (!isLast)
               Container(
-                width: 2, height: 56,
+                width: 2,
+                height: 56,
                 color: step.isDone ? AppColors.primaryDark : AppColors.border,
               ),
           ],
@@ -613,21 +734,125 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(step.title,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: step.isActive
-                            ? AppColors.primaryDark
-                            : textColor)),
+                Text(
+                  step.title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: step.isActive ? AppColors.primaryDark : textColor,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(step.subtitle,
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.textSecondary, height: 1.4)),
+                Text(
+                  step.subtitle,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReturnOptionCard extends StatelessWidget {
+  final String rentalName;
+  final int itemCount;
+  final VoidCallback onTap;
+
+  const _ReturnOptionCard({
+    required this.rentalName,
+    required this.itemCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.assignment_return_rounded,
+                  color: AppColors.primaryDark,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pengembalian Barang',
+                      style: AppTextStyles.headlineMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$itemCount item dari $rentalName',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Kembalikan peralatan ke lokasi toko rental sesuai titik yang tertera.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton.icon(
+              onPressed: onTap,
+              icon: const Icon(Icons.location_on_outlined, size: 18),
+              label: const Text('Lihat Lokasi Pengembalian'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryDark,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
