@@ -53,17 +53,20 @@ export default function DashboardPage() {
     setUserEmail(user?.email || '')
 
     try {
-      const [bookingsRes, pemilikRes, bookRes, rentalRes, allBookingsRes] = await Promise.all([
+      const [bookingsRes, pemilikRes, bookRes, rentalRes, allBookingsRes, comSettingsRes] = await Promise.all([
         supabase.from('bookings').select('id', { count: 'exact', head: true }),
         supabase.from('rental_profiles').select('id', { count: 'exact', head: true }),
         supabase.from('bookings').select('id, created_at, status, customer_id').order('created_at', { ascending: false }).limit(3),
         supabase.from('rental_profiles').select('id, created_at, nama_rental').order('created_at', { ascending: false }).limit(2),
-        supabase.from('bookings').select('total_bayar, subtotal, status')
+        supabase.from('bookings').select('total_bayar, subtotal, status, commission_amount, biaya_layanan'),
+        supabase.from('commission_settings').select('percentage').order('updated_at', { ascending: false }).limit(1).maybeSingle()
       ])
 
-      // Ambil standar persentase komisi dari localStorage (default 10%)
+      // Ambil standar persentase komisi dari database atau localStorage (default 10%)
       let rate = 10
-      if (typeof window !== 'undefined') {
+      if (comSettingsRes?.data?.percentage !== undefined && comSettingsRes?.data?.percentage !== null) {
+        rate = Number(comSettingsRes.data.percentage)
+      } else if (typeof window !== 'undefined') {
         const savedRate = localStorage.getItem('naturerent_commission_rate')
         if (savedRate) {
           rate = Number(savedRate)
@@ -76,25 +79,33 @@ export default function DashboardPage() {
       const dbBookings = allBookingsRes.data || []
       if (dbBookings.length > 0) {
         dbBookings.forEach(b => {
-          // Hanya hitung pendapatan dan komisi jika transaksi disetujui (ACC / confirmed) atau sukses (completed)
-          // Transaksi pending atau cancelled (ditolak) tidak menghasilkan pendapatan/komisi platform.
-          if (b.status !== 'pending' && b.status !== 'cancelled' && b.status !== 'Ditolak') {
+          // Hanya hitung pendapatan dan komisi jika transaksi sudah Selesai (completed atau returned)
+          const isCompleted = b.status === 'completed' || b.status === 'returned' || b.status === 'Selesai'
+          if (isCompleted) {
             const gross = b.total_bayar || b.subtotal || 0
             totalRevenue += gross
-            totalKomisi += gross * (rate / 100)
+
+            const commAmt = b.commission_amount !== null && b.commission_amount !== undefined 
+              ? Number(b.commission_amount) 
+              : (b.subtotal || 0) * (rate / 100)
+            const serviceFee = b.biaya_layanan !== null && b.biaya_layanan !== undefined 
+              ? Number(b.biaya_layanan) 
+              : 0
+
+            totalKomisi += (commAmt + serviceFee)
           }
         })
       } else {
         // Fallback data simulasi agar tampilan awal tetap proporsional dan premium
         const fallbackTransactions = [
-          { gross_amount: 700000 },
-          { gross_amount: 250000 },
-          { gross_amount: 150000 },
-          { gross_amount: 300000 }
+          { gross_amount: 700000, subtotal: 600000, commission_amount: 75000, biaya_layanan: 2000 },
+          { gross_amount: 250000, subtotal: 200000, commission_amount: 25000, biaya_layanan: 2000 },
+          { gross_amount: 150000, subtotal: 100000, commission_amount: 12500, biaya_layanan: 2000 },
+          { gross_amount: 300000, subtotal: 250000, commission_amount: 31250, biaya_layanan: 2000 }
         ]
         fallbackTransactions.forEach(t => {
           totalRevenue += t.gross_amount
-          totalKomisi += t.gross_amount * (rate / 100)
+          totalKomisi += t.commission_amount + t.biaya_layanan
         })
       }
 
