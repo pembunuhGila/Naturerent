@@ -230,7 +230,16 @@ class OrderActivityService {
       final data = await AuthService.client
           .from('bookings')
           .select('''
-            *,
+            id,
+            customer_id,
+            rental_id,
+            tgl_mulai,
+            tgl_selesai,
+            total_bayar,
+            status,
+            booking_code,
+            payment_group_id,
+            created_at,
             rental_profiles(*, users!owner_id(nama_lengkap, email, no_wa), rental_settings(*)),
             booking_items(
               *,
@@ -259,6 +268,24 @@ class OrderActivityService {
       debugPrint('Gagal memuat aktivitas pesanan: $e');
       // Jika policy Supabase belum siap, pakai data lokal yang sudah ada.
     }
+  }
+
+  Future<String?> ambilBuktiPembayaran(String orderRefId) async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) return null;
+
+    final data = await AuthService.client
+        .from('bookings')
+        .select('payment_proof_url')
+        .eq('customer_id', user.id)
+        .or('payment_group_id.eq.$orderRefId,id.eq.$orderRefId')
+        .not('payment_proof_url', 'is', null)
+        .limit(1);
+
+    final rows = List<Map<String, dynamic>>.from(data as List);
+    if (rows.isEmpty) return null;
+    final value = rows.first['payment_proof_url'] as String?;
+    return value != null && value.trim().isNotEmpty ? value : null;
   }
 
   void ubahStatus(String id, ActivityOrderStatus status) {
@@ -355,7 +382,6 @@ class OrderActivityService {
       items: List<CartItem>.unmodifiable(items),
       status: _statusGroup(rows),
       createdAt: DateTime.parse(first['created_at'] as String),
-      paymentProofUrl: first['payment_proof_url'] as String?,
     );
   }
 
