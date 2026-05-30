@@ -60,10 +60,8 @@ class _ProfilPageState extends State<ProfilPage> {
       (_user?.userMetadata?['store_name'] as String?) ??
       'Rimba Basecamp';
   String? get _fotoProfilToko => _rentalProfile?.fotoProfil ?? _avatarUrl;
-  String get _alamatToko =>
-      _rentalProfile?.alamat ??
-      'Jl. Raya Sendang No. 42, Tulungagung, Jawa Timur';
-  String get _jamOperasional => '08:00 - 20:00 WIB';
+  String get _jamOperasional =>
+      _rentalProfile?.operationalHours ?? 'Jam operasional belum diatur';
 
   @override
   void initState() {
@@ -157,9 +155,9 @@ class _ProfilPageState extends State<ProfilPage> {
     final roleMetadata = _user?.userMetadata?['role'];
     String? role = _roleDB ?? (roleMetadata is String ? roleMetadata : null);
     try {
-      final roleDariDb = await AuthService()
-          .ambilRolePengguna()
-          .timeout(const Duration(seconds: 5));
+      final roleDariDb = await AuthService().ambilRolePengguna().timeout(
+        const Duration(seconds: 5),
+      );
       if (roleDariDb != null && roleDariDb.isNotEmpty) {
         role = roleDariDb;
         _roleDB = roleDariDb;
@@ -182,10 +180,8 @@ class _ProfilPageState extends State<ProfilPage> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => AktivitasPage(
-            initialTab: initialTab,
-            showBackButton: true,
-          ),
+          builder: (_) =>
+              AktivitasPage(initialTab: initialTab, showBackButton: true),
         ),
       );
     }
@@ -197,24 +193,37 @@ class _ProfilPageState extends State<ProfilPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Keluar Akun',
-            style: AppTextStyles.headlineLarge
-                .copyWith(color: const Color(0xFF202321))),
-        content: Text('Apakah kamu yakin ingin keluar?',
-            style:
-                AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF496171))),
+        title: Text(
+          'Keluar Akun',
+          style: AppTextStyles.headlineLarge.copyWith(
+            color: const Color(0xFF202321),
+          ),
+        ),
+        content: Text(
+          'Apakah kamu yakin ingin keluar?',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: const Color(0xFF496171),
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Batal',
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: const Color(0xFF496171))),
+            child: Text(
+              'Batal',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF496171),
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Keluar',
-                style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Keluar',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -244,10 +253,12 @@ class _ProfilPageState extends State<ProfilPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     if (_isMitra) return _buildMitraProfile();
 
@@ -278,36 +289,40 @@ class _ProfilPageState extends State<ProfilPage> {
               // ── Seksi AKUN
               _buildSectionLabel('AKUN'),
               const SizedBox(height: 8),
-              _buildMenuCard(items: [
-                _MenuItem(
-                  icon: Icons.history_rounded,
-                  label: 'Aktivitas Saya',
-                  onTap: _bukaAktivitas,
-                  loading: _openingActivity,
-                ),
-                _MenuItem(
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Daftar Transaksi',
-                  onTap: _bukaRiwayatTransaksi,
-                ),
-              ]),
+              _buildMenuCard(
+                items: [
+                  _MenuItem(
+                    icon: Icons.history_rounded,
+                    label: 'Aktivitas Saya',
+                    onTap: _bukaAktivitas,
+                    loading: _openingActivity,
+                  ),
+                  _MenuItem(
+                    icon: Icons.receipt_long_rounded,
+                    label: 'Daftar Transaksi',
+                    onTap: _bukaRiwayatTransaksi,
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
 
               // ── Seksi INFO LAINNYA
               _buildSectionLabel('INFO LAINNYA'),
               const SizedBox(height: 8),
-              _buildMenuCard(items: [
-                _MenuItem(
-                  icon: Icons.help_outline_rounded,
-                  label: 'Pusat Bantuan',
-                  onTap: () => _snackComingSoon('Pusat Bantuan'),
-                ),
-                _MenuItem(
-                  icon: Icons.privacy_tip_outlined,
-                  label: 'Kebijakan Privasi',
-                  onTap: () => _snackComingSoon('Kebijakan Privasi'),
-                ),
-              ]),
+              _buildMenuCard(
+                items: [
+                  _MenuItem(
+                    icon: Icons.help_outline_rounded,
+                    label: 'Pusat Bantuan',
+                    onTap: () => _snackComingSoon('Pusat Bantuan'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.privacy_tip_outlined,
+                    label: 'Kebijakan Privasi',
+                    onTap: () => _snackComingSoon('Kebijakan Privasi'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
 
               // ── Logout
@@ -374,8 +389,12 @@ class _ProfilPageState extends State<ProfilPage> {
                   ),
                   child: ClipOval(
                     child: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                        ? Image.network(_avatarUrl!,
-                            width: 92, height: 92, fit: BoxFit.cover)
+                        ? Image.network(
+                            _avatarUrl!,
+                            width: 92,
+                            height: 92,
+                            fit: BoxFit.cover,
+                          )
                         : Container(
                             color: AppColors.primary,
                             child: Center(
@@ -406,8 +425,11 @@ class _ProfilPageState extends State<ProfilPage> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(Icons.edit_rounded,
-                        color: Colors.white, size: 13),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    ),
                   ),
                 ),
               ),
@@ -443,9 +465,7 @@ class _ProfilPageState extends State<ProfilPage> {
         icon: const Icon(Icons.edit_rounded, size: 18),
         label: Text(
           'Edit Profil',
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primaryDark,
@@ -500,8 +520,10 @@ class _ProfilPageState extends State<ProfilPage> {
                       : Radius.zero,
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -511,8 +533,11 @@ class _ProfilPageState extends State<ProfilPage> {
                           color: AppColors.primaryLight,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(item.icon,
-                            color: AppColors.primaryDark, size: 18),
+                        child: Icon(
+                          item.icon,
+                          color: AppColors.primaryDark,
+                          size: 18,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -534,8 +559,11 @@ class _ProfilPageState extends State<ProfilPage> {
                           ),
                         )
                       else
-                        const Icon(Icons.chevron_right_rounded,
-                            color: AppColors.textHint, size: 20),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.textHint,
+                          size: 20,
+                        ),
                     ],
                   ),
                 ),
@@ -568,14 +596,19 @@ class _ProfilPageState extends State<ProfilPage> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.error),
+                      strokeWidth: 2,
+                      color: AppColors.error,
+                    ),
                   ),
                 )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.logout_rounded,
-                        color: AppColors.error, size: 18),
+                    const Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.error,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Logout',
@@ -670,9 +703,7 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   Widget _buildMitraAppBar() {
-    return const OwnerHeaderWidget(
-      padding: EdgeInsets.fromLTRB(8, 10, 0, 0),
-    );
+    return const OwnerHeaderWidget(padding: EdgeInsets.fromLTRB(8, 10, 0, 0));
   }
 
   Widget _buildMitraHero() {
@@ -693,12 +724,13 @@ class _ProfilPageState extends State<ProfilPage> {
                   child: SizedBox(
                     width: double.infinity,
                     height: 176,
-                    child: _rentalProfile?.fotoBanner != null &&
+                    child:
+                        _rentalProfile?.fotoBanner != null &&
                             _rentalProfile!.fotoBanner!.isNotEmpty
                         ? Image.network(
                             _rentalProfile!.fotoBanner!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildMitraCoverPlaceholder(),
                           )
                         : _buildMitraCoverPlaceholder(),
@@ -709,8 +741,10 @@ class _ProfilPageState extends State<ProfilPage> {
                 right: 14,
                 top: 132,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.34),
                     borderRadius: BorderRadius.circular(8),
@@ -751,12 +785,13 @@ class _ProfilPageState extends State<ProfilPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(11),
-                          child: _fotoProfilToko != null &&
+                          child:
+                              _fotoProfilToko != null &&
                                   _fotoProfilToko!.isNotEmpty
                               ? Image.network(
                                   _fotoProfilToko!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
+                                  errorBuilder: (_, _, _) =>
                                       _buildInitialAvatar(),
                                 )
                               : _buildInitialAvatar(),
@@ -816,7 +851,9 @@ class _ProfilPageState extends State<ProfilPage> {
       children: [
         Image.asset('assets/images/loading_background.png', fit: BoxFit.cover),
         DecoratedBox(
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.38)),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.38),
+          ),
         ),
       ],
     );
@@ -850,7 +887,9 @@ class _ProfilPageState extends State<ProfilPage> {
       ),
       child: Row(
         children: const [
-          Expanded(child: _MitraStatItem(label: 'TOTAL SEWA', value: '124')),
+          Expanded(
+            child: _MitraStatItem(label: 'TOTAL SEWA', value: '124'),
+          ),
           _VerticalSoftDivider(),
           Expanded(
             child: _MitraStatItem(
@@ -1037,36 +1076,6 @@ class _MitraMenuTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _RoundActionIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _RoundActionIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: AppColors.ownerPrimaryGreen, size: 20),
       ),
     );
   }
