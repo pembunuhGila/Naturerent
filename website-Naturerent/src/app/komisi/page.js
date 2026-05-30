@@ -31,47 +31,37 @@ export default function KomisiPage() {
   const { toasts, addToast, removeToast } = useToast()
   const [userEmail, setUserEmail] = useState('')
   const [commissionRate, setCommissionRate] = useState(12.5)
+  const [serviceFee, setServiceFee] = useState(2000)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState([])
   const [page, setPage] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
   const [statusFilter, setStatusFilter] = useState('Semua')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    
     try {
       const res = await fetch('/api/bookings')
       if (!res.ok) throw new Error('Gagal memuat data bookings')
       const bookings = await res.json()
-      
-      if (!bookings || bookings.length === 0) {
-        throw new Error('Tidak ada data bookings')
-      }
+      if (!bookings || bookings.length === 0) throw new Error('Tidak ada data bookings')
 
-      const resolved = bookings.map((b) => {
-        return {
-          id: b.id.startsWith('TRX-') ? b.id : `TRX-${b.id.substring(0, 5).toUpperCase()}`,
-          created_at: b.created_at,
-          rental_name: b.rental_profiles?.nama_rental || 'Unknown Rental',
-          gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 0,
-          status: (b.status === 'completed' || b.status === 'returned' || b.status === 'Selesai') ? 'Selesai' : 
-                  (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
-        }
-      })
+      const resolved = bookings.map((b) => ({
+        id: b.id.startsWith('TRX-') ? b.id : `TRX-${b.id.substring(0, 5).toUpperCase()}`,
+        created_at: b.created_at,
+        rental_name: b.rental_profiles?.nama_rental || 'Unknown Rental',
+        gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 0,
+        status: (b.status === 'completed' || b.status === 'returned' || b.status === 'Selesai') ? 'Selesai'
+              : (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
+      }))
       setData(resolved)
-      setTotalCount(resolved.length)
     } catch (error) {
       console.error('Error fetching bookings:', error)
-      const fallbackTransactions = [
+      setData([
         { id: 'TRX-99210', created_at: '2026-10-12T14:30:00Z', rental_name: 'Summit Peak Gear', gross_amount: 700000, status: 'Selesai' },
         { id: 'TRX-99208', created_at: '2026-10-12T12:15:00Z', rental_name: 'River Runner Rentals', gross_amount: 250000, status: 'Selesai' },
         { id: 'TRX-99194', created_at: '2026-10-12T11:45:00Z', rental_name: 'Forest Bound Hub', gross_amount: 150000, status: 'Proses' },
         { id: 'TRX-99182', created_at: '2026-10-11T18:20:00Z', rental_name: 'Trail Blazers Co.', gross_amount: 300000, status: 'Selesai' }
-      ]
-      
-      setData(fallbackTransactions)
-      setTotalCount(fallbackTransactions.length)
+      ])
     }
     setLoading(false)
   }, [])
@@ -81,14 +71,12 @@ export default function KomisiPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setUserEmail(user?.email || '')
-      
-      // Load saved commission rate from localStorage if exists
-      const savedRate = localStorage.getItem('naturerent_commission_rate')
-      if (savedRate) {
-        setCommissionRate(Number(savedRate))
-      }
 
-      // Fetch live commission rate from Supabase database
+      // Load commission rate from localStorage
+      const savedRate = localStorage.getItem('naturerent_commission_rate')
+      if (savedRate) setCommissionRate(Number(savedRate))
+
+      // Fetch live commission rate from Supabase
       try {
         const comRes = await fetch('/api/commission-settings')
         if (comRes.ok) {
@@ -100,13 +88,33 @@ export default function KomisiPage() {
           }
         }
       } catch (err) {
-        console.error('Error fetching commission rate from DB:', err)
+        console.error('Error fetching commission rate:', err)
+      }
+
+      // Fetch live service fee from Supabase
+      try {
+        const { data: configRow, error: configErr } = await supabase
+          .from('wisata_locations')
+          .select('deskripsi')
+          .eq('nama', '__GLOBAL_QRIS__')
+          .eq('kategori', 'QRIS')
+          .maybeSingle()
+
+        if (!configErr && configRow?.deskripsi) {
+          const parsed = typeof configRow.deskripsi === 'string'
+            ? JSON.parse(configRow.deskripsi)
+            : configRow.deskripsi
+          if (parsed?.biaya_layanan !== undefined) {
+            setServiceFee(Number(parsed.biaya_layanan))
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching service fee:', err)
       }
     }
     init()
     fetchData()
 
-    // Live-sync if admin updates rate from System Settings in another tab
     const onStorage = (e) => {
       if (e.key === 'naturerent_commission_rate' && e.newValue) {
         setCommissionRate(Number(e.newValue))
@@ -116,13 +124,17 @@ export default function KomisiPage() {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-
-  const filteredData = statusFilter === 'Semua' 
-    ? data 
+  const filteredData = statusFilter === 'Semua'
+    ? data
     : data.filter(row => row.status === statusFilter)
 
-  const totalCountFiltered = filteredData.length
-  const totalPages = Math.ceil(totalCountFiltered / PAGE_SIZE)
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE)
+  const completedCount = data.filter(r => r.status === 'Selesai').length
+  const totalCommission = data.filter(r => r.status === 'Selesai')
+    .reduce((sum, r) => sum + r.gross_amount * (commissionRate / 100), 0)
+  const totalServiceFeeAll = completedCount * serviceFee
+  // Total gabungan: komisi % + biaya layanan flat
+  const totalGabungan = totalCommission + totalServiceFeeAll
 
   return (
     <AuthGuard>
@@ -136,9 +148,10 @@ export default function KomisiPage() {
 
         <section className="content-section">
 
-          {/* Commission Rate Info Banner */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
-            {/* Rate card */}
+          {/* ─── STATS CARDS ─── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+
+            {/* Tarif Komisi Aktif */}
             <div style={{ borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)', padding: '20px 22px', position: 'relative', boxShadow: '0 8px 24px rgba(124,58,237,0.18)' }}>
               <div style={{ position: 'absolute', top: -15, right: -15, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
               <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Tarif Komisi Aktif</p>
@@ -155,7 +168,24 @@ export default function KomisiPage() {
               </a>
             </div>
 
-            {/* Total transaksi selesai */}
+            {/* Biaya Layanan Platform */}
+            <div style={{ borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #0369a1 0%, #38bdf8 100%)', padding: '20px 22px', position: 'relative', boxShadow: '0 8px 24px rgba(3,105,161,0.18)' }}>
+              <div style={{ position: 'absolute', top: -15, right: -15, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+              <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Biaya Layanan Platform</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)', marginRight: 2 }}>Rp</span>
+                <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{Number(serviceFee).toLocaleString('id-ID')}</span>
+              </div>
+              <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', margin: '6px 0 0 0' }}>Flat fee per transaksi checkout</p>
+              <a href="/settings" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 10, fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', background: 'rgba(255,255,255,0.12)', padding: '4px 10px', borderRadius: 999, transition: 'background 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+              >
+                <i className="fa-solid fa-gear" style={{ fontSize: 10 }} /> Ubah di Settings
+              </a>
+            </div>
+
+            {/* Total Transaksi Selesai */}
             <div style={{ borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '20px 22px', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <div style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(16,185,129,0.1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -164,12 +194,12 @@ export default function KomisiPage() {
                 <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Transaksi Selesai</span>
               </div>
               <p style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
-                {data.filter(r => r.status === 'Selesai').length}
+                {completedCount}
               </p>
               <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>dari {data.length} total transaksi</p>
             </div>
 
-            {/* Total komisi terkumpul */}
+            {/* Total Komisi (Komisi % + Biaya Layanan) */}
             <div style={{ borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', padding: '20px 22px', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <div style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'var(--brand-mint)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -178,35 +208,36 @@ export default function KomisiPage() {
                 <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Total Komisi</span>
               </div>
               <p style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--brand-emerald)', margin: 0, lineHeight: 1 }}>
-                {formatCurrency(data.filter(r => r.status === 'Selesai').reduce((sum, r) => sum + r.gross_amount * (commissionRate / 100), 0))}
+                {formatCurrency(totalGabungan)}
               </p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>@ {commissionRate}% dari transaksi selesai</p>
+              {/* Rincian breakdown komisi + biaya layanan */}
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  <span><i className="fa-solid fa-percent" style={{ fontSize: 9, marginRight: 4 }} />Komisi {commissionRate}%</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{formatCurrency(totalCommission)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  <span><i className="fa-solid fa-building-columns" style={{ fontSize: 9, marginRight: 4 }} />Biaya layanan</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{formatCurrency(totalServiceFeeAll)}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* History Komisi Card */}
+          {/* ─── HISTORY KOMISI TABLE ─── */}
           <div className="table-wrapper" style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px' }}>
               <div>
                 <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>History Komisi</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Catatan waktu nyata dari semua potongan platform dan pembagian transaksi.</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Catatan waktu nyata dari semua potongan komisi platform per transaksi.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <i className="fa-solid fa-filter" style={{ color: 'var(--text-muted)', fontSize: 13 }} />
-                <select 
-                  className="filter-select" 
-                  value={statusFilter} 
-                  onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                  style={{ 
-                    padding: '8px 32px 8px 14px', 
-                    borderRadius: '6px', 
-                    fontSize: '13px', 
-                    fontWeight: 700, 
-                    border: '1px solid var(--border-color)', 
-                    backgroundColor: 'var(--bg-card)', 
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer'
-                  }}
+                <select
+                  className="filter-select"
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+                  style={{ padding: '8px 32px 8px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 700, border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
                 >
                   <option value="Semua">Semua Status</option>
                   <option value="Proses">Proses</option>
@@ -222,7 +253,8 @@ export default function KomisiPage() {
                   <th>ID TRANSAKSI</th>
                   <th>PEMILIK RENTAL</th>
                   <th>JUMLAH KOTOR</th>
-                  <th>JUMLAH KOMISI</th>
+                  <th>JUMLAH KOMISI ({commissionRate}%)</th>
+                  <th>BIAYA LAYANAN</th>
                   <th>STATUS</th>
                   <th>TANGGAL</th>
                 </tr>
@@ -230,12 +262,13 @@ export default function KomisiPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
                       <div className="loading-spinner" style={{ margin: 'auto' }} />
                     </td>
                   </tr>
                 ) : filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(row => {
                   const comm = row.status === 'Batal' ? 0 : row.gross_amount * (commissionRate / 100)
+                  const fee  = row.status === 'Batal' ? 0 : serviceFee
                   return (
                     <tr key={row.id}>
                       <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>#{row.id}</td>
@@ -249,6 +282,12 @@ export default function KomisiPage() {
                       </td>
                       <td>{formatCurrency(row.gross_amount)}</td>
                       <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>{formatCurrency(comm)}</td>
+                      <td>
+                        {fee > 0
+                          ? <span style={{ fontWeight: 700, color: '#0369a1' }}>{formatCurrency(fee)}</span>
+                          : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
+                        }
+                      </td>
                       <td>
                         <span className={`badge ${row.status === 'Selesai' ? 'badge-success' : row.status === 'Batal' ? 'badge-danger' : 'badge-warning'}`}>
                           {row.status}
@@ -264,11 +303,10 @@ export default function KomisiPage() {
               </tbody>
             </table>
 
-            {/* Pagination */}
-            {!loading && totalCountFiltered > 0 && (
+            {!loading && filteredData.length > 0 && (
               <div className="pagination-section" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }}>
                 <p className="pagination-info" style={{ color: 'var(--text-secondary)' }}>
-                  Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalCountFiltered)} dari {totalCountFiltered} transaksi
+                  Menampilkan {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, filteredData.length)} dari {filteredData.length} transaksi
                 </p>
                 <div className="pagination">
                   <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
@@ -284,6 +322,7 @@ export default function KomisiPage() {
               </div>
             )}
           </div>
+
         </section>
       </main>
       <Toast toasts={toasts} onRemove={removeToast} />
