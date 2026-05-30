@@ -50,6 +50,9 @@ export default function KomisiPage() {
         created_at: b.created_at,
         rental_name: b.rental_profiles?.nama_rental || 'Unknown Rental',
         gross_amount: b.total_bayar || b.subtotal || b.total || b.total_amount || 0,
+        subtotal: b.subtotal || 0,
+        commission_amount: b.commission_amount !== undefined && b.commission_amount !== null ? Number(b.commission_amount) : null,
+        biaya_layanan: b.biaya_layanan !== undefined && b.biaya_layanan !== null ? Number(b.biaya_layanan) : 0,
         status: (b.status === 'completed' || b.status === 'returned' || b.status === 'Selesai') ? 'Selesai'
               : (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
       }))
@@ -131,8 +134,9 @@ export default function KomisiPage() {
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE)
   const completedCount = data.filter(r => r.status === 'Selesai').length
   const totalCommission = data.filter(r => r.status === 'Selesai')
-    .reduce((sum, r) => sum + r.gross_amount * (commissionRate / 100), 0)
-  const totalServiceFeeAll = completedCount * serviceFee
+    .reduce((sum, r) => sum + (r.commission_amount !== null && r.commission_amount !== undefined ? r.commission_amount : r.subtotal * (commissionRate / 100)), 0)
+  const totalServiceFeeAll = data.filter(r => r.status === 'Selesai')
+    .reduce((sum, r) => sum + r.biaya_layanan, 0)
   // Total gabungan: komisi % + biaya layanan flat
   const totalGabungan = totalCommission + totalServiceFeeAll
 
@@ -267,8 +271,10 @@ export default function KomisiPage() {
                     </td>
                   </tr>
                 ) : filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(row => {
-                  const comm = row.status === 'Batal' ? 0 : row.gross_amount * (commissionRate / 100)
-                  const fee  = row.status === 'Batal' ? 0 : serviceFee
+                  const comm = row.status === 'Batal' ? 0 
+                             : (row.commission_amount !== null && row.commission_amount !== undefined ? row.commission_amount : row.subtotal * (commissionRate / 100))
+                  const fee  = row.status === 'Batal' ? 0 
+                             : (row.biaya_layanan !== null && row.biaya_layanan !== undefined ? row.biaya_layanan : serviceFee)
                   return (
                     <tr key={row.id}>
                       <td style={{ fontWeight: 700, color: 'var(--brand-emerald)' }}>#{row.id}</td>
