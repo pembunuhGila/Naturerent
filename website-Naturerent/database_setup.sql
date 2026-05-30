@@ -22,8 +22,17 @@
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
 -- B. Berikan hak akses CRUD penuh ke tabel-tabel utama
+CREATE TABLE IF NOT EXISTS public.rental_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  rental_id uuid UNIQUE REFERENCES public.rental_profiles(id) ON DELETE CASCADE,
+  jam_operasional jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
 GRANT ALL PRIVILEGES ON TABLE public.users TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.rental_profiles TO anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON TABLE public.rental_settings TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.bookings TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.commission_settings TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.deliveries TO anon, authenticated, service_role;
@@ -47,6 +56,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authen
 -- A. Aktifkan RLS di seluruh tabel utama
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rental_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rental_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.commission_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deliveries ENABLE ROW LEVEL SECURITY;
@@ -103,8 +113,35 @@ DROP POLICY IF EXISTS "Allow public read-only access to active rental profiles" 
 CREATE POLICY "Allow public read-only access to active rental profiles" ON public.rental_profiles
     FOR SELECT TO anon, authenticated USING (is_active = true);
 
+-- E. KEBIJAKAN AKSES PADA TABEL 'rental_settings'
+ALTER TABLE public.rental_settings
+  ADD COLUMN IF NOT EXISTS jam_operasional jsonb;
 
--- E. KEBIJAKAN AKSES PADA TABEL 'bookings'
+DROP POLICY IF EXISTS "Owners can manage own rental settings" ON public.rental_settings;
+CREATE POLICY "Owners can manage own rental settings" ON public.rental_settings
+    FOR ALL TO authenticated USING (
+        EXISTS (
+            SELECT 1 FROM public.rental_profiles rp
+            WHERE rp.id = rental_id AND rp.owner_id = auth.uid()
+        )
+    ) WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.rental_profiles rp
+            WHERE rp.id = rental_id AND rp.owner_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Allow public read-only access to rental settings" ON public.rental_settings;
+CREATE POLICY "Allow public read-only access to rental settings" ON public.rental_settings
+    FOR SELECT TO anon, authenticated USING (
+        EXISTS (
+            SELECT 1 FROM public.rental_profiles rp
+            WHERE rp.id = rental_id AND rp.is_active = true
+        )
+    );
+
+
+-- F. KEBIJAKAN AKSES PADA TABEL 'bookings'
 -- 1. Akses CRUD penuh untuk Admin
 DROP POLICY IF EXISTS "Admin full access on bookings" ON public.bookings;
 CREATE POLICY "Admin full access on bookings" ON public.bookings
@@ -140,7 +177,7 @@ CREATE POLICY "Owners can update bookings for their rentals" ON public.bookings
         )
     );
 
--- F. KEBIJAKAN AKSES PADA TABEL 'commission_settings'
+-- G. KEBIJAKAN AKSES PADA TABEL 'commission_settings'
 -- 1. Akses CRUD penuh untuk Admin
 DROP POLICY IF EXISTS "Admin full access on commission_settings" ON public.commission_settings;
 CREATE POLICY "Admin full access on commission_settings" ON public.commission_settings
@@ -151,7 +188,7 @@ DROP POLICY IF EXISTS "Allow select for all authenticated users on commission_se
 CREATE POLICY "Allow select for all authenticated users on commission_settings" ON public.commission_settings
     FOR SELECT TO authenticated USING (true);
 
--- G. KEBIJAKAN AKSES PADA TABEL 'deliveries'
+-- H. KEBIJAKAN AKSES PADA TABEL 'deliveries'
 -- 1. Akses CRUD penuh untuk Admin
 DROP POLICY IF EXISTS "Admin full access on deliveries" ON public.deliveries;
 CREATE POLICY "Admin full access on deliveries" ON public.deliveries
