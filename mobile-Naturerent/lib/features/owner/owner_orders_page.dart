@@ -458,8 +458,14 @@ class _IncomeTab extends StatelessWidget {
       0,
       (sum, order) => sum + order.totalBayar,
     );
-    final commission = gross * 0.1;
-    final net = gross - commission;
+    final commission = monthOrders.fold<double>(
+      0,
+      (sum, order) => sum + order.commissionAmount,
+    );
+    final net = monthOrders.fold<double>(
+      0,
+      (sum, order) => sum + order.netToOwner,
+    );
 
     return RefreshIndicator(
       color: AppColors.ownerPrimaryGreen,
