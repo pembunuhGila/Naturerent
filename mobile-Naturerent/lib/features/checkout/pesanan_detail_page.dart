@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/cart_service.dart';
+import '../../core/services/order_activity_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../shell/main_shell.dart';
 import 'return_detail_page.dart';
@@ -14,6 +15,7 @@ class PesananDetailPage extends StatefulWidget {
   final DateTime tanggalMulai;
   final DateTime tanggalSelesai;
   final List<CartItem> items;
+  final String? orderRefId;
   final String? nomorPesanan;
   final String? statusLabel;
   final String? statusKey;
@@ -27,6 +29,7 @@ class PesananDetailPage extends StatefulWidget {
     required this.tanggalMulai,
     required this.tanggalSelesai,
     required this.items,
+    this.orderRefId,
     this.nomorPesanan,
     this.statusLabel,
     this.statusKey,
@@ -40,6 +43,9 @@ class PesananDetailPage extends StatefulWidget {
 
 class _PesananDetailPageState extends State<PesananDetailPage> {
   late final String _nomorPesanan;
+  String? _paymentProofUrl;
+  Uint8List? _decodedProofBytes;
+  bool _loadingProof = false;
 
   List<CartRentalGroup> get _groups {
     final map = <String, List<CartItem>>{};
@@ -66,6 +72,8 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   @override
   void initState() {
     super.initState();
+    _paymentProofUrl = widget.paymentProofUrl;
+    _loadPaymentProofIfNeeded();
     if (widget.nomorPesanan != null) {
       _nomorPesanan = widget.nomorPesanan!;
       return;
@@ -82,6 +90,27 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       (_) => chars[r.nextInt(chars.length)],
     ).join();
     _nomorPesanan = '$part1-$part2';
+  }
+
+  Future<void> _loadPaymentProofIfNeeded() async {
+    if (widget.paymentProofBytes != null ||
+        (_paymentProofUrl != null && _paymentProofUrl!.trim().isNotEmpty) ||
+        widget.orderRefId == null) {
+      return;
+    }
+
+    setState(() => _loadingProof = true);
+    try {
+      final proof = await OrderActivityService().ambilBuktiPembayaran(
+        widget.orderRefId!,
+      );
+      if (!mounted) return;
+      setState(() => _paymentProofUrl = proof);
+    } catch (_) {
+      // Bukti pembayaran bukan blocker untuk detail pesanan.
+    } finally {
+      if (mounted) setState(() => _loadingProof = false);
+    }
   }
 
   String _fmtTgl(DateTime dt) {
@@ -222,8 +251,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   Widget _buildPaymentProofCard() {
     final hasBytes = widget.paymentProofBytes != null;
     final hasUrl =
-        widget.paymentProofUrl != null &&
-        widget.paymentProofUrl!.trim().isNotEmpty;
+        _paymentProofUrl != null && _paymentProofUrl!.trim().isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -270,10 +298,16 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               width: double.infinity,
               constraints: const BoxConstraints(minHeight: 180, maxHeight: 360),
               color: AppColors.surfaceVariant,
-              child: hasBytes
-                  ? Image.memory(widget.paymentProofBytes!, fit: BoxFit.cover)
+              child: _loadingProof
+                  ? _buildProofLoading()
+                  : hasBytes
+                  ? Image.memory(
+                      widget.paymentProofBytes!,
+                      fit: BoxFit.cover,
+                      cacheWidth: 900,
+                    )
                   : hasUrl
-                  ? _buildProofImageFromUrl(widget.paymentProofUrl!)
+                  ? _buildProofImageFromUrl(_paymentProofUrl!)
                   : _buildProofPlaceholder(),
             ),
           ),
@@ -295,8 +329,12 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       final comma = url.indexOf(',');
       if (comma > 0) {
         try {
-          final bytes = base64Decode(url.substring(comma + 1));
-          return Image.memory(bytes, fit: BoxFit.cover);
+          _decodedProofBytes ??= base64Decode(url.substring(comma + 1));
+          return Image.memory(
+            _decodedProofBytes!,
+            fit: BoxFit.cover,
+            cacheWidth: 900,
+          );
         } catch (_) {
           return _buildProofPlaceholder();
         }
@@ -306,7 +344,21 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     return Image.network(
       url,
       fit: BoxFit.cover,
+      cacheWidth: 900,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return _buildProofLoading();
+      },
       errorBuilder: (_, _, _) => _buildProofPlaceholder(),
+    );
+  }
+
+  Widget _buildProofLoading() {
+    return const Center(
+      child: CircularProgressIndicator(
+        color: AppColors.primary,
+        strokeWidth: 2,
+      ),
     );
   }
 
