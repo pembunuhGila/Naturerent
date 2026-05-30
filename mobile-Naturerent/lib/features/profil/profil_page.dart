@@ -16,8 +16,14 @@ import 'edit_profil_page.dart';
 class ProfilPage extends StatefulWidget {
   final bool forceMitra;
   final ValueChanged<int>? onOwnerNavTap;
+  final int refreshToken;
 
-  const ProfilPage({super.key, this.forceMitra = false, this.onOwnerNavTap});
+  const ProfilPage({
+    super.key,
+    this.forceMitra = false,
+    this.onOwnerNavTap,
+    this.refreshToken = 0,
+  });
 
   @override
   State<ProfilPage> createState() => _ProfilPageState();
@@ -67,6 +73,14 @@ class _ProfilPageState extends State<ProfilPage> {
   void initState() {
     super.initState();
     _muatProfil();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      _muatProfil();
+    }
   }
 
   Future<void> _muatProfil() async {
