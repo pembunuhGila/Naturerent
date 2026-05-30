@@ -15,11 +15,13 @@ class OwnerShell extends StatefulWidget {
 class _OwnerShellState extends State<OwnerShell> {
   int _currentIndex = 0;
   int _inventoryInitialTab = 0;
+  int _profileRefreshToken = 0;
 
   void _setTab(int index, {int? inventoryTab}) {
     setState(() {
       _currentIndex = index;
       if (inventoryTab != null) _inventoryInitialTab = inventoryTab;
+      if (index == 3) _profileRefreshToken++;
     });
   }
 
@@ -31,6 +33,7 @@ class _OwnerShellState extends State<OwnerShell> {
       OwnerInventoryPage(initialTabIndex: _inventoryInitialTab),
       ProfilPage(
         forceMitra: true,
+        refreshToken: _profileRefreshToken,
         onOwnerNavTap: (index) =>
             _setTab(index, inventoryTab: index == 2 ? 1 : null),
       ),
