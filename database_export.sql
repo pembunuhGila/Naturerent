@@ -354,7 +354,7 @@ BEGIN
         TG_OP::audit_action,
         CASE TG_OP WHEN 'INSERT' THEN NULL ELSE to_jsonb(OLD) END,
         CASE TG_OP WHEN 'DELETE' THEN NULL ELSE to_jsonb(NEW) END,
-        auth.uid()
+        CASE WHEN EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid()) THEN auth.uid() ELSE NULL END
     );
     RETURN COALESCE(NEW, OLD);
 END;
