@@ -179,7 +179,7 @@ class _TabNotifikasi extends StatelessWidget {
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          padding: _activityListPadding(context),
           itemCount: orders.length,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) =>
@@ -209,7 +209,7 @@ class _TabPesananAktif extends StatelessWidget {
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          padding: _activityListPadding(context),
           itemCount: aktif.length,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) => _OrderCard(order: aktif[index]),
@@ -240,7 +240,7 @@ class _TabRiwayat extends StatelessWidget {
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          padding: _activityListPadding(context),
           itemCount: riwayat.length,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) => _OrderCard(order: riwayat[index]),
@@ -574,6 +574,15 @@ int _rentalCount(ActivityOrder order) {
 
 int _itemCount(ActivityOrder order) {
   return order.items.fold<int>(0, (sum, item) => sum + item.qty);
+}
+
+EdgeInsets _activityListPadding(BuildContext context) {
+  return EdgeInsets.fromLTRB(
+    20,
+    14,
+    20,
+    MediaQuery.of(context).padding.bottom + 132,
+  );
 }
 
 Future<void> _openOrderDetail(BuildContext context, ActivityOrder order) async {
