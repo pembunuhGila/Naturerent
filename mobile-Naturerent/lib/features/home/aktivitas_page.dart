@@ -594,6 +594,7 @@ Future<void> _openOrderDetail(BuildContext context, ActivityOrder order) async {
         tanggalMulai: order.tanggalMulai,
         tanggalSelesai: order.tanggalSelesai,
         items: order.items,
+        orderRefId: order.id,
         nomorPesanan: order.nomorPesanan,
         statusLabel: _statusDetailLabel(order.status),
         statusKey: _statusDbKey(order.status),
