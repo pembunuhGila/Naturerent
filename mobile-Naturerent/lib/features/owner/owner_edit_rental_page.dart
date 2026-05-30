@@ -41,6 +41,8 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   // ── State GPS
   double? _lat;
   double? _lng;
+  TimeOfDay? _jamBuka;
+  TimeOfDay? _jamTutup;
   bool _loadingGps = false;
   bool _saving = false;
 
@@ -59,6 +61,8 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     // Muat koordinat yang sudah tersimpan sebelumnya
     _lat = rental?.lat;
     _lng = rental?.lng;
+    _jamBuka = _timeOfDayFromText(rental?.openTime);
+    _jamTutup = _timeOfDayFromText(rental?.closeTime);
     _suggestedDestinations = _uniqueDestinations(
       widget.suggestedDestinations.isEmpty
           ? ownerNearbyDestinations
@@ -251,6 +255,43 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     }
   }
 
+  Future<void> _pilihJamBuka() async {
+    final picked = await _pickJam(
+      _jamBuka ?? const TimeOfDay(hour: 8, minute: 0),
+    );
+    if (picked != null && mounted) setState(() => _jamBuka = picked);
+  }
+
+  Future<void> _pilihJamTutup() async {
+    final picked = await _pickJam(
+      _jamTutup ?? const TimeOfDay(hour: 20, minute: 0),
+    );
+    if (picked != null && mounted) setState(() => _jamTutup = picked);
+  }
+
+  Future<TimeOfDay?> _pickJam(TimeOfDay initialTime) {
+    return showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      helpText: 'Pilih Jam Operasional',
+      cancelText: 'Batal',
+      confirmText: 'Pilih',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.ownerPrimaryGreen,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF202321),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+  }
+
   // ─────────────────────────────────────────────────────
   //  Save Logic
   // ─────────────────────────────────────────────────────
@@ -265,6 +306,15 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     }
     if (_lat == null || _lng == null) {
       _snackError('Silakan pilih lokasi toko rental terlebih dahulu');
+      return;
+    }
+    if (_jamBuka == null || _jamTutup == null) {
+      _snackError('Silakan lengkapi jam operasional toko');
+      return;
+    }
+    if (_minutesOf(_jamBuka!) == _minutesOf(_jamTutup!) ||
+        _minutesOf(_jamTutup!) < _minutesOf(_jamBuka!)) {
+      _snackError('Jam tutup harus lebih besar dari jam buka');
       return;
     }
 
@@ -285,6 +335,8 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
         alamat: alamat.isEmpty ? null : alamat,
         lat: _lat,
         lng: _lng,
+        openTime: _formatJam(_jamBuka!),
+        closeTime: _formatJam(_jamTutup!),
       );
 
       if (!mounted) return;
@@ -369,6 +421,13 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                     loadingGps: _loadingGps,
                     onAmbilGps: _ambilLokasiGps,
                   ),
+                  const SizedBox(height: 22),
+                  _OperationalHoursCard(
+                    jamBuka: _jamBuka,
+                    jamTutup: _jamTutup,
+                    onPilihBuka: _pilihJamBuka,
+                    onPilihTutup: _pilihJamTutup,
+                  ),
                   const SizedBox(height: 54),
                   Text(
                     'Dekat dari Lokasimu',
@@ -445,8 +504,9 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.ownerPrimaryGreen,
               foregroundColor: Colors.white,
-              disabledBackgroundColor:
-                  AppColors.ownerPrimaryGreen.withValues(alpha: 0.5),
+              disabledBackgroundColor: AppColors.ownerPrimaryGreen.withValues(
+                alpha: 0.5,
+              ),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -792,6 +852,160 @@ class _LocationCard extends StatelessWidget {
   }
 }
 
+class _OperationalHoursCard extends StatelessWidget {
+  final TimeOfDay? jamBuka;
+  final TimeOfDay? jamTutup;
+  final VoidCallback onPilihBuka;
+  final VoidCallback onPilihTutup;
+
+  const _OperationalHoursCard({
+    required this.jamBuka,
+    required this.jamTutup,
+    required this.onPilihBuka,
+    required this.onPilihTutup,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRange = jamBuka != null && jamTutup != null;
+    final summary = hasRange
+        ? '${_formatJam(jamBuka!)} - ${_formatJam(jamTutup!)} WIB'
+        : 'Jam operasional belum diatur';
+
+    return _EditSectionCard(
+      title: 'Jam Operasional',
+      subtitle:
+          'Atur jam buka dan tutup toko rental untuk ditampilkan ke penyewa.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _TimePickerField(
+                  label: 'JAM BUKA',
+                  value: jamBuka == null ? 'Pilih jam' : _formatJam(jamBuka!),
+                  onTap: onPilihBuka,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _TimePickerField(
+                  label: 'JAM TUTUP',
+                  value: jamTutup == null ? 'Pilih jam' : _formatJam(jamTutup!),
+                  onTap: onPilihTutup,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.ownerSoftGreen,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  color: AppColors.ownerPrimaryGreen,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    summary,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.ownerPrimaryGreen,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimePickerField extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _TimePickerField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: const Color(0xFF798076),
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: AppColors.ownerCardBackground,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.access_time_rounded,
+                  color: AppColors.ownerPrimaryGreen,
+                  size: 18,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: const Color(0xFF384036),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // Painter segitiga untuk marker pin (shared dengan map picker)
 class _TrianglePainter extends CustomPainter {
   final Color color;
@@ -810,6 +1024,24 @@ class _TrianglePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TrianglePainter old) => old.color != color;
+}
+
+String _formatJam(TimeOfDay time) {
+  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+}
+
+int _minutesOf(TimeOfDay time) => time.hour * 60 + time.minute;
+
+TimeOfDay? _timeOfDayFromText(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  final match = RegExp(r'(\d{1,2})[:.](\d{2})').firstMatch(value);
+  if (match == null) return null;
+  final hour = int.tryParse(match.group(1)!);
+  final minute = int.tryParse(match.group(2)!);
+  if (hour == null || minute == null || hour > 23 || minute > 59) {
+    return null;
+  }
+  return TimeOfDay(hour: hour, minute: minute);
 }
 
 // ─────────────────────────────────────────────────────────────
