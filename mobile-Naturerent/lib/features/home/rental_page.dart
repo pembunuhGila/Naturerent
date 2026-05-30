@@ -223,7 +223,11 @@ class _RentalPageState extends State<RentalPage> {
                     childCount: _rentalFiltered.length,
                   ),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: MediaQuery.of(context).padding.bottom + 132,
+                ),
+              ),
             ],
           ),
         ),
