@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -47,9 +46,7 @@ class ActivityOrder {
     this.paymentProofBytes,
   });
 
-  ActivityOrder copyWith({
-    ActivityOrderStatus? status,
-  }) {
+  ActivityOrder copyWith({ActivityOrderStatus? status}) {
     return ActivityOrder(
       id: id,
       nomorPesanan: nomorPesanan,
@@ -114,7 +111,8 @@ class OrderActivityService {
     for (var i = 0; i < grouped.length; i++) {
       final group = grouped[i];
       final subtotal = group.subtotalPerHari * durasi;
-      final groupDeliveryFee = deliveryFeesByRentalId?[group.rental.id] ??
+      final groupDeliveryFee =
+          deliveryFeesByRentalId?[group.rental.id] ??
           (i == 0 ? deliveryFee : 0);
       final data = await AuthService.client
           .from('bookings')
@@ -137,7 +135,7 @@ class OrderActivityService {
             'payment_proof_url': proofUrl,
             'catatan': isDelivery
                 ? 'Bukti pembayaran lunas diupload melalui aplikasi NatureRent. '
-                    'Delivery ${deliveryDistanceKm?.toStringAsFixed(1) ?? '-'} km.'
+                      'Delivery ${deliveryDistanceKm?.toStringAsFixed(1) ?? '-'} km.'
                 : 'Bukti pembayaran lunas diupload melalui aplikasi NatureRent.',
           })
           .select('id, total_bayar')
@@ -148,7 +146,8 @@ class OrderActivityService {
 
       await _buatPaymentLunas(
         bookingId: bookingId,
-        jumlahBayar: subtotal +
+        jumlahBayar:
+            subtotal +
             (i == 0 ? biayaLayanan : 0) +
             (isDelivery ? groupDeliveryFee : 0),
         proofUrl: proofUrl,
@@ -232,13 +231,13 @@ class OrderActivityService {
           .from('bookings')
           .select('''
             *,
-            rental_profiles(*, rental_settings(*)),
+            rental_profiles(*, users!owner_id(nama_lengkap, email, no_wa), rental_settings(*)),
             booking_items(
               *,
               equipment(
                 *,
                 equipment_categories(nama, icon),
-                rental_profiles(*, rental_settings(*)),
+                rental_profiles(*, users!owner_id(nama_lengkap, email, no_wa), rental_settings(*)),
                 equipment_images(image_url, is_primary, sort_order)
               )
             )
@@ -311,10 +310,14 @@ class OrderActivityService {
     final items = <CartItem>[];
 
     for (final booking in rows) {
-      final bookingItems =
-          List<Map<String, dynamic>>.from(booking['booking_items'] as List? ?? []);
+      final bookingItems = List<Map<String, dynamic>>.from(
+        booking['booking_items'] as List? ?? [],
+      );
       final rentalMap = booking['rental_profiles'] as Map<String, dynamic>?;
-      final rentalFallback = _rentalFromMap(rentalMap, booking['rental_id'] as String);
+      final rentalFallback = _rentalFromMap(
+        rentalMap,
+        booking['rental_id'] as String,
+      );
 
       for (final item in bookingItems) {
         final equipmentMap = item['equipment'] as Map<String, dynamic>?;
@@ -329,18 +332,19 @@ class OrderActivityService {
             ? _equipmentFromSnapshot(item, rental.id)
             : Equipment.fromMap(equipmentMap);
 
-        items.add(CartItem(
-          equipment: equipment,
-          rental: rental,
-          qty: item['jumlah'] as int? ?? 1,
-        ));
+        items.add(
+          CartItem(
+            equipment: equipment,
+            rental: rental,
+            qty: item['jumlah'] as int? ?? 1,
+          ),
+        );
       }
     }
 
     return ActivityOrder(
       id: groupId,
-      nomorPesanan:
-          (first['booking_code'] as String?) ?? _buatNomorPesanan(),
+      nomorPesanan: (first['booking_code'] as String?) ?? _buatNomorPesanan(),
       namaRental: _namaRentalGroup(rows),
       total: rows.fold<double>(
         0,
@@ -369,7 +373,9 @@ class OrderActivityService {
       _ => 'jpg',
     };
     final path = '$userId/$paymentGroupId.$safeExtension';
-    await AuthService.client.storage.from('payment-proofs').uploadBinary(
+    await AuthService.client.storage
+        .from('payment-proofs')
+        .uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(contentType: contentType, upsert: true),
@@ -507,8 +513,14 @@ class OrderActivityService {
   String _buatNomorPesanan() {
     final r = Random();
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final part1 = List.generate(4, (_) => chars[r.nextInt(chars.length)]).join();
-    final part2 = List.generate(2, (_) => chars[r.nextInt(chars.length)]).join();
+    final part1 = List.generate(
+      4,
+      (_) => chars[r.nextInt(chars.length)],
+    ).join();
+    final part2 = List.generate(
+      2,
+      (_) => chars[r.nextInt(chars.length)],
+    ).join();
     return '$part1-$part2';
   }
 
