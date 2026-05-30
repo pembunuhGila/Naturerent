@@ -152,6 +152,8 @@ class RentalService {
     String? alamat,
     double? lat,
     double? lng,
+    String? openTime,
+    String? closeTime,
   }) async {
     final user = AuthService().penggunaSaatIni;
     if (user == null) throw Exception('Belum masuk.');
@@ -172,7 +174,74 @@ class RentalService {
         .select(rentalSelect)
         .single();
 
+    if (openTime != null && closeTime != null) {
+      await _simpanJamOperasional(
+        rentalId: rentalId,
+        openTime: openTime,
+        closeTime: closeTime,
+      );
+
+      final refreshed = await client
+          .from('rental_profiles')
+          .select(rentalSelect)
+          .eq('id', rentalId)
+          .eq('owner_id', user.id)
+          .single();
+      return RentalProfile.fromMap(refreshed);
+    }
+
     return RentalProfile.fromMap(data);
+  }
+
+  Future<void> _simpanJamOperasional({
+    required String rentalId,
+    required String openTime,
+    required String closeTime,
+  }) async {
+    final label = '$openTime - $closeTime WIB';
+    final now = DateTime.now().toIso8601String();
+    final structuredPayload = <String, dynamic>{
+      'rental_id': rentalId,
+      'jam_operasional': {
+        'jam_buka': openTime,
+        'jam_tutup': closeTime,
+        'open_time': openTime,
+        'close_time': closeTime,
+        'operational_hours': label,
+      },
+      'updated_at': now,
+    };
+
+    try {
+      await _tulisRentalSettings(rentalId, structuredPayload);
+    } catch (_) {
+      await _tulisRentalSettings(rentalId, {
+        'rental_id': rentalId,
+        'jam_operasional': label,
+        'updated_at': now,
+      });
+    }
+  }
+
+  Future<void> _tulisRentalSettings(
+    String rentalId,
+    Map<String, dynamic> payload,
+  ) async {
+    final existing = await client
+        .from('rental_settings')
+        .select('rental_id')
+        .eq('rental_id', rentalId)
+        .limit(1);
+
+    if (existing.isNotEmpty) {
+      await client
+          .from('rental_settings')
+          .update(payload)
+          .eq('rental_id', rentalId);
+      return;
+    }
+
+    await client.from('rental_settings').insert(payload);
   }
 
   /// Konfirmasi pesanan yang telah disetujui admin, dilakukan oleh pemilik rental.
