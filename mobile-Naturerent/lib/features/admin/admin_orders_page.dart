@@ -153,7 +153,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? AppColors.error : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.adminPrimary,
       ),
     );
   }
@@ -161,11 +161,11 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.adminBackground,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: AppColors.primary,
+          color: AppColors.adminPrimary,
           onRefresh: () async => _reload(),
           child: FutureBuilder<List<AdminOrder>>(
             future: _futureOrders,
@@ -181,7 +181,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                       padding: EdgeInsets.only(top: 120),
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: AppColors.primary,
+                          color: AppColors.adminPrimary,
                         ),
                       ),
                     )
@@ -252,12 +252,12 @@ class _Header extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
+            color: AppColors.adminPrimaryLight,
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(
             Icons.admin_panel_settings_rounded,
-            color: AppColors.primary,
+            color: AppColors.adminPrimary,
           ),
         ),
       ],
@@ -288,7 +288,7 @@ class _OrderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.adminBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,15 +337,15 @@ class _OrderCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (processing)
-            const LinearProgressIndicator(color: AppColors.primary)
+            const LinearProgressIndicator(color: AppColors.adminPrimary)
           else
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor: AppColors.border,
+                      backgroundColor: AppColors.adminPrimary,
+                      disabledBackgroundColor: AppColors.adminBorder,
                     ),
                     onPressed: canProcess ? onAcc : null,
                     icon: const Icon(Icons.check_rounded, size: 18),
@@ -357,7 +357,7 @@ class _OrderCard extends StatelessWidget {
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.error,
-                      disabledBackgroundColor: AppColors.border,
+                      disabledBackgroundColor: AppColors.adminBorder,
                     ),
                     onPressed: canProcess ? onCancel : null,
                     icon: const Icon(Icons.close_rounded, size: 18),
@@ -383,7 +383,7 @@ class _StatusBadge extends StatelessWidget {
         ? AppColors.error
         : order.menungguAdmin
             ? const Color(0xFFF59E0B)
-            : AppColors.primary;
+            : AppColors.adminPrimary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -452,7 +452,7 @@ class _StateBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.adminBorder),
       ),
       child: Column(
         children: [
