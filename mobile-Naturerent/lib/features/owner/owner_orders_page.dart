@@ -453,18 +453,18 @@ class _IncomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final monthOrders = orders.where(_isCurrentMonth).toList(growable: false);
-    final gross = monthOrders.fold<double>(
-      0,
-      (sum, order) => sum + order.totalBayar,
-    );
-    final commission = monthOrders.fold<double>(
-      0,
-      (sum, order) => sum + order.commissionAmount,
-    );
-    final net = monthOrders.fold<double>(
-      0,
-      (sum, order) => sum + order.netToOwner,
+    final incomeOrders =
+        orders.where(_isRecognizedIncomeOrder).toList(growable: false);
+    final weekOrders =
+        incomeOrders.where(_isCurrentWeek).toList(growable: false);
+    final previousWeekOrders =
+        incomeOrders.where(_isPreviousWeek).toList(growable: false);
+    final weekNet = _sumOwnerIncome(weekOrders);
+    final previousWeekNet = _sumOwnerIncome(previousWeekOrders);
+    final growthText = _growthText(
+      current: weekNet,
+      previous: previousWeekNet,
+      periodLabel: 'minggu lalu',
     );
 
     return RefreshIndicator(
@@ -473,7 +473,11 @@ class _IncomeTab extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 118),
         children: [
-          _IncomeSummaryCard(total: net),
+          _IncomeSummaryCard(
+            label: 'Pendapatan Minggu Ini',
+            total: weekNet,
+            subtext: growthText,
+          ),
           const SizedBox(height: 22),
           Row(
             children: [
@@ -496,14 +500,14 @@ class _IncomeTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          if (monthOrders.isEmpty)
+          if (weekOrders.isEmpty)
             const _StateBox(
               icon: Icons.payments_outlined,
-              title: 'Belum ada pendapatan bulan ini',
-              message: 'Transaksi selesai bulan berjalan akan dihitung di sini.',
+              title: 'Belum ada pendapatan minggu ini',
+              message: 'Transaksi selesai minggu berjalan akan dihitung di sini.',
             )
           else
-            ...monthOrders.map(
+            ...weekOrders.map(
               (order) => Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: _IncomeDetailCard(order: order),
@@ -694,6 +698,10 @@ class _OwnerOrderCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.ownerBorderColor,
+            width: AppColors.ownerBorderWidth,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -1280,45 +1288,55 @@ class _OrderStatusBadge extends StatelessWidget {
 }
 
 class _IncomeSummaryCard extends StatelessWidget {
+  final String label;
   final double total;
+  final String subtext;
 
-  const _IncomeSummaryCard({required this.total});
+  const _IncomeSummaryCard({
+    required this.label,
+    required this.total,
+    required this.subtext,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         color: AppColors.ownerPrimaryGreen,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'TOTAL PENDAPATAN BERSIH',
+            label,
             style: AppTextStyles.caption.copyWith(
               color: Colors.white.withValues(alpha: 0.86),
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.6,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 9),
           Text(
             _formatCurrency(total),
-            style: AppTextStyles.displayLarge.copyWith(
+            style: AppTextStyles.headlineLarge.copyWith(
               color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            '+12% dari bulan lalu',
+            subtext,
             style: AppTextStyles.caption.copyWith(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 12,
               fontWeight: FontWeight.w700,
+              letterSpacing: 0,
             ),
           ),
         ],
@@ -1619,12 +1637,59 @@ String _activeActionText(String status) {
   };
 }
 
-bool _isCurrentMonth(AdminOrder order) {
-  final now = DateTime.now();
-  return order.createdAt.year == now.year && order.createdAt.month == now.month;
+double _netIncome(double gross) => gross * 0.9;
+
+bool _isRecognizedIncomeOrder(AdminOrder order) {
+  final finished = order.status == 'returned' || order.status == 'completed';
+  return finished && _isFullyPaid(order);
 }
 
-double _netIncome(double gross) => gross * 0.9;
+bool _isFullyPaid(AdminOrder order) {
+  final normalized = order.paymentStatus?.toLowerCase().trim();
+  return normalized == 'lunas' ||
+      normalized == 'paid' ||
+      normalized == 'settled' ||
+      normalized == 'success';
+}
+
+bool _isCurrentWeek(AdminOrder order) {
+  final now = DateTime.now();
+  final start = _startOfWeek(now);
+  final end = start.add(const Duration(days: 7));
+  return !order.tanggalSelesai.isBefore(start) &&
+      order.tanggalSelesai.isBefore(end);
+}
+
+bool _isPreviousWeek(AdminOrder order) {
+  final currentStart = _startOfWeek(DateTime.now());
+  final previousStart = currentStart.subtract(const Duration(days: 7));
+  return !order.tanggalSelesai.isBefore(previousStart) &&
+      order.tanggalSelesai.isBefore(currentStart);
+}
+
+DateTime _startOfWeek(DateTime value) {
+  final date = DateTime(value.year, value.month, value.day);
+  return date.subtract(Duration(days: date.weekday - DateTime.monday));
+}
+
+double _sumOwnerIncome(Iterable<AdminOrder> orders) {
+  return orders.fold<double>(0, (sum, order) {
+    final net =
+        order.netToOwner > 0 ? order.netToOwner : _netIncome(order.totalBayar);
+    return sum + net;
+  });
+}
+
+String _growthText({
+  required double current,
+  required double previous,
+  required String periodLabel,
+}) {
+  if (previous <= 0) return 'Data $periodLabel belum tersedia';
+  final percent = ((current - previous) / previous * 100).round();
+  if (percent >= 0) return '▲ $percent% dari $periodLabel';
+  return '▼ ${percent.abs()}% dari $periodLabel';
+}
 
 List<_OwnerTimelineStep> _timelineSteps(AdminOrder order) {
   final rank = _statusRank(order.status);

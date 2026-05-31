@@ -1,10 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/models/admin_order.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'widgets/owner_header_widget.dart';
 
-class OwnerDashboardPage extends StatelessWidget {
+class OwnerDashboardPage extends StatefulWidget {
   const OwnerDashboardPage({super.key});
+
+  @override
+  State<OwnerDashboardPage> createState() => _OwnerDashboardPageState();
+}
+
+class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
+  late final Future<_DashboardData> _dashboardFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardFuture = _loadDashboardData();
+  }
+
+  Future<_DashboardData> _loadDashboardData() async {
+    final rental = await RentalService().ambilRentalSaya();
+    if (rental == null) return _DashboardData.empty();
+
+    final data = await AuthService.client
+        .from('bookings')
+        .select('''
+          id,
+          booking_code,
+          tgl_mulai,
+          tgl_selesai,
+          total_bayar,
+          commission_amount,
+          net_to_owner,
+          status,
+          payment_status,
+          payment_proof_url,
+          created_at,
+          users(nama_lengkap, email),
+          rental_profiles(nama_rental),
+          booking_items(
+            nama_equipment,
+            nama_rental,
+            jumlah,
+            total_harga,
+            equipment(
+              image_url,
+              equipment_images(image_url, is_primary, sort_order)
+            )
+          )
+        ''')
+        .eq('rental_id', rental.id)
+        .inFilter('status', ['returned', 'completed'])
+        .order('tgl_selesai', ascending: false);
+
+    final orders = (data as List)
+        .map((row) => AdminOrder.fromMap(row as Map<String, dynamic>))
+        .where(_isRecognizedIncomeOrder)
+        .toList(growable: false);
+
+    final currentMonthOrders =
+        orders.where(_isCurrentMonth).toList(growable: false);
+    final previousMonthOrders =
+        orders.where(_isPreviousMonth).toList(growable: false);
+    final currentTotal = _sumNetIncome(currentMonthOrders);
+    final previousTotal = _sumNetIncome(previousMonthOrders);
+    final recentOrders = [...orders]
+      ..sort((a, b) => b.tanggalSelesai.compareTo(a.tanggalSelesai));
+
+    return _DashboardData(
+      incomeSummary: _MonthlyIncomeSummary(
+        amount: _formatCurrency(currentTotal),
+        subtext: _growthText(
+          current: currentTotal,
+          previous: previousTotal,
+          periodLabel: 'bulan lalu',
+        ),
+      ),
+      recentOrders: recentOrders.take(5).toList(growable: false),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,97 +100,62 @@ class OwnerDashboardPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const OwnerHeaderWidget(),
+            const OwnerHeaderWidget(
+              padding: EdgeInsets.fromLTRB(32, 16, 24, 0),
+            ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(32, 24, 24, 120),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                 children: [
-            const SizedBox(height: 24),
-            Text(
-              'Total Pendapatan Bulan Ini',
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: const Color(0xFF344B3B),
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Rp 12.450.000',
-              style: AppTextStyles.displayLarge.copyWith(
-                color: AppColors.ownerPrimaryGreen,
-                fontSize: 38,
-                fontWeight: FontWeight.w900,
-                height: 1,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.ownerSoftGreen,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.trending_up_rounded,
-                      color: AppColors.ownerPrimaryGreen,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      '12% DARI BULAN LALU',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.ownerPrimaryGreen,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const _RevenueChartCard(),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Transaksi Terakhir',
-                  style: AppTextStyles.headlineLarge.copyWith(
-                    color: const Color(0xFF202321),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
+                  FutureBuilder<_DashboardData>(
+                    future: _dashboardFuture,
+                    builder: (context, snapshot) {
+                      final data = snapshot.data ?? _DashboardData.empty();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _IncomeHighlightCard(
+                            label: 'Pendapatan Bulan Ini',
+                            amount: data.incomeSummary.amount,
+                            subtext: data.incomeSummary.subtext,
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Transaksi Terakhir',
+                                style: AppTextStyles.headlineLarge.copyWith(
+                                  color: const Color(0xFF202321),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                'LIHAT SEMUA',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.ownerPrimaryGreen,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (data.recentOrders.isEmpty)
+                            const _EmptyTransactionsCard()
+                          else
+                            ...data.recentOrders.map(
+                              (order) => Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: _TransactionCard(order: order),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
-                ),
-                Text(
-                  'LIHAT SEMUA',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.ownerPrimaryGreen,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.3,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ..._transactions.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _TransactionCard(item: item),
-              ),
-            ),
                 ],
               ),
             ),
@@ -123,80 +166,139 @@ class OwnerDashboardPage extends StatelessWidget {
   }
 }
 
-const _transactions = [
-  _TransactionItem(
-    icon: Icons.terrain_rounded,
-    imageColor: AppColors.ownerPrimaryGreen,
-    title: 'Tenda Dome 4P\nAlpine',
-    subtitle: 'Sewa 3 Hari • 24 Okt',
-    amount: '+Rp\n270.000',
-    note: 'Net Profit (90%)',
-  ),
-  _TransactionItem(
-    icon: Icons.hiking_rounded,
-    imageColor: Color(0xFF385B57),
-    title: 'Sepatu Trekking\nEiger',
-    subtitle: 'Sewa 2 Hari • 23 Okt',
-    amount: '+Rp\n135.000',
-    note: 'Net Profit (90%)',
-  ),
-  _TransactionItem(
-    icon: Icons.soup_kitchen_rounded,
-    imageColor: AppColors.ownerPrimaryGreen,
-    title: 'Paket Memasak\nUltralight',
-    subtitle: 'Sewa 1 Hari • 22 Okt',
-    amount: '+Rp\n45.000',
-    note: 'Net Profit (90%)',
-  ),
-  _TransactionItem(
-    icon: Icons.cabin_rounded,
-    imageColor: AppColors.ownerPrimaryGreen,
-    title: 'Penyewaan Tenda\nDome 4P',
-    subtitle: 'Sewa 2 hari • 25 Okt',
-    amount: '+Rp\n450.000',
-    note: 'BERHASIL',
-    isSuccess: true,
-  ),
-  _TransactionItem(
-    icon: Icons.bedtime_rounded,
-    imageColor: Color(0xFF336A77),
-    title: 'Paket Hiking Sleeping\nBag (2x)',
-    subtitle: 'Sewa 2 hari • 25 Okt',
-    amount: '+Rp\n140.000',
-    note: 'BERHASIL',
-    isSuccess: true,
-  ),
-  _TransactionItem(
-    icon: Icons.local_fire_department_rounded,
-    imageColor: Color(0xFF385B57),
-    title: 'Alat Masak Portabel\n& Gas',
-    subtitle: 'Sewa 2 hari • 25 Okt',
-    amount: '+Rp\n85.000',
-    note: 'BERHASIL',
-    isSuccess: true,
-  ),
-];
+
+class _DashboardData {
+  final _MonthlyIncomeSummary incomeSummary;
+  final List<AdminOrder> recentOrders;
+
+  const _DashboardData({
+    required this.incomeSummary,
+    required this.recentOrders,
+  });
+
+  factory _DashboardData.empty() {
+    return _DashboardData(
+      incomeSummary: _MonthlyIncomeSummary.empty(),
+      recentOrders: const [],
+    );
+  }
+}
+
+class _MonthlyIncomeSummary {
+  final String amount;
+  final String subtext;
+
+  const _MonthlyIncomeSummary({
+    required this.amount,
+    required this.subtext,
+  });
+
+  factory _MonthlyIncomeSummary.empty() {
+    return const _MonthlyIncomeSummary(
+      amount: 'Rp 0',
+      subtext: 'Data bulan lalu belum tersedia',
+    );
+  }
+}
+
+bool _isRecognizedIncomeOrder(AdminOrder order) {
+  final finished = order.status == 'returned' || order.status == 'completed';
+  return finished && order.pembayaranLunas;
+}
+
+bool _isCurrentMonth(AdminOrder order) {
+  final now = DateTime.now();
+  return order.tanggalSelesai.year == now.year &&
+      order.tanggalSelesai.month == now.month;
+}
+
+bool _isPreviousMonth(AdminOrder order) {
+  final now = DateTime.now();
+  final previousMonth = now.month == 1 ? 12 : now.month - 1;
+  final previousYear = now.month == 1 ? now.year - 1 : now.year;
+  return order.tanggalSelesai.year == previousYear &&
+      order.tanggalSelesai.month == previousMonth;
+}
+
+double _sumCompletedPayments(Iterable<AdminOrder> orders) {
+  return orders.fold<double>(0, (sum, order) => sum + order.totalBayar);
+}
+
+double _sumNetIncome(Iterable<AdminOrder> orders) {
+  return orders.fold<double>(0, (sum, order) {
+    if (order.netToOwner > 0) return sum + order.netToOwner;
+    if (order.commissionAmount > 0) {
+      return sum + (order.totalBayar - order.commissionAmount);
+    }
+    return sum + (order.totalBayar * 0.9);
+  });
+}
+
+String _growthText({
+  required double current,
+  required double previous,
+  required String periodLabel,
+}) {
+  if (previous <= 0) return 'Data $periodLabel belum tersedia';
+  final percent = ((current - previous) / previous * 100).round();
+  if (percent >= 0) return '▲ $percent% dari $periodLabel';
+  return '▼ ${percent.abs()}% dari $periodLabel';
+}
+
+String _formatCurrency(double value) {
+  final raw = value.round().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < raw.length; i++) {
+    final remaining = raw.length - i;
+    buffer.write(raw[i]);
+    if (remaining > 1 && remaining % 3 == 1) buffer.write('.');
+  }
+  return 'Rp $buffer';
+}
+
+String _formatDate(DateTime value) {
+  final day = value.day.toString().padLeft(2, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  return '$day/$month/${value.year}';
+}
+
+String _shortCode(AdminOrder order) {
+  final code = order.bookingCode;
+  if (code != null && code.isNotEmpty) return code;
+  final suffix = order.id.length <= 4
+      ? order.id.toUpperCase()
+      : order.id.substring(order.id.length - 4).toUpperCase();
+  return '#RENT-$suffix';
+}
+
+String _dashboardStatusLabel(String status) {
+  return switch (status) {
+    'returned' || 'completed' => 'BERHASIL',
+    _ => status.toUpperCase(),
+  };
+}
 
 
-class _RevenueChartCard extends StatelessWidget {
-  const _RevenueChartCard();
+class _IncomeHighlightCard extends StatelessWidget {
+  final String label;
+  final String amount;
+  final String subtext;
+
+  const _IncomeHighlightCard({
+    required this.label,
+    required this.amount,
+    required this.subtext,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final bars = [
-      _BarData('M1', 58, false, '1-7'),
-      _BarData('M2', 86, false, '8-14'),
-      _BarData('M3', 118, true, '15-21'),
-      _BarData('M4', 78, false, '22-28'),
-      _BarData('M5', 46, false, '29-31'),
-    ];
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
+      constraints: const BoxConstraints(minHeight: 118),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.ownerPrimaryGreen,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: AppColors.ownerBorderColor,
           width: AppColors.ownerBorderWidth,
@@ -210,60 +312,46 @@ class _RevenueChartCard extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Penghasilan Mingguan',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: const Color(0xFF202321),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.ownerCardBackground,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppColors.ownerBorderColor,
-                    width: AppColors.ownerBorderWidth,
-                  ),
-                ),
-                child: Text(
-                  'Bulan ini',
-                  style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF496171),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 158,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: bars.map((bar) => _ChartBar(data: bar)).toList(),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.88),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
             ),
           ),
-          const SizedBox(height: 18),
-          Center(
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Text(
-              'Pendapatan tertinggi pada Minggu ke-3',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: const Color(0xFF496171),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+              amount,
+              maxLines: 1,
+              style: AppTextStyles.headlineLarge.copyWith(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight: FontWeight.w900,
+                height: 1.05,
               ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtext,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.84),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0,
             ),
           ),
         ],
@@ -272,68 +360,43 @@ class _RevenueChartCard extends StatelessWidget {
   }
 }
 
-class _ChartBar extends StatelessWidget {
-  final _BarData data;
-  const _ChartBar({required this.data});
+class _EmptyTransactionsCard extends StatelessWidget {
+  const _EmptyTransactionsCard();
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      child: Column(
-        children: [
-          SizedBox(
-            height: 118,
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                width: 45,
-                height: data.height,
-                decoration: BoxDecoration(
-                  color: data.isDark
-                      ? AppColors.ownerPrimaryGreen
-                      : AppColors.ownerSoftGreen,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            data.label,
-            style: AppTextStyles.caption.copyWith(
-              color: data.isDark
-                  ? AppColors.ownerPrimaryGreen
-                  : const Color(0xFF496171),
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            data.range,
-            style: AppTextStyles.caption.copyWith(
-              color: const Color(0xFF7B8794),
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
+      ),
+      child: Text(
+        'Belum ada transaksi terakhir',
+        textAlign: TextAlign.center,
+        style: AppTextStyles.bodyMedium.copyWith(
+          color: const Color(0xFF496171),
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
 }
 
 class _TransactionCard extends StatelessWidget {
-  final _TransactionItem item;
-  const _TransactionCard({required this.item});
+  final AdminOrder order;
+  const _TransactionCard({required this.order});
 
   @override
   Widget build(BuildContext context) {
+    final item = order.items.isNotEmpty ? order.items.first : null;
+    final income = _sumCompletedPayments([order]);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
       decoration: BoxDecoration(
@@ -357,10 +420,14 @@ class _TransactionCard extends StatelessWidget {
             width: 47,
             height: 47,
             decoration: BoxDecoration(
-              color: item.imageColor,
+              color: AppColors.ownerPrimaryGreen,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(item.icon, color: Colors.white, size: 28),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -368,7 +435,7 @@ class _TransactionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.title,
+                  order.namaUser,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.headlineMedium.copyWith(
@@ -380,11 +447,25 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item.subtitle,
+                  item?.namaEquipment ?? order.ringkasanAlat,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: const Color(0xFF496171),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${_shortCode(order)} • ${_formatDate(order.tanggalSelesai)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF7D847D),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
                   ),
                 ),
               ],
@@ -395,7 +476,7 @@ class _TransactionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                item.amount,
+                '+${_formatCurrency(income)}',
                 textAlign: TextAlign.right,
                 style: AppTextStyles.headlineMedium.copyWith(
                   color: AppColors.ownerPrimaryGreen,
@@ -406,12 +487,10 @@ class _TransactionCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                item.note,
+                _dashboardStatusLabel(order.status),
                 style: AppTextStyles.caption.copyWith(
-                  color: item.isSuccess
-                      ? AppColors.ownerPrimaryGreen
-                      : const Color(0xFF496171),
-                  fontSize: item.isSuccess ? 10 : 11,
+                  color: AppColors.ownerPrimaryGreen,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                 ),
@@ -422,33 +501,4 @@ class _TransactionCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _BarData {
-  final String label;
-  final double height;
-  final bool isDark;
-  final String range;
-
-  const _BarData(this.label, this.height, this.isDark, this.range);
-}
-
-class _TransactionItem {
-  final IconData icon;
-  final Color imageColor;
-  final String title;
-  final String subtitle;
-  final String amount;
-  final String note;
-  final bool isSuccess;
-
-  const _TransactionItem({
-    required this.icon,
-    required this.imageColor,
-    required this.title,
-    required this.subtitle,
-    required this.amount,
-    required this.note,
-    this.isSuccess = false,
-  });
 }
