@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary greens
-  static const Color primary = Color(0xFF2A7D48);
-  static const Color primaryDark = Color(0xFF1F4D2A);
-  static const Color primaryLight = Color(0xFFE8F5E9);
-  static const Color primaryMedium = Color(0xFF1E5C30);
-  static const Color primaryHover = Color(0xFF266038);
+  static const Color primary = Color(0xFF14532D);
+  static const Color primaryDark = Color(0xFF14532D);
+  static const Color primaryLight = Color(0xFFEAF3EC);
+  static const Color primaryMedium = Color(0xFF14532D);
+  static const Color primaryHover = Color(0xFF0F3F22);
 
   // Owner / pemilik rental brand color
   static const Color ownerPrimaryGreen = Color(0xFF14532D);
@@ -17,11 +17,18 @@ class AppColors {
   static const Color ownerSoftGreen = Color(0xFFEAF3EC);
   static const Color ownerPrimarySoft = Color(0xFFEAF3EC);
 
+  // Admin legacy palette
+  static const Color adminPrimary = Color(0xFF2A7D48);
+  static const Color adminPrimaryDark = Color(0xFF1F4D2A);
+  static const Color adminPrimaryLight = Color(0xFFE8F5E9);
+  static const Color adminBackground = Color(0xFFF8FAFC);
+  static const Color adminBorder = Color(0xFFE2E8F0);
+
   // Background
-  static const Color background = Color(0xFFF8FAFC);
+  static const Color background = Color(0xFFFFFFFF);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF4FBF6);
-  static const Color surfaceSoft = Color(0xFFFAFAF9);
+  static const Color surfaceVariant = Color(0xFFFFFFFF);
+  static const Color surfaceSoft = Color(0xFFFFFFFF);
 
   // Text
   static const Color textPrimary = Color(0xFF1C1C1B);
@@ -30,12 +37,12 @@ class AppColors {
   static const Color textLight = Color(0xFF64748B);
 
   // Border
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color borderFocus = Color(0xFF2A7D48);
+  static const Color border = Color(0xFFD1D5DB);
+  static const Color borderFocus = Color(0xFF14532D);
 
   // Others
   static const Color error = Color(0xFFD32F2F);
-  static const Color success = Color(0xFF2A7D48);
+  static const Color success = Color(0xFF14532D);
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
   static const Color overlay = Color(0x80000000);
