@@ -114,7 +114,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0E5DE),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -122,11 +122,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE4EFE7),
+                    color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.camera_alt_rounded,
-                      color: Color(0xFF18743A)),
+                      color: AppColors.primaryDark),
                 ),
                 title: Text('Ambil dari Kamera',
                     style: AppTextStyles.bodyMedium
@@ -140,11 +140,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE4EFE7),
+                    color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.photo_library_rounded,
-                      color: Color(0xFF18743A)),
+                      color: AppColors.primaryDark),
                 ),
                 title: Text('Pilih dari Galeri',
                     style: AppTextStyles.bodyMedium
@@ -180,11 +180,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Pangkas Foto Profil',
-            toolbarColor: const Color(0xFF18743A),
+            toolbarColor: AppColors.primaryDark,
             toolbarWidgetColor: Colors.white,
-            statusBarColor: const Color(0xFF18743A), // ignore: deprecated_member_use
+            statusBarColor: AppColors.primaryDark, // ignore: deprecated_member_use
             backgroundColor: Colors.black,
-            activeControlsWidgetColor: const Color(0xFF18743A),
+            activeControlsWidgetColor: AppColors.primaryDark,
             initAspectRatio: CropAspectRatioPreset.square,
             lockAspectRatio: true,
             hideBottomControls: false,
@@ -225,11 +225,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
           AndroidUiSettings(
             toolbarTitle:
                 cover ? 'Pangkas Foto Sampul' : 'Pangkas Foto Profil',
-            toolbarColor: const Color(0xFF18743A),
+            toolbarColor: AppColors.primaryDark,
             toolbarWidgetColor: Colors.white,
-            statusBarColor: const Color(0xFF18743A),
+            statusBarColor: AppColors.primaryDark,
             backgroundColor: Colors.black,
-            activeControlsWidgetColor: const Color(0xFF18743A),
+            activeControlsWidgetColor: AppColors.primaryDark,
             initAspectRatio: cover
                 ? CropAspectRatioPreset.ratio16x9
                 : CropAspectRatioPreset.square,
@@ -505,13 +505,13 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE4EFE7),
+                    color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '💡 Solusi:\n$solusi',
                     style: AppTextStyles.caption.copyWith(
-                        color: Color(0xFF18743A),
+                        color: AppColors.primaryDark,
                         fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -527,7 +527,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
             },
             child: Text('Mengerti',
                 style: AppTextStyles.bodyMedium.copyWith(
-                    color: Color(0xFF18743A), fontWeight: FontWeight.w700)),
+                    color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -552,7 +552,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     if (widget.isMitra) return _buildMitraEditPage();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -606,9 +606,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _simpan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF18743A),
+                    backgroundColor: AppColors.primaryDark,
                     disabledBackgroundColor:
-                        const Color(0xFF18743A).withValues(alpha: 0.5),
+                        AppColors.primaryDark.withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -640,7 +640,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   child: Text(
                     'Batal',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: const Color(0xFF18743A),
+                      color: AppColors.primaryDark,
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
                     ),
