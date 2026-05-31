@@ -569,7 +569,7 @@ class _ProfilPageState extends State<ProfilPage> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFF18743A),
+                            color: AppColors.primaryDark,
                           ),
                         )
                       else
