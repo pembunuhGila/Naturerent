@@ -63,7 +63,7 @@ class _AdminDestinationsPageState extends State<AdminDestinationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Destinasi berhasil dihapus.'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.adminPrimary,
         ),
       );
       _reload();
@@ -81,10 +81,10 @@ class _AdminDestinationsPageState extends State<AdminDestinationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.adminBackground,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.adminPrimary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Tambah'),
@@ -92,7 +92,7 @@ class _AdminDestinationsPageState extends State<AdminDestinationsPage> {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: AppColors.primary,
+          color: AppColors.adminPrimary,
           onRefresh: () async => _reload(),
           child: FutureBuilder<List<DestinationModel>>(
             future: _futureDestinations,
@@ -119,7 +119,7 @@ class _AdminDestinationsPageState extends State<AdminDestinationsPage> {
                       padding: EdgeInsets.only(top: 120),
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: AppColors.primary,
+                          color: AppColors.adminPrimary,
                         ),
                       ),
                     )
@@ -260,7 +260,7 @@ class _DestinationFormPageState extends State<DestinationFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? AppColors.error : AppColors.primary,
+        backgroundColor: isError ? AppColors.error : AppColors.adminPrimary,
       ),
     );
   }
@@ -268,9 +268,9 @@ class _DestinationFormPageState extends State<DestinationFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.adminBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.adminBackground,
         elevation: 0,
         title: Text(_isEdit ? 'Edit Destinasi' : 'Tambah Destinasi'),
       ),
@@ -329,7 +329,7 @@ class _DestinationFormPageState extends State<DestinationFormPage> {
               FilledButton(
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColors.adminPrimary,
                   minimumSize: const Size.fromHeight(52),
                 ),
                 child: _saving
@@ -373,7 +373,7 @@ class _DestinationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.adminBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -383,10 +383,10 @@ class _DestinationCard extends StatelessWidget {
             aspectRatio: 16 / 9,
             child: destination.imageUrl == null || destination.imageUrl!.isEmpty
                 ? Container(
-                    color: AppColors.primaryLight,
+                    color: AppColors.adminPrimaryLight,
                     child: const Icon(
                       Icons.landscape_rounded,
-                      color: AppColors.primary,
+                      color: AppColors.adminPrimary,
                       size: 48,
                     ),
                   )
@@ -394,10 +394,10 @@ class _DestinationCard extends StatelessWidget {
                     destination.imageUrl!,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      color: AppColors.primaryLight,
+                      color: AppColors.adminPrimaryLight,
                       child: const Icon(
                         Icons.broken_image_rounded,
-                        color: AppColors.primary,
+                        color: AppColors.adminPrimary,
                         size: 42,
                       ),
                     ),
@@ -555,7 +555,7 @@ class _ImagePickerBox extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.primary,
+                color: AppColors.adminPrimary,
               ),
             ),
           ],
@@ -583,7 +583,7 @@ class _DestinationState extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.adminBorder),
       ),
       child: Column(
         children: [
