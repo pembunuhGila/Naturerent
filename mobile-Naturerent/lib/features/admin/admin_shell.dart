@@ -24,7 +24,7 @@ class _AdminShellState extends State<AdminShell> {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.adminBackground,
       body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: _AdminBottomNav(
         currentIndex: _currentIndex,
@@ -80,7 +80,7 @@ class _AdminBottomNav extends StatelessWidget {
                   duration: const Duration(milliseconds: 180),
                   height: 48,
                   decoration: BoxDecoration(
-                    color: active ? AppColors.primary : Colors.transparent,
+                    color: active ? AppColors.adminPrimary : Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Column(
