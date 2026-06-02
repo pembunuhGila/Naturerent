@@ -22,6 +22,15 @@
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
 -- B. Berikan hak akses CRUD penuh ke tabel-tabel utama
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS phone text;
+
+UPDATE public.users
+SET phone = no_wa
+WHERE (phone IS NULL OR phone = '')
+  AND no_wa IS NOT NULL
+  AND no_wa <> '';
+
 CREATE TABLE IF NOT EXISTS public.rental_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   rental_id uuid UNIQUE REFERENCES public.rental_profiles(id) ON DELETE CASCADE,
@@ -74,6 +83,161 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Sinkronisasi data user baru dari Supabase Auth ke public.users.
+-- Pastikan no_wa ikut tersimpan untuk fitur reset password berbasis nomor WA.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.users (
+    id,
+    email,
+    nama_lengkap,
+    no_wa,
+    phone,
+    role,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(
+      NEW.raw_user_meta_data->>'full_name',
+      NEW.raw_user_meta_data->>'name',
+      split_part(NEW.email, '@', 1)
+    ),
+    COALESCE(NEW.raw_user_meta_data->>'no_wa', NEW.raw_user_meta_data->>'phone', ''),
+    COALESCE(NEW.raw_user_meta_data->>'phone', NEW.raw_user_meta_data->>'no_wa', ''),
+    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'customer'::user_role),
+    NOW(),
+    NOW()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    nama_lengkap = EXCLUDED.nama_lengkap,
+    no_wa = COALESCE(NULLIF(EXCLUDED.no_wa, ''), public.users.no_wa),
+    phone = COALESCE(NULLIF(EXCLUDED.phone, ''), public.users.phone, public.users.no_wa),
+    role = EXCLUDED.role,
+    updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Helper publik untuk cek email saat lupa password tanpa membuka data user lain.
+-- Cek auth.users juga karena email utama Supabase Auth tersimpan di schema auth,
+-- sedangkan public.users bisa saja belum tersinkron penuh.
+CREATE OR REPLACE FUNCTION public.email_terdaftar(p_email text)
+RETURNS boolean AS $$
+DECLARE
+  v_email text := lower(trim(p_email));
+BEGIN
+  IF v_email IS NULL OR v_email = '' THEN
+    RETURN false;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1 FROM auth.users
+    WHERE lower(email) = v_email
+  ) OR EXISTS (
+    SELECT 1 FROM public.users
+    WHERE lower(email) = v_email
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+GRANT EXECUTE ON FUNCTION public.email_terdaftar(text) TO anon, authenticated;
+
+-- Reset password dari halaman login memakai verifikasi email + nomor WA.
+-- SQL-only fallback untuk demo, sehingga tidak perlu deploy Edge Function.
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+CREATE OR REPLACE FUNCTION public.reset_password_dengan_wa(
+  p_email text,
+  p_no_wa text,
+  p_password_baru text
+)
+RETURNS boolean AS $$
+DECLARE
+  v_email text := lower(trim(p_email));
+  v_no_wa text := regexp_replace(coalesce(p_no_wa, ''), '\D', '', 'g');
+  v_profile public.users%ROWTYPE;
+  v_stored_phone text;
+BEGIN
+  IF v_email IS NULL OR v_email = '' OR position('@' IN v_email) = 0 THEN
+    RAISE EXCEPTION 'Format email tidak valid.';
+  END IF;
+
+  IF v_no_wa LIKE '62%' THEN
+    v_no_wa := '0' || substring(v_no_wa from 3);
+  ELSIF v_no_wa LIKE '8%' THEN
+    v_no_wa := '0' || v_no_wa;
+  END IF;
+
+  IF length(v_no_wa) < 9 THEN
+    RAISE EXCEPTION 'Nomor WA tidak valid.';
+  END IF;
+
+  IF p_password_baru IS NULL OR length(p_password_baru) < 8 THEN
+    RAISE EXCEPTION 'Password baru terlalu lemah. Gunakan minimal 8 karakter.';
+  END IF;
+
+  SELECT *
+  INTO v_profile
+  FROM public.users
+  WHERE lower(email) = v_email
+  LIMIT 1;
+
+  IF v_profile.id IS NULL THEN
+    RAISE EXCEPTION 'Email tidak ditemukan atau belum terdaftar.';
+  END IF;
+
+  v_stored_phone := regexp_replace(
+    coalesce(v_profile.phone, v_profile.no_wa, ''),
+    '\D',
+    '',
+    'g'
+  );
+
+  IF v_stored_phone LIKE '62%' THEN
+    v_stored_phone := '0' || substring(v_stored_phone from 3);
+  ELSIF v_stored_phone LIKE '8%' THEN
+    v_stored_phone := '0' || v_stored_phone;
+  END IF;
+
+  IF v_stored_phone = '' OR v_stored_phone <> v_no_wa THEN
+    RAISE EXCEPTION 'Nomor WA tidak cocok dengan akun tersebut.';
+  END IF;
+
+  UPDATE auth.users
+  SET
+    encrypted_password = extensions.crypt(
+      p_password_baru,
+      extensions.gen_salt('bf')
+    ),
+    updated_at = now()
+  WHERE id = v_profile.id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Akun auth tidak ditemukan.';
+  END IF;
+
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth, extensions;
+
+GRANT EXECUTE ON FUNCTION public.reset_password_dengan_wa(text, text, text)
+TO anon, authenticated;
 
 -- C. KEBIJAKAN AKSES PADA TABEL 'users'
 -- 1. Akses CRUD penuh untuk Admin
