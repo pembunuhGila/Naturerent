@@ -103,24 +103,13 @@ class OnboardingPage extends StatelessWidget {
 
   // ── Hero image placeholder (kosong — bisa diganti dengan Image.asset)
   Widget _buildHeroImage() {
-    return Container(
-      width: double.infinity,
-      height: 220,
-      decoration: BoxDecoration(
-        color: AppColors.border.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 1),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.image_outlined, size: 48, color: AppColors.textHint),
-          const SizedBox(height: 8),
-          Text(
-            'Tambahkan gambar di sini',
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
-          ),
-        ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Image.asset(
+        'assets/images/halaman_awal.jpeg',
+        width: double.infinity,
+        height: 220,
+        fit: BoxFit.cover,
       ),
     );
   }
@@ -131,7 +120,7 @@ class OnboardingPage extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            '© 2024 NATURERENT. THE QUIET TRAIL.',
+            '© 2026 NATURERENT THE QUIET TRAIL.',
             style: AppTextStyles.caption,
           ),
           const SizedBox(height: 8),
