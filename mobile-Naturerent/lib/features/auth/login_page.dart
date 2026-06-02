@@ -9,6 +9,7 @@ import '../../core/widgets/nr_toast.dart';
 import '../shell/role_gate.dart';
 import 'onboarding_page.dart';
 import 'register_page.dart';
+import 'reset_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   final UserRole role;
@@ -41,6 +42,11 @@ class _LoginPageState extends State<LoginPage>
     );
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
     _anim.forward();
+    _authSub = AuthService.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery && mounted) {
+        _openResetPasswordPage();
+      }
+    });
   }
 
   @override
@@ -85,6 +91,10 @@ class _LoginPageState extends State<LoginPage>
       // Dengarkan perubahan auth setelah browser OAuth selesai
       _authSub?.cancel();
       _authSub = AuthService.client.auth.onAuthStateChange.listen((data) async {
+        if (data.event == AuthChangeEvent.passwordRecovery && mounted) {
+          _openResetPasswordPage();
+          return;
+        }
         if (data.event == AuthChangeEvent.signedIn && mounted) {
           _authSub?.cancel();
           await AuthService().pastikanProfilPenggunaAda();
@@ -122,6 +132,23 @@ class _LoginPageState extends State<LoginPage>
 
   void _showError(String message) {
     NrToast.show(context, message, type: NrToastType.error);
+  }
+
+  void _openResetPasswordPage() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _openForgotPassword() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ForgotPasswordDialog(
+        initialEmail: _emailCtrl.text.trim(),
+        accentColor: _config.accentColor,
+      ),
+    );
   }
 
   void _kembaliKeLoginAwal() {
@@ -252,7 +279,7 @@ class _LoginPageState extends State<LoginPage>
             children: [
               Expanded(child: _buildFieldLabel('KATA SANDI')),
               TextButton(
-                onPressed: () {},
+                onPressed: _openForgotPassword,
                 style: TextButton.styleFrom(
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -261,7 +288,7 @@ class _LoginPageState extends State<LoginPage>
                 child: Text(
                   'Lupa Password?',
                   style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF687067),
+                    color: const Color(0xFF14532D),
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
                     letterSpacing: 0,
@@ -321,11 +348,11 @@ class _LoginPageState extends State<LoginPage>
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {},
+                onPressed: _openForgotPassword,
                 child: Text(
-                  'Lupa kata sandi?',
+                  'Lupa Password?',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: _config.accentColor,
+                    color: const Color(0xFF14532D),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -438,8 +465,9 @@ class _LoginPageState extends State<LoginPage>
     bool compact = false,
   }) {
     final radius = compact ? 14.0 : 12.0;
-    final fieldBorderColor =
-        compact ? AppColors.ownerBorderColor : AppColors.border;
+    final fieldBorderColor = compact
+        ? AppColors.ownerBorderColor
+        : AppColors.border;
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTextStyles.bodyMedium.copyWith(
@@ -657,6 +685,373 @@ class _LoginPageState extends State<LoginPage>
         fontWeight: FontWeight.w900,
         letterSpacing: isCompact ? 0.8 : 1.1,
         fontSize: isCompact ? 8.5 : 9.5,
+      ),
+    );
+  }
+}
+
+class _ForgotPasswordDialog extends StatefulWidget {
+  final String initialEmail;
+  final Color accentColor;
+
+  const _ForgotPasswordDialog({
+    required this.initialEmail,
+    required this.accentColor,
+  });
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _emailCtrl;
+  final _noWaCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  bool _loading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _noWaCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _resetPasswordDenganWa() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+    try {
+      final email = _emailCtrl.text.trim();
+      final exists = await AuthService().emailTerdaftar(email);
+      if (!exists) {
+        if (!mounted) return;
+        NrToast.show(
+          context,
+          'Email tidak ditemukan atau belum terdaftar',
+          type: NrToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+
+      await AuthService().resetPasswordDenganNoWa(
+        email: email,
+        noWa: _noWaCtrl.text,
+        passwordBaru: _passwordCtrl.text,
+      );
+      if (!mounted) return;
+      NrToast.show(
+        context,
+        'Password berhasil direset. Silakan masuk dengan password baru.',
+        type: NrToastType.success,
+        duration: const Duration(seconds: 4),
+      );
+      Navigator.pop(context);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      NrToast.show(
+        context,
+        _mapResetError(e.message),
+        type: NrToastType.error,
+        duration: const Duration(seconds: 4),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      NrToast.show(
+        context,
+        _mapResetError(e.toString()),
+        type: NrToastType.error,
+        duration: const Duration(seconds: 4),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _mapResetError(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('nomor wa') ||
+        lower.contains('whatsapp') ||
+        lower.contains('no_wa')) {
+      return 'Nomor WA tidak cocok dengan akun tersebut.';
+    }
+    if (lower.contains('user not found') ||
+        lower.contains('not found') ||
+        lower.contains('invalid email')) {
+      return 'Email tidak ditemukan atau belum terdaftar';
+    }
+    if (lower.contains('rate') || lower.contains('too many')) {
+      return 'Terlalu banyak permintaan. Coba lagi nanti.';
+    }
+    if (lower.contains('function') || lower.contains('rpc')) {
+      return 'Fungsi reset password belum dibuat di database. Jalankan SQL setup dulu.';
+    }
+    if (lower.contains('weak') || lower.contains('password')) {
+      return 'Password baru terlalu lemah. Gunakan minimal 8 karakter.';
+    }
+    return 'Gagal mereset password: $message';
+  }
+
+  InputDecoration _fieldDecoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: AppTextStyles.bodyMedium.copyWith(
+        color: AppColors.textHint,
+        fontSize: 14,
+      ),
+      prefixIcon: Icon(icon, size: 18, color: AppColors.textHint),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: widget.accentColor, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _passwordField({
+    required TextEditingController controller,
+    required String hint,
+    required bool obscure,
+    required VoidCallback onToggle,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      style: AppTextStyles.bodyMedium.copyWith(
+        color: AppColors.textPrimary,
+        fontSize: 14,
+      ),
+      decoration: _fieldDecoration(
+        hint: hint,
+        icon: Icons.lock_outline_rounded,
+        suffix: IconButton(
+          onPressed: onToggle,
+          icon: Icon(
+            obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            size: 18,
+            color: AppColors.textHint,
+          ),
+        ),
+      ),
+      validator: validator,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: widget.accentColor.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.lock_reset_rounded,
+                      color: widget.accentColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Lupa Password',
+                      style: AppTextStyles.headlineLarge.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Masukkan email dan nomor WA yang terdaftar, lalu buat password baru untuk akun Anda.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextFormField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+                decoration: _fieldDecoration(
+                  hint: 'Masukkan email akun Anda',
+                  icon: Icons.alternate_email_rounded,
+                ),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty) return 'Email wajib diisi';
+                  final valid = RegExp(
+                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                  ).hasMatch(email);
+                  if (!valid) return 'Format email tidak valid';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _noWaCtrl,
+                keyboardType: TextInputType.phone,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+                decoration: _fieldDecoration(
+                  hint: 'Nomor WA terdaftar',
+                  icon: Icons.phone_iphone_rounded,
+                ),
+                validator: (value) {
+                  final noWa = value?.trim() ?? '';
+                  if (noWa.isEmpty) return 'Nomor WA wajib diisi';
+                  final digits = noWa.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (digits.length < 9) return 'Nomor WA tidak valid';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              _passwordField(
+                controller: _passwordCtrl,
+                hint: 'Password baru',
+                obscure: _obscurePassword,
+                onToggle: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Password baru wajib diisi';
+                  }
+                  if (value.length < 8) return 'Minimal 8 karakter';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              _passwordField(
+                controller: _confirmCtrl,
+                hint: 'Konfirmasi password baru',
+                obscure: _obscureConfirm,
+                onToggle: () {
+                  setState(() => _obscureConfirm = !_obscureConfirm);
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Konfirmasi password wajib diisi';
+                  }
+                  if (value != _passwordCtrl.text) {
+                    return 'Konfirmasi password tidak cocok';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _resetPasswordDenganWa,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.accentColor,
+                    disabledBackgroundColor: widget.accentColor.withValues(
+                      alpha: 0.5,
+                    ),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.4,
+                          ),
+                        )
+                      : Text(
+                          'Reset Password',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _loading ? null : () => Navigator.pop(context),
+                  child: Text(
+                    'Batal',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
