@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_service.dart';
 import '../auth/onboarding_page.dart';
+import '../auth/reset_password_page.dart';
 import '../shell/role_gate.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -15,6 +19,8 @@ class _LoadingScreenState extends State<LoadingScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
+  StreamSubscription? _authSub;
+  bool _handlingPasswordRecovery = false;
 
   @override
   void initState() {
@@ -28,11 +34,29 @@ class _LoadingScreenState extends State<LoadingScreen>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
 
+    _authSub = AuthService().perubahanStatusAuth.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery && mounted) {
+        _handlingPasswordRecovery = true;
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const ResetPasswordPage(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
+      }
+    });
+
     Future.delayed(const Duration(seconds: 3), _navigasiBerikutnya);
   }
 
   Future<void> _navigasiBerikutnya() async {
     if (!mounted) return;
+    if (_handlingPasswordRecovery) return;
 
     final sudahLogin = AuthService().sudahMasuk;
 
@@ -42,7 +66,9 @@ class _LoadingScreenState extends State<LoadingScreen>
     }
 
     if (!mounted) return;
-    final halamanTujuan = sudahLogin ? const RoleGate() : const OnboardingPage();
+    final halamanTujuan = sudahLogin
+        ? const RoleGate()
+        : const OnboardingPage();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -57,6 +83,7 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _animController.dispose();
     super.dispose();
   }
