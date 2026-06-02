@@ -49,6 +49,7 @@ class AuthService {
       data: {
         'full_name': namaLengkap,
         'no_wa': noWa,
+        'phone': noWa,
         'role': _petaRole(role),
         'store_name': namaToko,
         'store_address': alamatToko,
@@ -61,16 +62,17 @@ class AuthService {
     // 2. Coba update public.users (hanya berhasil jika email confirmation OFF
     //    atau user sudah login — jika gagal karena RLS tidak apa-apa,
     //    data sudah tersimpan di metadata dan akan di-sync saat login pertama).
-    if (response.user != null) {
+    if (response.user != null && response.session != null) {
       try {
-        await client
-            .from('users')
-            .update({
-              'no_wa': noWa,
-              'role': _petaRole(role),
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', response.user!.id);
+        await client.from('users').upsert({
+          'id': response.user!.id,
+          'email': email.trim().toLowerCase(),
+          'nama_lengkap': namaLengkap,
+          'no_wa': noWa,
+          'phone': noWa,
+          'role': _petaRole(role),
+          'updated_at': DateTime.now().toIso8601String(),
+        }, onConflict: 'id');
       } catch (_) {
         // RLS memblokir update saat email belum dikonfirmasi — normal.
         // Data akan di-sync via syncProfilSetelahLogin() saat pertama login.
@@ -91,19 +93,29 @@ class AuthService {
     final meta = user.userMetadata;
     if (meta == null) return;
 
-    final noWa = meta['no_wa'] as String?;
+    final namaLengkap =
+        (meta['full_name'] as String?) ??
+        (meta['name'] as String?) ??
+        user.email?.split('@').first ??
+        'Pengguna';
+    final noWa = (meta['no_wa'] as String?) ?? (meta['phone'] as String?);
     final role = meta['role'] as String?;
     if (noWa == null && role == null) return;
 
     try {
-      await client
-          .from('users')
-          .update({
-            'no_wa': noWa,
-            'role': role,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', user.id);
+      final payload = <String, dynamic>{
+        'id': user.id,
+        'email': user.email,
+        'nama_lengkap': namaLengkap,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (noWa != null) {
+        payload['no_wa'] = noWa;
+        payload['phone'] = noWa;
+      }
+      if (role != null) payload['role'] = role;
+
+      await client.from('users').upsert(payload, onConflict: 'id');
     } catch (_) {
       // Abaikan — akan dicoba ulang di sesi berikutnya
     }
@@ -168,6 +180,70 @@ class AuthService {
     }
   }
 
+  Future<void> resetPassword(String email) async {
+    try {
+      await client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: oauthRedirectUrl,
+      );
+    } on AuthException catch (e) {
+      final lower = e.message.toLowerCase();
+      final redirectRejected =
+          lower.contains('redirect') ||
+          lower.contains('url') ||
+          lower.contains('not allowed');
+      if (!redirectRejected) rethrow;
+
+      await client.auth.resetPasswordForEmail(email);
+    }
+  }
+
+  Future<bool> emailTerdaftar(String email) async {
+    final normalized = email.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+
+    try {
+      final result = await client.rpc<bool>(
+        'email_terdaftar',
+        params: {'p_email': normalized},
+      );
+      return result;
+    } catch (_) {
+      final data = await client
+          .from('users')
+          .select('id')
+          .eq('email', normalized)
+          .maybeSingle();
+      return data != null;
+    }
+  }
+
+  Future<void> resetPasswordDenganNoWa({
+    required String email,
+    required String noWa,
+    required String passwordBaru,
+  }) async {
+    try {
+      final result = await client.rpc<bool>(
+        'reset_password_dengan_wa',
+        params: {
+          'p_email': email.trim().toLowerCase(),
+          'p_no_wa': noWa.trim(),
+          'p_password_baru': passwordBaru,
+        },
+      );
+      if (result != true) {
+        throw Exception('Gagal mereset password. Coba lagi nanti.');
+      }
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  Future<void> perbaruiPasswordReset(String passwordBaru) async {
+    await client.auth.updateUser(UserAttributes(password: passwordBaru));
+  }
+
   // ──────────────────────────────────────────────────────────
   //  KELUAR — signOut
   // ──────────────────────────────────────────────────────────
@@ -191,7 +267,10 @@ class AuthService {
       'updated_at': DateTime.now().toIso8601String(),
     };
     if (namaLengkap != null) data['nama_lengkap'] = namaLengkap;
-    if (noWa != null) data['no_wa'] = noWa;
+    if (noWa != null) {
+      data['no_wa'] = noWa;
+      data['phone'] = noWa;
+    }
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
     if (ktpUrl != null) data['ktp_url'] = ktpUrl;
 
