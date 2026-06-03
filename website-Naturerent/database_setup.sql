@@ -84,7 +84,14 @@ ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS cancellation_note text,
   ADD COLUMN IF NOT EXISTS cancelled_by text,
   ADD COLUMN IF NOT EXISTS cancelled_at timestamptz,
-  ADD COLUMN IF NOT EXISTS cancellation_status text;
+  ADD COLUMN IF NOT EXISTS cancellation_status text,
+  ADD COLUMN IF NOT EXISTS refund_proof_url text,
+  ADD COLUMN IF NOT EXISTS refund_uploaded_at timestamptz,
+  ADD COLUMN IF NOT EXISTS refund_status text;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('refund-proofs', 'refund-proofs', true)
+ON CONFLICT (id) DO NOTHING;
 
 GRANT ALL PRIVILEGES ON TABLE public.users TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.banks TO anon, authenticated, service_role;
@@ -484,6 +491,29 @@ ON storage.objects
 FOR DELETE
 TO authenticated
 USING (bucket_id = 'qris-images');
+
+-- 5. Kebijakan Storage Bucket 'refund-proofs' untuk bukti transfer pengembalian dana
+DROP POLICY IF EXISTS "Public can read refund proofs" ON storage.objects;
+CREATE POLICY "Public can read refund proofs"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'refund-proofs');
+
+DROP POLICY IF EXISTS "Authenticated can upload refund proofs" ON storage.objects;
+CREATE POLICY "Authenticated can upload refund proofs"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'refund-proofs');
+
+DROP POLICY IF EXISTS "Authenticated can update refund proofs" ON storage.objects;
+CREATE POLICY "Authenticated can update refund proofs"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (bucket_id = 'refund-proofs')
+WITH CHECK (bucket_id = 'refund-proofs');
 
 -- ----------------------------------------------------------------------------
 -- BAGIAN 4: HAK AKSES & KEBIJAKAN KEAMANAN TABEL WISATA_LOCATIONS
