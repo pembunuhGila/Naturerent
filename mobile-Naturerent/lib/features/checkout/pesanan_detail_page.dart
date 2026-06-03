@@ -21,6 +21,11 @@ class PesananDetailPage extends StatefulWidget {
   final String? statusKey;
   final String? paymentProofUrl;
   final Uint8List? paymentProofBytes;
+  final String? cancellationReason;
+  final String? cancellationNote;
+  final String? cancelledBy;
+  final DateTime? cancelledAt;
+  final String? cancellationStatus;
 
   const PesananDetailPage({
     super.key,
@@ -35,6 +40,11 @@ class PesananDetailPage extends StatefulWidget {
     this.statusKey,
     this.paymentProofUrl,
     this.paymentProofBytes,
+    this.cancellationReason,
+    this.cancellationNote,
+    this.cancelledBy,
+    this.cancelledAt,
+    this.cancellationStatus,
   });
 
   @override
@@ -46,6 +56,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   String? _paymentProofUrl;
   Uint8List? _decodedProofBytes;
   bool _loadingProof = false;
+  bool _cancellingOrder = false;
 
   List<CartRentalGroup> get _groups {
     final map = <String, List<CartItem>>{};
@@ -132,6 +143,12 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     return '${dt.day} ${b[dt.month]} ${dt.year}';
   }
 
+  String _fmtDateTime(DateTime dt) {
+    final time =
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '${_fmtTgl(dt)} $time';
+  }
+
   String _fmtRupiah(double v) {
     final s = v.toInt().toString();
     final buf = StringBuffer('Rp ');
@@ -205,6 +222,14 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                   // ── Timeline
                   _buildTimeline(),
                   const SizedBox(height: 24),
+                  if (_isCancelledOrder) ...[
+                    _buildCancellationInfoCard(),
+                    const SizedBox(height: 24),
+                  ],
+                  if (_canCancelOrder) ...[
+                    _buildCancelOrderCard(),
+                    const SizedBox(height: 24),
+                  ],
                   if (_canShowReturnOption) ...[
                     _buildReturnOptions(),
                     const SizedBox(height: 24),
@@ -247,6 +272,15 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
 
   // ─── Order card
   bool get _canShowReturnOption => widget.statusKey == 'rented';
+
+  bool get _isCancelledOrder => widget.statusKey == 'cancelled';
+
+  bool get _canCancelOrder {
+    if (widget.orderRefId == null) return false;
+    return widget.statusKey == 'pending' ||
+        widget.statusKey == 'confirmed' ||
+        widget.statusKey == 'processing';
+  }
 
   Widget _buildPaymentProofCard() {
     final hasBytes = widget.paymentProofBytes != null;
@@ -386,6 +420,314 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildCancelOrderCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.cancel_outlined,
+                  color: AppColors.error,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Pembatalan Pesanan',
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Pesanan masih bisa dibatalkan sebelum peralatan diambil.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: _cancellingOrder ? null : _showCancelOrderDialog,
+              icon: _cancellingOrder
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.close_rounded, size: 18),
+              label: Text(
+                _cancellingOrder ? 'Membatalkan...' : 'Batalkan Pesanan',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCancellationInfoCard() {
+    final status = widget.cancellationStatus ??
+        (widget.cancelledBy == 'user'
+            ? 'Dibatalkan Penyewa'
+            : 'Dibatalkan Admin');
+    final reason = widget.cancellationReason?.trim();
+    final note = widget.cancellationNote?.trim();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, color: AppColors.error),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  status,
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _CancellationLine(
+            label: 'Alasan',
+            value: reason == null || reason.isEmpty
+                ? 'Alasan pembatalan belum tersedia'
+                : reason,
+          ),
+          if (note != null && note.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _CancellationLine(label: 'Catatan', value: note),
+          ],
+          if (widget.cancelledAt != null) ...[
+            const SizedBox(height: 8),
+            _CancellationLine(
+              label: 'Dibatalkan pada',
+              value: _fmtDateTime(widget.cancelledAt!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCancelOrderDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final noteController = TextEditingController();
+    final pageContext = context;
+    String? selectedReason;
+    const reasons = [
+      'Jadwal berubah',
+      'Salah memilih tanggal',
+      'Salah memilih alat',
+      'Menemukan rental lain',
+      'Tidak jadi menyewa',
+      'Alasan lainnya',
+    ];
+
+    await showDialog<void>(
+      context: pageContext,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> submit() async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+
+              final confirmed = await showDialog<bool>(
+                context: pageContext,
+                builder: (context) => AlertDialog(
+                  title: const Text('Konfirmasi Pembatalan'),
+                  content: const Text(
+                    'Apakah Anda yakin ingin membatalkan pesanan ini?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Kembali'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Ya, Batalkan'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true || widget.orderRefId == null) return;
+
+              var success = false;
+              setState(() => _cancellingOrder = true);
+              setDialogState(() {});
+              try {
+                await OrderActivityService().batalkanPesananPenyewa(
+                  orderRefId: widget.orderRefId!,
+                  reason: selectedReason!,
+                  note: noteController.text,
+                );
+                if (!mounted) return;
+                success = true;
+                setState(() => _cancellingOrder = false);
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Pesanan berhasil dibatalkan'),
+                    backgroundColor: AppColors.primaryDark,
+                  ),
+                );
+                Navigator.pop(dialogContext);
+                Navigator.pop(pageContext, true);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  SnackBar(
+                    content: Text('Gagal membatalkan pesanan: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              } finally {
+                if (mounted && !success) {
+                  setState(() => _cancellingOrder = false);
+                  setDialogState(() {});
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Batalkan Pesanan'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Silakan pilih atau tuliskan alasan pembatalan pesanan.',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        value: selectedReason,
+                        items: reasons
+                            .map(
+                              (reason) => DropdownMenuItem(
+                                value: reason,
+                                child: Text(reason),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _cancellingOrder
+                            ? null
+                            : (value) => setDialogState(
+                                () => selectedReason = value,
+                              ),
+                        decoration: const InputDecoration(
+                          labelText: 'Alasan pembatalan',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Pilih alasan pembatalan terlebih dahulu'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: noteController,
+                        enabled: !_cancellingOrder,
+                        minLines: 3,
+                        maxLines: 5,
+                        decoration: const InputDecoration(
+                          labelText: 'Alasan tambahan',
+                          hintText: 'Tulis catatan pembatalan jika diperlukan',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          final note = value?.trim() ?? '';
+                          if (selectedReason == 'Alasan lainnya' &&
+                              note.isEmpty) {
+                            return 'Tuliskan alasan pembatalan';
+                          }
+                          if (note.isNotEmpty && note.length < 10) {
+                            return 'Alasan pembatalan minimal 10 karakter';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _cancellingOrder
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryDark,
+                  ),
+                  onPressed: _cancellingOrder ? null : submit,
+                  child: Text(
+                    _cancellingOrder ? 'Mengirim...' : 'Kirim Pembatalan',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    noteController.dispose();
   }
 
   Widget _buildOrderCard() {
@@ -803,6 +1145,38 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                 ),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CancellationLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _CancellationLine({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.textHint,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textPrimary,
+            height: 1.35,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
