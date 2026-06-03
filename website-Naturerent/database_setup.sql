@@ -23,13 +23,53 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
 -- B. Berikan hak akses CRUD penuh ke tabel-tabel utama
 ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS phone text;
+  ADD COLUMN IF NOT EXISTS phone text,
+  ADD COLUMN IF NOT EXISTS phone_number text,
+  ADD COLUMN IF NOT EXISTS bank_id uuid,
+  ADD COLUMN IF NOT EXISTS bank_name text,
+  ADD COLUMN IF NOT EXISTS account_number text,
+  ADD COLUMN IF NOT EXISTS bank_account text;
 
 UPDATE public.users
 SET phone = no_wa
 WHERE (phone IS NULL OR phone = '')
   AND no_wa IS NOT NULL
   AND no_wa <> '';
+
+UPDATE public.users
+SET phone_number = COALESCE(phone, no_wa)
+WHERE (phone_number IS NULL OR phone_number = '')
+  AND COALESCE(phone, no_wa) IS NOT NULL
+  AND COALESCE(phone, no_wa) <> '';
+
+CREATE TABLE IF NOT EXISTS public.banks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bank_name text NOT NULL UNIQUE,
+  bank_code text,
+  created_at timestamptz DEFAULT now()
+);
+
+INSERT INTO public.banks (bank_name, bank_code)
+VALUES
+  ('BCA', 'BCA'),
+  ('BRI', 'BRI'),
+  ('MANDIRI', 'MANDIRI'),
+  ('BNI', 'BNI')
+ON CONFLICT (bank_name) DO NOTHING;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'users_bank_id_fkey'
+      AND conrelid = 'public.users'::regclass
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_bank_id_fkey
+      FOREIGN KEY (bank_id) REFERENCES public.banks(id);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.rental_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -40,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.rental_settings (
 );
 
 GRANT ALL PRIVILEGES ON TABLE public.users TO anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON TABLE public.banks TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.rental_profiles TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.rental_settings TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.bookings TO anon, authenticated, service_role;
@@ -64,6 +105,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authen
 
 -- A. Aktifkan RLS di seluruh tabel utama
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.banks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rental_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rental_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
@@ -99,6 +141,10 @@ BEGIN
     nama_lengkap,
     no_wa,
     phone,
+    phone_number,
+    bank_name,
+    account_number,
+    bank_account,
     role,
     created_at,
     updated_at
@@ -113,6 +159,21 @@ BEGIN
     ),
     COALESCE(NEW.raw_user_meta_data->>'no_wa', NEW.raw_user_meta_data->>'phone', ''),
     COALESCE(NEW.raw_user_meta_data->>'phone', NEW.raw_user_meta_data->>'no_wa', ''),
+    COALESCE(
+      NEW.raw_user_meta_data->>'phone_number',
+      NEW.raw_user_meta_data->>'phone',
+      NEW.raw_user_meta_data->>'no_wa',
+      ''
+    ),
+    NEW.raw_user_meta_data->>'bank_name',
+    COALESCE(
+      NEW.raw_user_meta_data->>'account_number',
+      NEW.raw_user_meta_data->>'bank_account'
+    ),
+    COALESCE(
+      NEW.raw_user_meta_data->>'bank_account',
+      NEW.raw_user_meta_data->>'account_number'
+    ),
     COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'customer'::user_role),
     NOW(),
     NOW()
@@ -122,6 +183,10 @@ BEGIN
     nama_lengkap = EXCLUDED.nama_lengkap,
     no_wa = COALESCE(NULLIF(EXCLUDED.no_wa, ''), public.users.no_wa),
     phone = COALESCE(NULLIF(EXCLUDED.phone, ''), public.users.phone, public.users.no_wa),
+    phone_number = COALESCE(NULLIF(EXCLUDED.phone_number, ''), public.users.phone_number, public.users.phone, public.users.no_wa),
+    bank_name = COALESCE(EXCLUDED.bank_name, public.users.bank_name),
+    account_number = COALESCE(EXCLUDED.account_number, public.users.account_number),
+    bank_account = COALESCE(EXCLUDED.bank_account, public.users.bank_account, public.users.account_number),
     role = EXCLUDED.role,
     updated_at = NOW();
 
@@ -259,6 +324,11 @@ CREATE POLICY "Users can update own profile" ON public.users
 DROP POLICY IF EXISTS "Enable insert access for all users" ON public.users;
 CREATE POLICY "Enable insert access for all users" ON public.users
     FOR INSERT WITH CHECK (true);
+
+-- C2. KEBIJAKAN AKSES PADA TABEL 'banks'
+DROP POLICY IF EXISTS "Allow public read access to banks" ON public.banks;
+CREATE POLICY "Allow public read access to banks" ON public.banks
+    FOR SELECT TO anon, authenticated USING (true);
 
 
 -- D. KEBIJAKAN AKSES PADA TABEL 'rental_profiles'
