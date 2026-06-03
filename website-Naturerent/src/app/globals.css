@@ -379,7 +379,10 @@ input, select, textarea { font-family: inherit; }
   transition: var(--transition);
 }
 
-.activity-item:hover { background: var(--bg-card); }
+.activity-item:hover {
+  background: var(--bg-card-hover);
+  transform: translateX(4px);
+}
 
 .activity-icon {
   width: 36px;
