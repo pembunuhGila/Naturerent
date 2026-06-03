@@ -570,7 +570,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       'Alasan lainnya',
     ];
 
-    await showDialog<void>(
+    final cancelled = await showDialog<bool>(
       context: pageContext,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -620,8 +620,7 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
                     backgroundColor: AppColors.primaryDark,
                   ),
                 );
-                Navigator.pop(dialogContext);
-                Navigator.pop(pageContext, true);
+                Navigator.pop(dialogContext, true);
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(pageContext).showSnackBar(
@@ -728,6 +727,12 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
     );
 
     noteController.dispose();
+    if (cancelled == true && mounted) {
+      await Future<void>.delayed(Duration.zero);
+      if (mounted && Navigator.canPop(pageContext)) {
+        Navigator.pop(pageContext, true);
+      }
+    }
   }
 
   Widget _buildOrderCard() {
