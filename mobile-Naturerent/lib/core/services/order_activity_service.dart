@@ -31,6 +31,11 @@ class ActivityOrder {
   final DateTime createdAt;
   final String? paymentProofUrl;
   final Uint8List? paymentProofBytes;
+  final String? cancellationReason;
+  final String? cancellationNote;
+  final String? cancelledBy;
+  final DateTime? cancelledAt;
+  final String? cancellationStatus;
 
   const ActivityOrder({
     required this.id,
@@ -44,9 +49,24 @@ class ActivityOrder {
     required this.createdAt,
     this.paymentProofUrl,
     this.paymentProofBytes,
+    this.cancellationReason,
+    this.cancellationNote,
+    this.cancelledBy,
+    this.cancelledAt,
+    this.cancellationStatus,
   });
 
-  ActivityOrder copyWith({ActivityOrderStatus? status}) {
+  bool get dibatalkanPenyewa =>
+      status == ActivityOrderStatus.cancelled && cancelledBy == 'user';
+
+  ActivityOrder copyWith({
+    ActivityOrderStatus? status,
+    String? cancellationReason,
+    String? cancellationNote,
+    String? cancelledBy,
+    DateTime? cancelledAt,
+    String? cancellationStatus,
+  }) {
     return ActivityOrder(
       id: id,
       nomorPesanan: nomorPesanan,
@@ -59,6 +79,11 @@ class ActivityOrder {
       createdAt: createdAt,
       paymentProofUrl: paymentProofUrl,
       paymentProofBytes: paymentProofBytes,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
+      cancellationNote: cancellationNote ?? this.cancellationNote,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      cancellationStatus: cancellationStatus ?? this.cancellationStatus,
     );
   }
 }
@@ -237,6 +262,11 @@ class OrderActivityService {
             tgl_selesai,
             total_bayar,
             status,
+            cancellation_reason,
+            cancellation_note,
+            cancelled_by,
+            cancelled_at,
+            cancellation_status,
             booking_code,
             payment_group_id,
             created_at,
@@ -286,6 +316,88 @@ class OrderActivityService {
     if (rows.isEmpty) return null;
     final value = rows.first['payment_proof_url'] as String?;
     return value != null && value.trim().isNotEmpty ? value : null;
+  }
+
+  bool bisaDibatalkan(ActivityOrder order) {
+    return order.status == ActivityOrderStatus.pending ||
+        order.status == ActivityOrderStatus.confirmed ||
+        order.status == ActivityOrderStatus.processing;
+  }
+
+  Future<void> batalkanPesananPenyewa({
+    required String orderRefId,
+    required String reason,
+    String? note,
+  }) async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) throw Exception('Silakan login ulang.');
+
+    final cleanedReason = reason.trim();
+    final cleanedNote = note?.trim();
+    if (cleanedReason.isEmpty) {
+      throw Exception('Pilih alasan pembatalan terlebih dahulu.');
+    }
+    if (cleanedReason == 'Alasan lainnya' &&
+        (cleanedNote == null || cleanedNote.isEmpty)) {
+      throw Exception('Tuliskan alasan pembatalan.');
+    }
+    if (cleanedNote != null &&
+        cleanedNote.isNotEmpty &&
+        cleanedNote.length < 10) {
+      throw Exception('Alasan pembatalan minimal 10 karakter.');
+    }
+
+    final rowsData = await AuthService.client
+        .from('bookings')
+        .select('id, status')
+        .eq('customer_id', user.id)
+        .or('payment_group_id.eq.$orderRefId,id.eq.$orderRefId');
+
+    final rows = List<Map<String, dynamic>>.from(rowsData as List);
+    if (rows.isEmpty) {
+      throw Exception('Pesanan tidak ditemukan.');
+    }
+
+    const allowedStatuses = {'pending', 'confirmed', 'processing'};
+    final cancellableIds = rows
+        .where((row) => allowedStatuses.contains(row['status'] as String?))
+        .map((row) => row['id'] as String)
+        .toList(growable: false);
+
+    if (cancellableIds.isEmpty) {
+      throw Exception('Pesanan ini sudah tidak bisa dibatalkan.');
+    }
+
+    final cancelledAt = DateTime.now();
+    await AuthService.client
+        .from('bookings')
+        .update({
+          'status': 'cancelled',
+          'cancellation_reason': cleanedReason,
+          'cancellation_note': cleanedNote?.isEmpty == true ? null : cleanedNote,
+          'cancelled_by': 'user',
+          'cancelled_at': cancelledAt.toIso8601String(),
+          'cancellation_status': 'Dibatalkan Penyewa',
+          'updated_at': cancelledAt.toIso8601String(),
+        })
+        .inFilter('id', cancellableIds);
+
+    orders.value = orders.value
+        .map(
+          (order) => order.id == orderRefId
+              ? order.copyWith(
+                  status: ActivityOrderStatus.cancelled,
+                  cancellationReason: cleanedReason,
+                  cancellationNote: cleanedNote,
+                  cancelledBy: 'user',
+                  cancelledAt: cancelledAt,
+                  cancellationStatus: 'Dibatalkan Penyewa',
+                )
+              : order,
+        )
+        .toList(growable: false);
+
+    await muatDariDatabase();
   }
 
   void ubahStatus(String id, ActivityOrderStatus status) {
@@ -382,7 +494,27 @@ class OrderActivityService {
       items: List<CartItem>.unmodifiable(items),
       status: _statusGroup(rows),
       createdAt: DateTime.parse(first['created_at'] as String),
+      cancellationReason: _firstNonEmpty(rows, 'cancellation_reason'),
+      cancellationNote: _firstNonEmpty(rows, 'cancellation_note'),
+      cancelledBy: _firstNonEmpty(rows, 'cancelled_by'),
+      cancelledAt: _parseOptionalDate(_firstNonEmpty(rows, 'cancelled_at')),
+      cancellationStatus: _firstNonEmpty(rows, 'cancellation_status'),
     );
+  }
+
+  String? _firstNonEmpty(List<Map<String, dynamic>> rows, String key) {
+    for (final row in rows) {
+      final value = row[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return null;
+  }
+
+  DateTime? _parseOptionalDate(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value);
   }
 
   Future<String> _uploadPaymentProof({
