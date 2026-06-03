@@ -54,7 +54,7 @@ export default function KomisiPage() {
         commission_amount: b.commission_amount !== undefined && b.commission_amount !== null ? Number(b.commission_amount) : null,
         biaya_layanan: b.biaya_layanan !== undefined && b.biaya_layanan !== null ? Number(b.biaya_layanan) : 0,
         status: (b.status === 'completed' || b.status === 'returned' || b.status === 'Selesai') ? 'Selesai'
-              : (b.status === 'cancelled' || b.status === 'Ditolak') ? 'Batal' : 'Proses'
+              : (b.status === 'cancelled' || b.status === 'Ditolak') ? (b.cancelled_by === 'user' ? 'Return' : 'Batal') : 'Proses'
       }))
       setData(resolved)
     } catch (error) {
@@ -246,6 +246,7 @@ export default function KomisiPage() {
                   <option value="Semua">Semua Status</option>
                   <option value="Proses">Proses</option>
                   <option value="Batal">Batal</option>
+                  <option value="Return">Return</option>
                   <option value="Selesai">Selesai</option>
                 </select>
               </div>
@@ -271,9 +272,9 @@ export default function KomisiPage() {
                     </td>
                   </tr>
                 ) : filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(row => {
-                  const comm = row.status === 'Batal' ? 0 
+                  const comm = (row.status === 'Batal' || row.status === 'Return') ? 0 
                              : (row.commission_amount !== null && row.commission_amount !== undefined ? row.commission_amount : row.subtotal * (commissionRate / 100))
-                  const fee  = row.status === 'Batal' ? 0 
+                  const fee  = (row.status === 'Batal' || row.status === 'Return') ? 0 
                              : (row.biaya_layanan !== null && row.biaya_layanan !== undefined ? row.biaya_layanan : serviceFee)
                   return (
                     <tr key={row.id}>
@@ -295,7 +296,7 @@ export default function KomisiPage() {
                         }
                       </td>
                       <td>
-                        <span className={`badge ${row.status === 'Selesai' ? 'badge-success' : row.status === 'Batal' ? 'badge-danger' : 'badge-warning'}`}>
+                        <span className={`badge ${row.status === 'Selesai' ? 'badge-success' : (row.status === 'Batal' || row.status === 'Return') ? 'badge-danger' : 'badge-warning'}`}>
                           {row.status}
                         </span>
                       </td>
