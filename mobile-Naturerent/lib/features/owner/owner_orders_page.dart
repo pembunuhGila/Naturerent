@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/models/admin_order.dart';
 import '../../core/services/auth_service.dart';
@@ -47,18 +52,26 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           cancelled_by,
           cancelled_at,
           cancellation_status,
+          refund_uploaded_at,
+          refund_status,
           created_at,
-          users(nama_lengkap, email),
+          users(
+            nama_lengkap,
+            email,
+            phone,
+            phone_number,
+            no_wa,
+            bank_name,
+            account_number,
+            bank_account
+          ),
           rental_profiles(nama_rental),
           booking_items(
             nama_equipment,
             nama_rental,
             jumlah,
             total_harga,
-            equipment(
-              image_url,
-              equipment_images(image_url, is_primary, sort_order)
-            )
+            equipment(image_url)
           )
         ''')
         .eq('rental_id', rental.id)
@@ -228,9 +241,12 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _OwnerOrderDetailPage(order: order),
+        builder: (_) => order.status == 'cancelled' && order.dibatalkanPenyewa
+            ? _OwnerCancellationDetailPage(order: order)
+            : _OwnerOrderDetailPage(order: order),
       ),
     );
+    _reload();
   }
 
   @override
@@ -1123,6 +1139,477 @@ class _OwnerOrderDetailPage extends StatelessWidget {
   }
 }
 
+class _OwnerCancellationDetailPage extends StatefulWidget {
+  final AdminOrder order;
+
+  const _OwnerCancellationDetailPage({required this.order});
+
+  @override
+  State<_OwnerCancellationDetailPage> createState() =>
+      _OwnerCancellationDetailPageState();
+}
+
+class _OwnerCancellationDetailPageState
+    extends State<_OwnerCancellationDetailPage> {
+  final _picker = ImagePicker();
+  Uint8List? _selectedBytes;
+  String? _selectedExtension;
+  String? _refundProofUrl;
+  DateTime? _refundUploadedAt;
+  String? _refundStatus;
+  bool _loadingRefundProof = false;
+  bool _uploading = false;
+
+  AdminOrder get order => widget.order;
+
+  @override
+  void initState() {
+    super.initState();
+    _refundProofUrl = order.refundProofUrl;
+    _refundUploadedAt = order.refundUploadedAt;
+    _refundStatus = order.refundStatus;
+    _loadRefundProof();
+  }
+
+  Future<void> _loadRefundProof() async {
+    setState(() => _loadingRefundProof = true);
+    try {
+      final data = await AuthService.client
+          .from('bookings')
+          .select('refund_proof_url, refund_uploaded_at, refund_status')
+          .eq('id', order.id)
+          .maybeSingle();
+      if (!mounted || data == null) return;
+      setState(() {
+        _refundProofUrl = data['refund_proof_url'] as String?;
+        _refundUploadedAt = _parseDate(data['refund_uploaded_at']);
+        _refundStatus = data['refund_status'] as String?;
+      });
+    } catch (_) {
+      // Bukti refund bukan blocker untuk membuka detail pembatalan.
+    } finally {
+      if (mounted) setState(() => _loadingRefundProof = false);
+    }
+  }
+
+  Future<void> _pickRefundProof() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 82,
+      maxWidth: 1600,
+    );
+    if (picked == null) return;
+
+    final extension = picked.name.split('.').last.toLowerCase();
+    if (!{'jpg', 'jpeg', 'png'}.contains(extension)) {
+      _showMessage('Format gambar harus jpg, jpeg, atau png.', isError: true);
+      return;
+    }
+
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _selectedBytes = bytes;
+      _selectedExtension = extension == 'jpeg' ? 'jpg' : extension;
+    });
+  }
+
+  Future<void> _uploadRefundProof() async {
+    final bytes = _selectedBytes;
+    final extension = _selectedExtension;
+    if (bytes == null || extension == null) {
+      _showMessage('Pilih gambar bukti transfer terlebih dahulu.', isError: true);
+      return;
+    }
+
+    setState(() => _uploading = true);
+    try {
+      final userId = AuthService().penggunaSaatIni?.id ?? 'owner';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final path = '$userId/${order.id}/$fileName';
+      final contentType = extension == 'png' ? 'image/png' : 'image/jpeg';
+
+      String publicUrl;
+      try {
+        await AuthService.client.storage.from('refund-proofs').uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(contentType: contentType, upsert: true),
+            );
+        publicUrl =
+            AuthService.client.storage.from('refund-proofs').getPublicUrl(path);
+      } catch (_) {
+        publicUrl = 'data:$contentType;base64,${base64Encode(bytes)}';
+      }
+      final uploadedAt = DateTime.now();
+
+      await AuthService.client.from('bookings').update({
+        'refund_proof_url': publicUrl,
+        'refund_uploaded_at': uploadedAt.toIso8601String(),
+        'refund_status': 'Sudah Ditransfer',
+        'updated_at': uploadedAt.toIso8601String(),
+      }).eq('id', order.id);
+
+      if (!mounted) return;
+      setState(() {
+        _refundProofUrl = publicUrl;
+        _refundUploadedAt = uploadedAt;
+        _refundStatus = 'Sudah Ditransfer';
+        _selectedBytes = null;
+        _selectedExtension = null;
+      });
+      _showMessage('Bukti transfer berhasil diupload');
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'Gagal mengupload bukti transfer. Coba lagi. $e',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.error : AppColors.ownerPrimaryGreen,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = order.items.isNotEmpty ? order.items.first : null;
+    return Scaffold(
+      backgroundColor: AppColors.ownerPageBackground,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.ownerPrimaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Detail Pembatalan',
+                    style: AppTextStyles.headlineLarge.copyWith(
+                      color: const Color(0xFF202321),
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            _OwnerCancellationSection(
+              title: 'Informasi Pesanan',
+              children: [
+                _DetailInfoRow(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'ID Pesanan: ${_shortCode(order)}',
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.inventory_2_outlined,
+                  label: item?.namaEquipment ?? order.ringkasanAlat,
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.calendar_month_outlined,
+                  label:
+                      '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.payments_outlined,
+                  label: 'Total pembayaran: ${_formatCurrency(order.totalBayar)}',
+                ),
+                const SizedBox(height: 12),
+                _DangerBadge(label: 'DIBATALKAN PENYEWA'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _OwnerCancellationSection(
+              title: 'Informasi Penyewa',
+              children: [
+                _DetailInfoRow(
+                  icon: Icons.person_outline_rounded,
+                  label: order.namaUser.trim().isEmpty
+                      ? 'Nama penyewa belum tersedia'
+                      : order.namaUser,
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.phone_outlined,
+                  label: _fallback(order.phoneUser, 'Nomor telepon belum tersedia'),
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.account_balance_outlined,
+                  label: _bankText(order),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _OwnerCancellationSection(
+              title: 'Informasi Pembatalan',
+              children: [
+                _DetailInfoRow(
+                  icon: Icons.info_outline_rounded,
+                  label:
+                      'Alasan: ${_fallback(order.cancellationReason, 'Alasan pembatalan belum tersedia')}',
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.notes_rounded,
+                  label:
+                      'Catatan: ${_fallback(order.cancellationNote, 'Catatan tambahan belum tersedia')}',
+                ),
+                const SizedBox(height: 10),
+                _DetailInfoRow(
+                  icon: Icons.schedule_rounded,
+                  label: order.cancelledAt == null
+                      ? 'Waktu pembatalan belum tersedia'
+                      : 'Dibatalkan pada: ${_formatDateTime(order.cancelledAt!)}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _OwnerCancellationSection(
+              title: 'Bukti Transfer Pengembalian Dana',
+              children: [
+                Text(
+                  _refundStatus?.trim().isNotEmpty == true
+                      ? _refundStatus!
+                      : 'Menunggu Pengembalian Dana',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: _refundProofUrl?.trim().isNotEmpty == true
+                        ? AppColors.ownerPrimaryGreen
+                        : const Color(0xFF626A60),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildRefundProofPreview(),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: _uploading ? null : _pickRefundProof,
+                    icon: const Icon(Icons.image_outlined, size: 18),
+                    label: Text(
+                      _refundProofUrl?.trim().isNotEmpty == true
+                          ? 'Ganti Bukti Transfer'
+                          : 'Upload Bukti Transfer',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.ownerPrimaryGreen,
+                      side: const BorderSide(
+                        color: AppColors.ownerPrimaryGreen,
+                      ),
+                    ),
+                  ),
+                ),
+                if (_selectedBytes != null) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: FilledButton.icon(
+                      onPressed: _uploading ? null : _uploadRefundProof,
+                      icon: _uploading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(
+                        _uploading ? 'Mengupload...' : 'Simpan Bukti Transfer',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.ownerPrimaryGreen,
+                      ),
+                    ),
+                  ),
+                ],
+                if (_refundUploadedAt != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Diupload pada: ${_formatDateTime(_refundUploadedAt!)}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: const Color(0xFF626A60),
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRefundProofPreview() {
+    if (_loadingRefundProof) {
+      return const _RefundProofPlaceholder(
+        message: 'Memuat bukti transfer...',
+      );
+    }
+    if (_selectedBytes != null) {
+      return _RefundProofImage(
+        child: Image.memory(_selectedBytes!, fit: BoxFit.cover),
+      );
+    }
+    final url = _refundProofUrl?.trim();
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('data:image')) {
+        try {
+          return _RefundProofImage(
+            child: Image.memory(
+              UriData.parse(url).contentAsBytes(),
+              fit: BoxFit.cover,
+            ),
+          );
+        } catch (_) {
+          return const _RefundProofPlaceholder(
+            message: 'Gambar bukti transfer gagal dimuat.',
+          );
+        }
+      }
+      return _RefundProofImage(
+        child: Image.network(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _RefundProofPlaceholder(
+            message: 'Gambar bukti transfer gagal dimuat.',
+          ),
+        ),
+      );
+    }
+    return const _RefundProofPlaceholder(
+      message: 'Bukti transfer belum tersedia',
+    );
+  }
+}
+
+class _OwnerCancellationSection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _OwnerCancellationSection({
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.headlineMedium.copyWith(
+              color: const Color(0xFF202321),
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _RefundProofImage extends StatelessWidget {
+  final Widget child;
+
+  const _RefundProofImage({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: double.infinity,
+        height: 210,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _RefundProofPlaceholder extends StatelessWidget {
+  final String message;
+
+  const _RefundProofPlaceholder({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 170,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F5F1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.image_not_supported_outlined,
+            color: Color(0xFF8A9189),
+            size: 34,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF626A60),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OwnerRentalTimeline extends StatelessWidget {
   final AdminOrder order;
 
@@ -1861,6 +2348,29 @@ String _detailStatusLabel(String status) {
     'returned' || 'completed' => 'SELESAI',
     _ => status.toUpperCase(),
   };
+}
+
+String _fallback(String? value, String fallback) {
+  final text = value?.trim();
+  return text == null || text.isEmpty ? fallback : text;
+}
+
+String _bankText(AdminOrder order) {
+  final bank = order.bankName?.trim();
+  final account = order.accountNumber?.trim();
+  if ((bank == null || bank.isEmpty) && (account == null || account.isEmpty)) {
+    return 'Data rekening belum tersedia';
+  }
+  if (bank == null || bank.isEmpty) return 'Nomor Rekening: $account';
+  if (account == null || account.isEmpty) return 'Bank: $bank';
+  return 'Bank: $bank\nNomor Rekening: $account';
+}
+
+DateTime? _parseDate(Object? value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  return DateTime.tryParse(text);
 }
 
 String _formatCurrency(double value) {
