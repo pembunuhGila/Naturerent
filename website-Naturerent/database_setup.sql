@@ -79,6 +79,13 @@ CREATE TABLE IF NOT EXISTS public.rental_settings (
   updated_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS cancellation_reason text,
+  ADD COLUMN IF NOT EXISTS cancellation_note text,
+  ADD COLUMN IF NOT EXISTS cancelled_by text,
+  ADD COLUMN IF NOT EXISTS cancelled_at timestamptz,
+  ADD COLUMN IF NOT EXISTS cancellation_status text;
+
 GRANT ALL PRIVILEGES ON TABLE public.users TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.banks TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.rental_profiles TO anon, authenticated, service_role;
