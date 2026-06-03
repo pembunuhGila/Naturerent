@@ -37,6 +37,9 @@ class _ProfilPageState extends State<ProfilPage> {
   String? _avatarUrl;
   String? _namaDB; // dari public.users table
   String? _roleDB;
+  String? _nomorTelepon;
+  String? _bankName;
+  String? _accountNumber;
   RentalProfile? _rentalProfile;
 
   User? get _user => _client.auth.currentUser;
@@ -86,11 +89,31 @@ class _ProfilPageState extends State<ProfilPage> {
   Future<void> _muatProfil() async {
     final uid = _user?.id;
     if (uid == null) return;
+    final meta = _user?.userMetadata ?? {};
+
+    String? metaPhone() =>
+        (meta['phone_number'] as String?) ??
+        (meta['phone'] as String?) ??
+        (meta['no_wa'] as String?);
+    String? metaBank() => meta['bank_name'] as String?;
+    String? metaAccount() =>
+        (meta['account_number'] as String?) ??
+        (meta['bank_account'] as String?);
+
+    if (mounted) {
+      setState(() {
+        _nomorTelepon = metaPhone();
+        _bankName = metaBank();
+        _accountNumber = metaAccount();
+      });
+    }
 
     try {
       final data = await _client
           .from('users')
-          .select('avatar_url, nama_lengkap, role')
+          .select(
+            'avatar_url, nama_lengkap, role, no_wa, phone, phone_number, bank_name, account_number, bank_account',
+          )
           .eq('id', uid)
           .maybeSingle();
       if (!mounted) return;
@@ -100,6 +123,16 @@ class _ProfilPageState extends State<ProfilPage> {
         final dbNama = data?['nama_lengkap'] as String?;
         if (dbNama != null && dbNama.isNotEmpty) _namaDB = dbNama;
         _roleDB = data?['role'] as String?;
+        _nomorTelepon =
+            (data?['phone_number'] as String?) ??
+            (data?['phone'] as String?) ??
+            (data?['no_wa'] as String?) ??
+            metaPhone();
+        _bankName = (data?['bank_name'] as String?) ?? metaBank();
+        _accountNumber =
+            (data?['account_number'] as String?) ??
+            (data?['bank_account'] as String?) ??
+            metaAccount();
       });
     } catch (_) {
       // Profil mitra tetap harus memuat data toko meski tabel users dibatasi RLS.
@@ -141,7 +174,11 @@ class _ProfilPageState extends State<ProfilPage> {
     if (updated == true && mounted) {
       await _muatProfil(); // reload nama & avatar dari DB
       setState(() {}); // trigger rebuild
-      _snack('Profil toko berhasil diperbarui.');
+      _snack(
+        _isMitra
+            ? 'Profil toko berhasil diperbarui.'
+            : 'Profil berhasil diperbarui.',
+      );
     } else if (updated is RentalProfile && mounted) {
       setState(() => _rentalProfile = updated);
       await _muatProfil();
@@ -298,6 +335,14 @@ class _ProfilPageState extends State<ProfilPage> {
               _buildProfileHeader(),
               const SizedBox(height: 20),
               _buildEditProfileButton(),
+              const SizedBox(height: 24),
+              _buildSectionLabel('INFORMASI PROFIL'),
+              const SizedBox(height: 8),
+              _buildProfileInfoCard(),
+              const SizedBox(height: 20),
+              _buildSectionLabel('INFORMASI REKENING'),
+              const SizedBox(height: 8),
+              _buildBankInfoCard(),
               const SizedBox(height: 28),
 
               // ── Seksi AKUN
@@ -383,71 +428,43 @@ class _ProfilPageState extends State<ProfilPage> {
       ),
       child: Column(
         children: [
-          Stack(
-            children: [
-              GestureDetector(
-                onTap: _bukaEditProfil,
-                child: Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                        ? Image.network(
-                            _avatarUrl!,
-                            width: 92,
-                            height: 92,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            color: AppColors.primary,
-                            child: Center(
-                              child: Text(
-                                _inisial,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                  ),
+          Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: _bukaEditProfil,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
+              ],
+            ),
+            child: ClipOval(
+              child: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                  ? Image.network(
+                      _avatarUrl!,
+                      width: 92,
+                      height: 92,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
                       color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      child: Center(
+                        child: Text(
+                          _inisial,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.edit_rounded,
-                      color: Colors.white,
-                      size: 13,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 14),
           Text(
@@ -489,6 +506,131 @@ class _ProfilPageState extends State<ProfilPage> {
             borderRadius: BorderRadius.circular(14),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileInfoCard() {
+    final phone = _nomorTelepon;
+    return _buildInfoCard(
+      items: [
+        _InfoItem(
+          icon: Icons.phone_iphone_rounded,
+          label: 'Nomor Telepon',
+          value: phone != null && phone.trim().isNotEmpty
+              ? phone
+              : 'Nomor telepon belum diisi',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBankInfoCard() {
+    final hasBank = _bankName != null && _bankName!.trim().isNotEmpty;
+    final hasAccount =
+        _accountNumber != null && _accountNumber!.trim().isNotEmpty;
+
+    if (!hasBank && !hasAccount) {
+      return _buildInfoCard(
+        items: const [
+          _InfoItem(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Informasi Rekening',
+            value: 'Data rekening belum diisi',
+          ),
+        ],
+      );
+    }
+
+    return _buildInfoCard(
+      items: [
+        _InfoItem(
+          icon: Icons.account_balance_rounded,
+          label: 'Bank',
+          value: hasBank ? _bankName! : 'Data rekening belum diisi',
+        ),
+        _InfoItem(
+          icon: Icons.credit_card_rounded,
+          label: 'Nomor Rekening',
+          value: hasAccount ? _accountNumber! : 'Data rekening belum diisi',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard({required List<_InfoItem> items}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: items.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        item.icon,
+                        color: AppColors.primaryDark,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.label,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            item.value,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (index < items.length - 1)
+                const Divider(height: 1, indent: 66, color: AppColors.border),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -1136,5 +1278,17 @@ class _MenuItem {
     required this.label,
     required this.onTap,
     this.loading = false,
+  });
+}
+
+class _InfoItem {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
   });
 }
