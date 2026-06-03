@@ -42,6 +42,11 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           status,
           payment_status,
           payment_proof_url,
+          cancellation_reason,
+          cancellation_note,
+          cancelled_by,
+          cancelled_at,
+          cancellation_status,
           created_at,
           users(nama_lengkap, email),
           rental_profiles(nama_rental),
@@ -63,6 +68,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
           'rented',
           'returned',
           'completed',
+          'cancelled',
         ])
         .order('created_at', ascending: false);
 
@@ -89,7 +95,9 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
   List<AdminOrder> _historyOrders(List<AdminOrder> orders) {
     return orders
         .where((order) =>
-            order.status == 'returned' || order.status == 'completed')
+            order.status == 'returned' ||
+            order.status == 'completed' ||
+            order.status == 'cancelled')
         .toList(growable: false);
   }
 
@@ -849,6 +857,7 @@ class _HistoryOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final item = order.items.isNotEmpty ? order.items.first : null;
     final net = order.netToOwner;
+    final cancelled = order.status == 'cancelled';
 
     return InkWell(
       onTap: onTap,
@@ -893,10 +902,16 @@ class _HistoryOrderCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const _SuccessBadge(label: 'SELESAI'),
+              cancelled
+                  ? _DangerBadge(label: order.statusLabel.toUpperCase())
+                  : const _SuccessBadge(label: 'SELESAI'),
             ],
           ),
           const Divider(height: 24, color: AppColors.ownerBorderColor),
+          if (order.adaInfoPembatalan) ...[
+            _OwnerCancellationInfoBox(order: order),
+            const Divider(height: 24, color: AppColors.ownerBorderColor),
+          ],
           Row(
             children: [
               _EquipmentThumb(imageUrl: item?.imageUrl),
@@ -945,27 +960,28 @@ class _HistoryOrderCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Pendapatan Bersih',
-                    style: AppTextStyles.caption.copyWith(
-                      color: const Color(0xFF626A60),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+              if (!cancelled)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Pendapatan Bersih',
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF626A60),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _formatCurrency(net),
-                    style: AppTextStyles.headlineMedium.copyWith(
-                      color: AppColors.ownerPrimaryGreen,
-                      fontWeight: FontWeight.w900,
+                    const SizedBox(height: 3),
+                    Text(
+                      _formatCurrency(net),
+                      style: AppTextStyles.headlineMedium.copyWith(
+                        color: AppColors.ownerPrimaryGreen,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ],
@@ -1035,7 +1051,7 @@ class _OwnerOrderDetailPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _OrderStatusBadge(status: order.status),
+                      _OrderStatusBadge(order: order),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -1088,6 +1104,13 @@ class _OwnerOrderDetailPage extends StatelessWidget {
                     icon: Icons.verified_outlined,
                     label: order.statusPembayaranLabel,
                   ),
+                  if (order.adaInfoPembatalan) ...[
+                    const Divider(
+                      height: 28,
+                      color: AppColors.ownerBorderColor,
+                    ),
+                    _OwnerCancellationInfoBox(order: order),
+                  ],
                 ],
               ),
             ),
@@ -1263,24 +1286,30 @@ class _DetailInfoRow extends StatelessWidget {
 }
 
 class _OrderStatusBadge extends StatelessWidget {
-  final String status;
+  final AdminOrder order;
 
-  const _OrderStatusBadge({required this.status});
+  const _OrderStatusBadge({required this.order});
 
   @override
   Widget build(BuildContext context) {
+    final cancelled = order.status == 'cancelled';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.ownerSoftGreen,
+        color: cancelled
+            ? AppColors.error.withValues(alpha: 0.1)
+            : AppColors.ownerSoftGreen,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        _detailStatusLabel(status),
+        cancelled
+            ? order.statusLabel.toUpperCase()
+            : _detailStatusLabel(order.status),
         style: AppTextStyles.caption.copyWith(
-          color: AppColors.ownerPrimaryGreen,
+          color: cancelled ? AppColors.error : AppColors.ownerPrimaryGreen,
           fontSize: 10,
           fontWeight: FontWeight.w900,
+          letterSpacing: 0,
         ),
       ),
     );
@@ -1472,6 +1501,93 @@ class _SuccessBadge extends StatelessWidget {
           fontWeight: FontWeight.w900,
           fontSize: 10,
         ),
+      ),
+    );
+  }
+}
+
+class _DangerBadge extends StatelessWidget {
+  final String label;
+
+  const _DangerBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.error,
+          fontWeight: FontWeight.w900,
+          fontSize: 10,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerCancellationInfoBox extends StatelessWidget {
+  final AdminOrder order;
+
+  const _OwnerCancellationInfoBox({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final note = order.cancellationNote?.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            order.statusLabel,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Alasan: ${order.cancellationReason ?? 'Belum tersedia'}',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF202321),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (note != null && note.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Catatan: $note',
+              style: AppTextStyles.caption.copyWith(
+                color: const Color(0xFF626A60),
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+          if (order.cancelledAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Dibatalkan pada: ${_formatDateTime(order.cancelledAt!)}',
+              style: AppTextStyles.caption.copyWith(
+                color: const Color(0xFF626A60),
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
