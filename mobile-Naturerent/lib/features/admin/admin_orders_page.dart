@@ -492,6 +492,19 @@ class _CancellationInfoBox extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 8),
+          Text(
+            order.sudahAdaBuktiRefund
+                ? 'Refund: ${order.refundStatus ?? 'Sudah Ditransfer'}'
+                : 'Refund: Bukti transfer belum tersedia',
+            style: AppTextStyles.caption.copyWith(
+              color: order.sudahAdaBuktiRefund
+                  ? AppColors.adminPrimary
+                  : AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+            ),
+          ),
         ],
       ),
     );
