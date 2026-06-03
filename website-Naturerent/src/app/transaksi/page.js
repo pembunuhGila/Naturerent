@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
   { value: 'rented', label: 'Aktif' },
   { value: 'returned', label: 'Dikembalikan' },
   { value: 'completed', label: 'Selesai' },
-  { value: 'cancelled', label: 'Batal' },
+  { value: 'cancelled', label: 'Batal / Return' },
 ]
 const PAGE_SIZE = 8
 
@@ -38,7 +38,10 @@ function formatTimeOnly(dateStr) {
   return `${hours}:${minutes}`
 }
 
-function getStatusLabel(status) {
+function getStatusLabel(status, cancelledBy) {
+  if (status === 'cancelled') {
+    return cancelledBy === 'user' ? 'Return' : 'Batal'
+  }
   const map = {
     pending: 'Menunggu Verifikasi',
     confirmed: 'ACC',
@@ -192,7 +195,7 @@ export default function TransaksiPage() {
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
-  const statusBadge = (status) => {
+  const statusBadge = (status, cancelledBy) => {
     const map = { 
       'pending': 'badge-warning',
       'confirmed': 'badge-success',
@@ -206,7 +209,7 @@ export default function TransaksiPage() {
       'Bermasalah': 'badge-danger',
       'Ditolak': 'badge-danger' 
     }
-    return <span className={`badge ${map[status] || 'badge-blue'}`}>{getStatusLabel(status)}</span>
+    return <span className={`badge ${map[status] || 'badge-blue'}`}>{getStatusLabel(status, cancelledBy)}</span>
   }
 
   return (
@@ -298,7 +301,7 @@ export default function TransaksiPage() {
                       <td style={{ color: 'var(--text-secondary)' }}>{row.rental_name || '-'}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(row.total_amount || row.total)}</td>
                       <td style={{ fontWeight: 600, color: 'var(--brand-emerald)' }}>{formatCurrency((row.total_amount || row.total) * (commissionRate / 100))}</td>
-                      <td>{statusBadge(row.status)}</td>
+                      <td>{statusBadge(row.status, row.cancelled_by)}</td>
                       <td>
                         <div className="action-cell">
                           <button 
