@@ -39,20 +39,25 @@ class _EditProfilPageState extends State<EditProfilPage> {
   late final TextEditingController _namaCtrl;
   late final TextEditingController _namaTokoCtrl;
   late final TextEditingController _emailBisnisCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _rekeningCtrl;
   final _client = AuthService.client;
   final _rentalService = RentalService();
   final _picker = ImagePicker();
 
-  File? _gambarBaru;        // file lokal foto profil
-  String? _avatarUrl;       // URL avatar di Supabase
+  File? _gambarBaru; // file lokal foto profil
+  String? _avatarUrl; // URL avatar di Supabase
   String? _fotoProfilTokoUrl;
   File? _coverBaru;
   String? _coverUrl;
-  File? _ktpBaru;           // file lokal foto KTP
+  File? _ktpBaru; // file lokal foto KTP
   Uint8List? _ktpBaruBytes; // preview/upload KTP untuk Flutter Web
   String? _ktpBaruExt;
-  String? _ktpUrl;          // URL KTP di Supabase
+  String? _ktpUrl; // URL KTP di Supabase
+  String? _selectedBank;
   bool _isSaving = false;
+
+  static const _bankOptions = ['BCA', 'BRI', 'MANDIRI', 'BNI'];
 
   // ──────────────────────────────────────────────────────────
   //  LIFECYCLE
@@ -65,23 +70,61 @@ class _EditProfilPageState extends State<EditProfilPage> {
       text: widget.namaTokoAwal ?? widget.rentalProfile?.namaRental ?? '',
     );
     _emailBisnisCtrl = TextEditingController(text: widget.email);
+    _phoneCtrl = TextEditingController();
+    _rekeningCtrl = TextEditingController();
     _avatarUrl = widget.avatarUrlAwal;
-    _fotoProfilTokoUrl = widget.rentalProfile?.fotoProfil ?? widget.avatarUrlAwal;
+    _fotoProfilTokoUrl =
+        widget.rentalProfile?.fotoProfil ?? widget.avatarUrlAwal;
     _coverUrl = widget.rentalProfile?.fotoBanner;
-    _loadKtp(); // muat URL KTP dari DB
+    _loadProfilPenyewa(); // muat URL KTP dan data tambahan dari DB
   }
 
-  Future<void> _loadKtp() async {
+  Future<void> _loadProfilPenyewa() async {
+    final meta = _client.auth.currentUser?.userMetadata ?? {};
+    String fallbackPhone() =>
+        (meta['phone_number'] as String?) ??
+        (meta['phone'] as String?) ??
+        (meta['no_wa'] as String?) ??
+        '';
+    String? fallbackBank() {
+      final bank = meta['bank_name'] as String?;
+      return _bankOptions.contains(bank) ? bank : null;
+    }
+
+    String fallbackAccount() =>
+        (meta['account_number'] as String?) ??
+        (meta['bank_account'] as String?) ??
+        '';
+
+    _phoneCtrl.text = fallbackPhone();
+    _selectedBank = fallbackBank();
+    _rekeningCtrl.text = fallbackAccount();
+
     try {
       final uid = _client.auth.currentUser?.id;
       if (uid == null) return;
       final data = await _client
           .from('users')
-          .select('ktp_url')
+          .select(
+            'ktp_url, no_wa, phone, phone_number, bank_name, account_number, bank_account',
+          )
           .eq('id', uid)
           .maybeSingle();
       if (!mounted) return;
-      setState(() => _ktpUrl = data?['ktp_url'] as String?);
+      setState(() {
+        _ktpUrl = data?['ktp_url'] as String?;
+        _phoneCtrl.text =
+            (data?['phone_number'] as String?) ??
+            (data?['phone'] as String?) ??
+            (data?['no_wa'] as String?) ??
+            fallbackPhone();
+        final bank = data?['bank_name'] as String?;
+        _selectedBank = _bankOptions.contains(bank) ? bank : fallbackBank();
+        _rekeningCtrl.text =
+            (data?['account_number'] as String?) ??
+            (data?['bank_account'] as String?) ??
+            fallbackAccount();
+      });
     } catch (_) {}
   }
 
@@ -90,6 +133,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
     _namaCtrl.dispose();
     _namaTokoCtrl.dispose();
     _emailBisnisCtrl.dispose();
+    _phoneCtrl.dispose();
+    _rekeningCtrl.dispose();
     super.dispose();
   }
 
@@ -125,12 +170,17 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      color: AppColors.primaryDark),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: AppColors.primaryDark,
+                  ),
                 ),
-                title: Text('Ambil dari Kamera',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: Color(0xFF202321))),
+                title: Text(
+                  'Ambil dari Kamera',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Color(0xFF202321),
+                  ),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pilihGambar(ImageSource.camera);
@@ -143,12 +193,17 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.photo_library_rounded,
-                      color: AppColors.primaryDark),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    color: AppColors.primaryDark,
+                  ),
                 ),
-                title: Text('Pilih dari Galeri',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: Color(0xFF202321))),
+                title: Text(
+                  'Pilih dari Galeri',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Color(0xFF202321),
+                  ),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pilihGambar(ImageSource.gallery);
@@ -182,7 +237,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
             toolbarTitle: 'Pangkas Foto Profil',
             toolbarColor: AppColors.primaryDark,
             toolbarWidgetColor: Colors.white,
-            statusBarColor: AppColors.primaryDark, // ignore: deprecated_member_use
+            statusBarColor:
+                AppColors.primaryDark, // ignore: deprecated_member_use
             backgroundColor: Colors.black,
             activeControlsWidgetColor: AppColors.primaryDark,
             initAspectRatio: CropAspectRatioPreset.square,
@@ -223,8 +279,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
         compressFormat: ImageCompressFormat.jpg,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle:
-                cover ? 'Pangkas Foto Sampul' : 'Pangkas Foto Profil',
+            toolbarTitle: cover ? 'Pangkas Foto Sampul' : 'Pangkas Foto Profil',
             toolbarColor: AppColors.primaryDark,
             toolbarWidgetColor: Colors.white,
             statusBarColor: AppColors.primaryDark,
@@ -351,7 +406,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
     final path =
         '$pathPrefix/$userId-${DateTime.now().millisecondsSinceEpoch}.$ext';
     final bytes = await file.readAsBytes();
-    await _client.storage.from(bucket).uploadBinary(
+    await _client.storage
+        .from(bucket)
+        .uploadBinary(
           path,
           bytes,
           fileOptions: const FileOptions(upsert: true),
@@ -361,8 +418,35 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
   Future<void> _simpan() async {
     final nama = _namaCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+    final rekening = _rekeningCtrl.text.trim();
     if (nama.isEmpty) {
       _snack('Nama tidak boleh kosong.');
+      return;
+    }
+    if (phone.isEmpty) {
+      _snack('Nomor telepon wajib diisi');
+      return;
+    }
+    if (!RegExp(r'^[0-9+\-\s]+$').hasMatch(phone) ||
+        phone.replaceAll(RegExp(r'[^0-9]'), '').length < 9) {
+      _snack('Nomor telepon tidak valid');
+      return;
+    }
+    if (_selectedBank == null || _selectedBank!.isEmpty) {
+      _snack('Pilih bank terlebih dahulu');
+      return;
+    }
+    if (rekening.isEmpty) {
+      _snack('Nomor rekening wajib diisi');
+      return;
+    }
+    if (!RegExp(r'^[0-9]+$').hasMatch(rekening)) {
+      _snack('Nomor rekening harus berupa angka');
+      return;
+    }
+    if (rekening.length < 6) {
+      _snack('Nomor rekening minimal 6 digit');
       return;
     }
 
@@ -375,16 +459,35 @@ class _EditProfilPageState extends State<EditProfilPage> {
     // ── 1. Update auth metadata (PRIMARY — selalu berhasil jika session aktif)
     try {
       await _client.auth.updateUser(
-        UserAttributes(data: {'full_name': nama}),
+        UserAttributes(
+          data: {
+            'full_name': nama,
+            'no_wa': phone,
+            'phone': phone,
+            'phone_number': phone,
+            'bank_name': _selectedBank,
+            'account_number': rekening,
+            'bank_account': rekening,
+          },
+        ),
       );
       namaOk = true;
-    } catch (_) {/* lanjut ke DB update */}
+    } catch (_) {
+      /* lanjut ke DB update */
+    }
 
     // ── 2. Simpan nama ke public.users (SECONDARY — mungkin diblokir RLS)
     try {
-      await AuthService().perbaruiProfil(namaLengkap: nama);
+      await AuthService().perbaruiProfil(
+        namaLengkap: nama,
+        noWa: phone,
+        bankName: _selectedBank,
+        accountNumber: rekening,
+      );
       namaOk = true;
-    } catch (_) {/* abaikan jika DB update gagal, auth sudah tersimpan */}
+    } catch (_) {
+      /* abaikan jika DB update gagal, auth sudah tersimpan */
+    }
 
     if (!namaOk) {
       if (!mounted) return;
@@ -401,18 +504,24 @@ class _EditProfilPageState extends State<EditProfilPage> {
     if (_gambarBaru != null) {
       try {
         final userId = _client.auth.currentUser?.id;
-        if (userId == null) throw Exception('Session habis, silakan login ulang.');
+        if (userId == null)
+          throw Exception('Session habis, silakan login ulang.');
 
         final ext = _gambarBaru!.path.split('.').last.toLowerCase();
         final storagePath = 'avatars/$userId.$ext';
         final bytes = await _gambarBaru!.readAsBytes();
 
-        await _client.storage.from('avatars').uploadBinary(
-              storagePath, bytes,
+        await _client.storage
+            .from('avatars')
+            .uploadBinary(
+              storagePath,
+              bytes,
               fileOptions: const FileOptions(upsert: true),
             );
 
-        newAvatarUrl = _client.storage.from('avatars').getPublicUrl(storagePath);
+        newAvatarUrl = _client.storage
+            .from('avatars')
+            .getPublicUrl(storagePath);
         await AuthService().perbaruiProfil(avatarUrl: newAvatarUrl);
         fotoOk = true;
       } catch (e) {
@@ -421,17 +530,22 @@ class _EditProfilPageState extends State<EditProfilPage> {
         final pesanErr = e.toString().toLowerCase();
         String solusi = 'Coba lagi beberapa saat.';
         if (pesanErr.contains('not found') || pesanErr.contains('bucket')) {
-          solusi = '⚠️ Buat bucket "avatars" di Supabase Storage:\n'
+          solusi =
+              '⚠️ Buat bucket "avatars" di Supabase Storage:\n'
               'Dashboard → Storage → New Bucket → nama: avatars → Public ✓';
         } else if (pesanErr.contains('rls') || pesanErr.contains('policy')) {
-          solusi = 'Periksa RLS Policy bucket "avatars".\n'
+          solusi =
+              'Periksa RLS Policy bucket "avatars".\n'
               'Tambahkan policy: Allow INSERT for authenticated users.';
         }
         _showErrorDialog(
           judul: 'Foto gagal disimpan',
-          pesan: '✅ Nama berhasil disimpan!\n\n❌ Foto profil gagal:\n${e.toString()}',
+          pesan:
+              '✅ Nama berhasil disimpan!\n\n❌ Foto profil gagal:\n${e.toString()}',
           solusi: solusi,
-          onClose: () { if (mounted) Navigator.pop(context, namaOk); },
+          onClose: () {
+            if (mounted) Navigator.pop(context, namaOk);
+          },
         );
         return;
       }
@@ -447,12 +561,16 @@ class _EditProfilPageState extends State<EditProfilPage> {
         final ext = _ktpBaruExt ?? 'jpg';
         final storagePath = 'ktp-docs/$userId.$ext';
         final bytes = _ktpBaruBytes ?? await _ktpBaru!.readAsBytes();
-        await _client.storage.from('ktp-docs').uploadBinary(
-              storagePath, bytes,
+        await _client.storage
+            .from('ktp-docs')
+            .uploadBinary(
+              storagePath,
+              bytes,
               fileOptions: const FileOptions(upsert: true),
             );
-        final ktpPublicUrl =
-            _client.storage.from('ktp-docs').getPublicUrl(storagePath);
+        final ktpPublicUrl = _client.storage
+            .from('ktp-docs')
+            .getPublicUrl(storagePath);
         await AuthService().perbaruiProfil(ktpUrl: ktpPublicUrl);
         setState(() => _ktpUrl = ktpPublicUrl);
       } catch (e) {
@@ -460,9 +578,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
         setState(() => _isSaving = false);
         _showErrorDialog(
           judul: 'KTP gagal disimpan',
-          pesan: '✅ Profil berhasil disimpan!\n\n❌ Foto KTP gagal:\n${e.toString()}',
+          pesan:
+              '✅ Profil berhasil disimpan!\n\n❌ Foto KTP gagal:\n${e.toString()}',
           solusi: 'Buat bucket "ktp-docs" di Supabase Storage (Public ✓).',
-          onClose: () { if (mounted) Navigator.pop(context, namaOk); },
+          onClose: () {
+            if (mounted) Navigator.pop(context, namaOk);
+          },
         );
         return;
       }
@@ -483,23 +604,35 @@ class _EditProfilPageState extends State<EditProfilPage> {
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(children: [
-          const Icon(Icons.error_outline_rounded,
-              color: Colors.red, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-              child: Text(judul,
-                  style: AppTextStyles.headlineMedium
-                      .copyWith(color: const Color(0xFF202321)))),
-        ]),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.red,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                judul,
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: const Color(0xFF202321),
+                ),
+              ),
+            ),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(pesan,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: const Color(0xFF496171))),
+              Text(
+                pesan,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: const Color(0xFF496171),
+                ),
+              ),
               if (solusi.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -511,8 +644,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   child: Text(
                     '💡 Solusi:\n$solusi',
                     style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w600),
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -525,9 +659,13 @@ class _EditProfilPageState extends State<EditProfilPage> {
               Navigator.pop(context);
               onClose?.call();
             },
-            child: Text('Mengerti',
-                style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Mengerti',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -544,10 +682,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
   // ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     if (widget.isMitra) return _buildMitraEditPage();
 
@@ -586,6 +726,31 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 hint: 'Email',
                 enabled: false,
               ),
+              const SizedBox(height: 20),
+
+              _buildLabel('Nomor Telepon'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _phoneCtrl,
+                hint: '081234567890',
+                enabled: true,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 20),
+
+              _buildLabel('Bank'),
+              const SizedBox(height: 8),
+              _buildBankDropdown(),
+              const SizedBox(height: 20),
+
+              _buildLabel('Nomor Rekening'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _rekeningCtrl,
+                hint: '1234567890',
+                enabled: true,
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 24),
 
               // ── Foto KTP
@@ -593,7 +758,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
               const SizedBox(height: 4),
               Text(
                 'Diperlukan untuk verifikasi identitas penyewa.',
-                style: AppTextStyles.caption.copyWith(color: const Color(0xFF7B8794)),
+                style: AppTextStyles.caption.copyWith(
+                  color: const Color(0xFF7B8794),
+                ),
               ),
               const SizedBox(height: 10),
               _buildKtpSection(),
@@ -607,8 +774,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   onPressed: _isSaving ? null : _simpan,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryDark,
-                    disabledBackgroundColor:
-                        AppColors.primaryDark.withValues(alpha: 0.5),
+                    disabledBackgroundColor: AppColors.primaryDark.withValues(
+                      alpha: 0.5,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -619,7 +787,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2.5),
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
                         )
                       : Text(
                           'Simpan',
@@ -682,8 +852,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   onPressed: _isSaving ? null : _simpanMitra,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.ownerPrimaryGreen,
-                    disabledBackgroundColor:
-                        AppColors.ownerPrimaryGreen.withValues(alpha: 0.45),
+                    disabledBackgroundColor: AppColors.ownerPrimaryGreen
+                        .withValues(alpha: 0.45),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(28),
@@ -713,8 +883,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                 width: double.infinity,
                 height: 56,
                 child: TextButton(
-                  onPressed:
-                      _isSaving ? null : () => Navigator.pop(context, false),
+                  onPressed: _isSaving
+                      ? null
+                      : () => Navigator.pop(context, false),
                   style: TextButton.styleFrom(
                     backgroundColor: AppColors.ownerCardBackground,
                     side: const BorderSide(
@@ -851,8 +1022,10 @@ class _EditProfilPageState extends State<EditProfilPage> {
         ),
       );
     }
-    return Image.asset('assets/images/loading_background.png',
-        fit: BoxFit.cover);
+    return Image.asset(
+      'assets/images/loading_background.png',
+      fit: BoxFit.cover,
+    );
   }
 
   Widget _buildMitraProfileImage() {
@@ -870,8 +1043,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
   Widget _buildMitraInitialAvatar() {
     final nama = _namaCtrl.text.trim().isNotEmpty ? _namaCtrl.text.trim() : 'N';
     final words = nama.split(' ');
-    final initial =
-        words.length >= 2 ? '${words[0][0]}${words[1][0]}' : nama[0];
+    final initial = words.length >= 2
+        ? '${words[0][0]}${words[1][0]}'
+        : nama[0];
     return Container(
       color: AppColors.ownerPrimaryGreen,
       alignment: Alignment.center,
@@ -1074,8 +1248,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
       children: [
         GestureDetector(
           onTap: () => Navigator.pop(context, false),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF202321), size: 20),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF202321),
+            size: 20,
+          ),
         ),
         Text(
           'Edit Profil',
@@ -1115,7 +1292,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.ownerPrimaryGreen.withValues(alpha: 0.25),
+                        color: AppColors.ownerPrimaryGreen.withValues(
+                          alpha: 0.25,
+                        ),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -1124,27 +1303,35 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   child: ClipOval(
                     child: _gambarBaru != null
                         // Foto baru yang dipilih user (lokal)
-                        ? Image.file(_gambarBaru!,
-                            width: 100, height: 100, fit: BoxFit.cover)
+                        ? Image.file(
+                            _gambarBaru!,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          )
                         : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                            // Foto dari Supabase Storage
-                            ? Image.network(_avatarUrl!,
-                                width: 100, height: 100, fit: BoxFit.cover)
-                            // Fallback: inisial nama
-                            : Container(
-                                color: AppColors.ownerPrimaryGreen,
-                                child: Center(
-                                  child: Text(
-                                    inisial,
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                        // Foto dari Supabase Storage
+                        ? Image.network(
+                            _avatarUrl!,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          )
+                        // Fallback: inisial nama
+                        : Container(
+                            color: AppColors.ownerPrimaryGreen,
+                            child: Center(
+                              child: Text(
+                                inisial,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
                                 ),
                               ),
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -1162,8 +1349,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
-                    child: const Icon(Icons.edit_rounded,
-                        color: Colors.white, size: 15),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: Colors.white,
+                      size: 15,
+                    ),
                   ),
                 ),
               ),
@@ -1177,8 +1367,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
           const SizedBox(height: 4),
           Text(
             widget.email,
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: const Color(0xFF496171)),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF496171),
+            ),
           ),
         ],
       ),
@@ -1199,6 +1390,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
     required TextEditingController controller,
     required String hint,
     required bool enabled,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1213,15 +1405,19 @@ class _EditProfilPageState extends State<EditProfilPage> {
       child: TextField(
         controller: controller,
         enabled: enabled,
+        keyboardType: keyboardType,
         style: AppTextStyles.bodyMedium.copyWith(
           color: enabled ? const Color(0xFF202321) : const Color(0xFF7B8794),
         ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF7B8794)),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          hintStyle: AppTextStyles.bodyMedium.copyWith(
+            color: const Color(0xFF7B8794),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -1232,6 +1428,46 @@ class _EditProfilPageState extends State<EditProfilPage> {
   }
 
   // ── Pick foto KTP dari galeri/kamera
+  Widget _buildBankDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E5DE)),
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedBank,
+        items: _bankOptions
+            .map(
+              (bank) =>
+                  DropdownMenuItem<String>(value: bank, child: Text(bank)),
+            )
+            .toList(),
+        onChanged: (value) => setState(() => _selectedBank = value),
+        icon: const Icon(
+          Icons.keyboard_arrow_down_rounded,
+          color: Color(0xFF7B8794),
+        ),
+        style: AppTextStyles.bodyMedium.copyWith(
+          color: const Color(0xFF202321),
+        ),
+        decoration: InputDecoration(
+          hintText: 'Pilih bank',
+          hintStyle: AppTextStyles.bodyMedium.copyWith(
+            color: const Color(0xFF7B8794),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
   Future<void> _pilihKtp(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(
@@ -1260,7 +1496,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
   void _showPilihKtp() => _pilihKtp(ImageSource.camera);
 
   Widget _buildKtpSection() {
-    final hasKtp = _ktpBaru != null ||
+    final hasKtp =
+        _ktpBaru != null ||
         _ktpBaruBytes != null ||
         (_ktpUrl != null && _ktpUrl!.isNotEmpty);
     return GestureDetector(
@@ -1272,7 +1509,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasKtp ? AppColors.ownerPrimaryGreen : const Color(0xFFE0E5DE),
+            color: hasKtp
+                ? AppColors.ownerPrimaryGreen
+                : const Color(0xFFE0E5DE),
             width: hasKtp ? 1.5 : 1,
           ),
         ),
@@ -1285,30 +1524,48 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     child: _ktpBaruBytes != null
                         ? Image.memory(_ktpBaruBytes!, fit: BoxFit.cover)
                         : _ktpBaru != null
-                            ? Image.file(_ktpBaru!, fit: BoxFit.cover)
-                            : Image.network(_ktpUrl!, fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) => const Icon(
-                                    Icons.broken_image_rounded,
-                                    color: Color(0xFF7B8794))),
+                        ? Image.file(_ktpBaru!, fit: BoxFit.cover)
+                        : Image.network(
+                            _ktpUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => const Icon(
+                              Icons.broken_image_rounded,
+                              color: Color(0xFF7B8794),
+                            ),
+                          ),
                   ),
                   Positioned(
-                    top: 8, right: 8,
+                    top: 8,
+                    right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppColors.ownerPrimaryGreen.withValues(alpha: 0.85),
+                        color: AppColors.ownerPrimaryGreen.withValues(
+                          alpha: 0.85,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.edit_rounded,
-                            color: Colors.white, size: 12),
-                        const SizedBox(width: 4),
-                        Text('Ganti',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Ganti',
                             style: AppTextStyles.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700)),
-                      ]),
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -1322,18 +1579,27 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       color: AppColors.ownerPrimarySoft,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.badge_outlined,
-                        color: AppColors.ownerPrimaryGreen, size: 28),
+                    child: const Icon(
+                      Icons.badge_outlined,
+                      color: AppColors.ownerPrimaryGreen,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(height: 10),
-                  Text('Tap untuk ambil foto KTP',
-                      style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.ownerPrimaryGreen,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Tap untuk ambil foto KTP',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.ownerPrimaryGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Gunakan kamera perangkat',
-                      style: AppTextStyles.caption
-                          .copyWith(color: Color(0xFF7B8794))),
+                  Text(
+                    'Gunakan kamera perangkat',
+                    style: AppTextStyles.caption.copyWith(
+                      color: Color(0xFF7B8794),
+                    ),
+                  ),
                 ],
               ),
       ),
