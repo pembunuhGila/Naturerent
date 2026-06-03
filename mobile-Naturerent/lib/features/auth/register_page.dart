@@ -57,12 +57,7 @@ class _RegisterPageState extends State<RegisterPage>
     'Yogyakarta',
   ];
 
-  static const _bankOptions = [
-    'BCA',
-    'BRI',
-    'MANDIRI',
-    'BNI',
-  ];
+  static const _bankOptions = ['BCA', 'BRI', 'MANDIRI', 'BNI'];
 
   @override
   void initState() {
@@ -102,7 +97,10 @@ class _RegisterPageState extends State<RegisterPage>
       v.contains(RegExp(r'[!@#\$%\^&\*()\-_=\+\[\]{}|;:,.<>?/\\`~"]'));
 
   Future<void> _pilihKtp() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
     if (picked != null) {
       final bytes = await picked.readAsBytes();
       if (!mounted) return;
@@ -177,10 +175,8 @@ class _RegisterPageState extends State<RegisterPage>
             ? _alamatController.text.trim()
             : null,
         kotaToko: widget.role == UserRole.pemilik ? _selectedKota : null,
-        namaBank: widget.role == UserRole.pemilik ? _selectedBank : null,
-        nomorRekening: widget.role == UserRole.pemilik
-            ? _rekeningController.text.trim()
-            : null,
+        namaBank: _selectedBank,
+        nomorRekening: _rekeningController.text.trim(),
         role: widget.role,
       );
 
@@ -200,7 +196,9 @@ class _RegisterPageState extends State<RegisterPage>
             final uid = response.user!.id;
             final ext = _ktpImage!.extension;
             final path = 'ktp-docs/$uid.$ext';
-            await AuthService.client.storage.from('ktp-docs').uploadBinary(
+            await AuthService.client.storage
+                .from('ktp-docs')
+                .uploadBinary(
                   path,
                   _ktpImage!.bytes,
                   fileOptions: const FileOptions(upsert: true),
@@ -272,7 +270,9 @@ class _RegisterPageState extends State<RegisterPage>
 
       final storagePath =
           'rental-profiles/$userId-${DateTime.now().millisecondsSinceEpoch}.${image.extension}';
-      await AuthService.client.storage.from('rental_avatar').uploadBinary(
+      await AuthService.client.storage
+          .from('rental_avatar')
+          .uploadBinary(
             storagePath,
             image.bytes,
             fileOptions: FileOptions(
@@ -280,8 +280,9 @@ class _RegisterPageState extends State<RegisterPage>
               contentType: image.contentType,
             ),
           );
-      final url =
-          AuthService.client.storage.from('rental_avatar').getPublicUrl(storagePath);
+      final url = AuthService.client.storage
+          .from('rental_avatar')
+          .getPublicUrl(storagePath);
       await AuthService.client
           .from('rental_profiles')
           .update({
@@ -446,7 +447,12 @@ class _RegisterPageState extends State<RegisterPage>
           border: Border.all(color: AppColors.border),
         ),
         child: _ktpImage == null
-            ? const Center(child: Icon(Icons.add_a_photo_outlined, color: AppColors.textHint))
+            ? const Center(
+                child: Icon(
+                  Icons.add_a_photo_outlined,
+                  color: AppColors.textHint,
+                ),
+              )
             : ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.memory(
@@ -786,8 +792,9 @@ class _RegisterPageState extends State<RegisterPage>
               onPressed: _isLoading ? null : _handleRegister,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.ownerPrimaryGreen,
-                disabledBackgroundColor:
-                    AppColors.ownerPrimaryGreen.withValues(alpha: 0.55),
+                disabledBackgroundColor: AppColors.ownerPrimaryGreen.withValues(
+                  alpha: 0.55,
+                ),
                 foregroundColor: Colors.white,
                 elevation: 8,
                 shadowColor: AppColors.ownerPrimaryGreen.withValues(alpha: 0.2),
@@ -962,6 +969,37 @@ class _RegisterPageState extends State<RegisterPage>
               },
             ),
             const SizedBox(height: 18),
+            _CustomerDropdownField(
+              label: 'Pilih Bank',
+              hint: 'Pilih bank',
+              icon: Icons.account_balance_outlined,
+              value: _selectedBank,
+              items: _bankOptions,
+              onChanged: (value) => setState(() => _selectedBank = value),
+              validator: (v) {
+                if (v == null || v.isEmpty) {
+                  return 'Pilih bank terlebih dahulu';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 18),
+            NrTextField(
+              label: 'Nomor Rekening',
+              hint: '1234567890',
+              controller: _rekeningController,
+              keyboardType: TextInputType.number,
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return 'Nomor rekening wajib diisi';
+                if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                  return 'Nomor rekening harus berupa angka';
+                }
+                if (value.length < 6) return 'Nomor rekening minimal 6 digit';
+                return null;
+              },
+            ),
+            const SizedBox(height: 18),
             NrTextField(
               label: 'Kata Sandi',
               hint: '........',
@@ -976,14 +1014,18 @@ class _RegisterPageState extends State<RegisterPage>
               builder: (_, val, child) => _PwStrength(pw: val.text),
             ),
             const SizedBox(height: 20),
-            Text('Foto KTP',
-                style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              'Foto KTP',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('Opsional · Bisa diupload nanti via Edit Profil',
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textHint)),
+            Text(
+              'Opsional · Bisa diupload nanti via Edit Profil',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textHint),
+            ),
             const SizedBox(height: 10),
             _buildKtpPicker(),
             const SizedBox(height: 20),
@@ -1047,7 +1089,8 @@ class _RegisterPageState extends State<RegisterPage>
                 ),
                 child: _googleLoading
                     ? const SizedBox(
-                        width: 20, height: 20,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Row(
@@ -1149,10 +1192,7 @@ class _PickedImage {
   final String name;
   final Uint8List bytes;
 
-  const _PickedImage({
-    required this.name,
-    required this.bytes,
-  });
+  const _PickedImage({required this.name, required this.bytes});
 
   factory _PickedImage.fromXFile(XFile file, Uint8List bytes) {
     final fallbackName = file.path.split('/').last.split(r'\').last;
@@ -1203,14 +1243,70 @@ class _BrandMark extends StatelessWidget {
   }
 }
 
+class _CustomerDropdownField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final IconData icon;
+  final String? value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+  final String? Function(String?)? validator;
+
+  const _CustomerDropdownField({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          validator: validator,
+          onChanged: onChanged,
+          items: items
+              .map(
+                (item) =>
+                    DropdownMenuItem<String>(value: item, child: Text(item)),
+              )
+              .toList(),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textHint,
+          ),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, color: AppColors.textHint, size: 20),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MitraSection extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _MitraSection({
-    required this.title,
-    required this.children,
-  });
+  const _MitraSection({required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -1440,10 +1536,8 @@ class _MitraDropdownField extends StatelessWidget {
           ),
           items: items
               .map(
-                (item) => DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(item),
-                ),
+                (item) =>
+                    DropdownMenuItem<String>(value: item, child: Text(item)),
               )
               .toList(),
         ),
@@ -1581,14 +1675,36 @@ class _GoogleLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: const TextSpan(
-        style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w800, fontSize: 18),
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w800,
+          fontSize: 18,
+        ),
         children: [
-          TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
-          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
-          TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
-          TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
-          TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
-          TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+          TextSpan(
+            text: 'G',
+            style: TextStyle(color: Color(0xFF4285F4)),
+          ),
+          TextSpan(
+            text: 'o',
+            style: TextStyle(color: Color(0xFFEA4335)),
+          ),
+          TextSpan(
+            text: 'o',
+            style: TextStyle(color: Color(0xFFFBBC05)),
+          ),
+          TextSpan(
+            text: 'g',
+            style: TextStyle(color: Color(0xFF4285F4)),
+          ),
+          TextSpan(
+            text: 'l',
+            style: TextStyle(color: Color(0xFF34A853)),
+          ),
+          TextSpan(
+            text: 'e',
+            style: TextStyle(color: Color(0xFFEA4335)),
+          ),
         ],
       ),
     );
