@@ -33,8 +33,19 @@ class AdminService {
           cancelled_by,
           cancelled_at,
           cancellation_status,
+          refund_uploaded_at,
+          refund_status,
           created_at,
-          users(nama_lengkap, email),
+          users(
+            nama_lengkap,
+            email,
+            phone,
+            phone_number,
+            no_wa,
+            bank_name,
+            account_number,
+            bank_account
+          ),
           rental_profiles(nama_rental),
           booking_items(nama_equipment, nama_rental, jumlah, total_harga)
         ''')
