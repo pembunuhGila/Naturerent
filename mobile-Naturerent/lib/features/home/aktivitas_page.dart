@@ -614,6 +614,9 @@ Future<void> _openOrderDetail(BuildContext context, ActivityOrder order) async {
         cancelledBy: order.cancelledBy,
         cancelledAt: order.cancelledAt,
         cancellationStatus: order.cancellationStatus,
+        refundProofUrl: order.refundProofUrl,
+        refundUploadedAt: order.refundUploadedAt,
+        refundStatus: order.refundStatus,
       ),
     ),
   );

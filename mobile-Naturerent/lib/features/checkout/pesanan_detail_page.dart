@@ -26,6 +26,9 @@ class PesananDetailPage extends StatefulWidget {
   final String? cancelledBy;
   final DateTime? cancelledAt;
   final String? cancellationStatus;
+  final String? refundProofUrl;
+  final DateTime? refundUploadedAt;
+  final String? refundStatus;
 
   const PesananDetailPage({
     super.key,
@@ -45,6 +48,9 @@ class PesananDetailPage extends StatefulWidget {
     this.cancelledBy,
     this.cancelledAt,
     this.cancellationStatus,
+    this.refundProofUrl,
+    this.refundUploadedAt,
+    this.refundStatus,
   });
 
   @override
@@ -55,6 +61,10 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   late final String _nomorPesanan;
   String? _paymentProofUrl;
   Uint8List? _decodedProofBytes;
+  String? _refundProofUrl;
+  DateTime? _refundUploadedAt;
+  String? _refundStatus;
+  bool _loadingRefundProof = false;
   bool _loadingProof = false;
   bool _cancellingOrder = false;
 
@@ -84,7 +94,11 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
   void initState() {
     super.initState();
     _paymentProofUrl = widget.paymentProofUrl;
+    _refundProofUrl = widget.refundProofUrl;
+    _refundUploadedAt = widget.refundUploadedAt;
+    _refundStatus = widget.refundStatus;
     _loadPaymentProofIfNeeded();
+    _loadRefundProofIfNeeded();
     if (widget.nomorPesanan != null) {
       _nomorPesanan = widget.nomorPesanan!;
       return;
@@ -121,6 +135,31 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
       // Bukti pembayaran bukan blocker untuk detail pesanan.
     } finally {
       if (mounted) setState(() => _loadingProof = false);
+    }
+  }
+
+  Future<void> _loadRefundProofIfNeeded() async {
+    if (widget.statusKey != 'cancelled' ||
+        (_refundProofUrl != null && _refundProofUrl!.trim().isNotEmpty) ||
+        widget.orderRefId == null) {
+      return;
+    }
+
+    setState(() => _loadingRefundProof = true);
+    try {
+      final proof = await OrderActivityService().ambilBuktiRefund(
+        widget.orderRefId!,
+      );
+      if (!mounted || proof == null) return;
+      setState(() {
+        _refundProofUrl = proof.proofUrl;
+        _refundUploadedAt = proof.uploadedAt;
+        _refundStatus = proof.status;
+      });
+    } catch (_) {
+      // Bukti refund bukan blocker untuk membuka detail pesanan.
+    } finally {
+      if (mounted) setState(() => _loadingRefundProof = false);
     }
   }
 
@@ -550,6 +589,52 @@ class _PesananDetailPageState extends State<PesananDetailPage> {
               label: 'Dibatalkan pada',
               value: _fmtDateTime(widget.cancelledAt!),
             ),
+          ],
+          const SizedBox(height: 12),
+          _CancellationLine(
+            label: 'Refund',
+            value: _loadingRefundProof
+                ? 'Memuat bukti transfer...'
+                : _refundStatus?.trim().isNotEmpty == true
+                ? _refundStatus!
+                : 'Bukti transfer belum tersedia',
+          ),
+          if (_refundProofUrl?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: _refundProofUrl!.startsWith('data:image')
+                  ? Image.memory(
+                      UriData.parse(_refundProofUrl!).contentAsBytes(),
+                      width: double.infinity,
+                      height: 190,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      _refundProofUrl!,
+                      width: double.infinity,
+                      height: 190,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        height: 140,
+                        alignment: Alignment.center,
+                        color: AppColors.surfaceVariant,
+                        child: Text(
+                          'Bukti transfer gagal dimuat.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            if (_refundUploadedAt != null) ...[
+              const SizedBox(height: 8),
+              _CancellationLine(
+                label: 'Bukti diupload pada',
+                value: _fmtDateTime(_refundUploadedAt!),
+              ),
+            ],
           ],
         ],
       ),

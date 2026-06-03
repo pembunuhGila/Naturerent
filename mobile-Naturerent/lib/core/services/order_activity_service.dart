@@ -36,6 +36,9 @@ class ActivityOrder {
   final String? cancelledBy;
   final DateTime? cancelledAt;
   final String? cancellationStatus;
+  final String? refundProofUrl;
+  final DateTime? refundUploadedAt;
+  final String? refundStatus;
 
   const ActivityOrder({
     required this.id,
@@ -54,6 +57,9 @@ class ActivityOrder {
     this.cancelledBy,
     this.cancelledAt,
     this.cancellationStatus,
+    this.refundProofUrl,
+    this.refundUploadedAt,
+    this.refundStatus,
   });
 
   bool get dibatalkanPenyewa =>
@@ -66,6 +72,9 @@ class ActivityOrder {
     String? cancelledBy,
     DateTime? cancelledAt,
     String? cancellationStatus,
+    String? refundProofUrl,
+    DateTime? refundUploadedAt,
+    String? refundStatus,
   }) {
     return ActivityOrder(
       id: id,
@@ -84,8 +93,23 @@ class ActivityOrder {
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancelledAt: cancelledAt ?? this.cancelledAt,
       cancellationStatus: cancellationStatus ?? this.cancellationStatus,
+      refundProofUrl: refundProofUrl ?? this.refundProofUrl,
+      refundUploadedAt: refundUploadedAt ?? this.refundUploadedAt,
+      refundStatus: refundStatus ?? this.refundStatus,
     );
   }
+}
+
+class RefundProofInfo {
+  final String? proofUrl;
+  final DateTime? uploadedAt;
+  final String? status;
+
+  const RefundProofInfo({
+    this.proofUrl,
+    this.uploadedAt,
+    this.status,
+  });
 }
 
 class OrderActivityService {
@@ -267,6 +291,8 @@ class OrderActivityService {
             cancelled_by,
             cancelled_at,
             cancellation_status,
+            refund_uploaded_at,
+            refund_status,
             booking_code,
             payment_group_id,
             created_at,
@@ -316,6 +342,28 @@ class OrderActivityService {
     if (rows.isEmpty) return null;
     final value = rows.first['payment_proof_url'] as String?;
     return value != null && value.trim().isNotEmpty ? value : null;
+  }
+
+  Future<RefundProofInfo?> ambilBuktiRefund(String orderRefId) async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) return null;
+
+    final data = await AuthService.client
+        .from('bookings')
+        .select('refund_proof_url, refund_uploaded_at, refund_status')
+        .eq('customer_id', user.id)
+        .or('payment_group_id.eq.$orderRefId,id.eq.$orderRefId')
+        .not('refund_proof_url', 'is', null)
+        .limit(1);
+
+    final rows = List<Map<String, dynamic>>.from(data as List);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    return RefundProofInfo(
+      proofUrl: row['refund_proof_url'] as String?,
+      uploadedAt: _parseOptionalDate(row['refund_uploaded_at']?.toString()),
+      status: row['refund_status'] as String?,
+    );
   }
 
   bool bisaDibatalkan(ActivityOrder order) {
@@ -499,6 +547,9 @@ class OrderActivityService {
       cancelledBy: _firstNonEmpty(rows, 'cancelled_by'),
       cancelledAt: _parseOptionalDate(_firstNonEmpty(rows, 'cancelled_at')),
       cancellationStatus: _firstNonEmpty(rows, 'cancellation_status'),
+      refundProofUrl: null,
+      refundUploadedAt: _parseOptionalDate(_firstNonEmpty(rows, 'refund_uploaded_at')),
+      refundStatus: _firstNonEmpty(rows, 'refund_status'),
     );
   }
 
