@@ -296,7 +296,10 @@ class _NotificationCard extends StatelessWidget {
                   Text(
                     waiting
                         ? 'Menunggu Verifikasi'
-                        : _statusDetailLabel(order.status),
+                        : _statusDetailLabel(
+                            order.status,
+                            dibatalkanPenyewa: order.dibatalkanPenyewa,
+                          ),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w800,
@@ -315,7 +318,10 @@ class _NotificationCard extends StatelessWidget {
                   Text(
                     waiting
                         ? 'Bukti pembayaran lunas sudah diupload. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
-                        : _statusDescription(order.status),
+                        : _statusDescription(
+                            order.status,
+                            dibatalkanPenyewa: order.dibatalkanPenyewa,
+                          ),
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.35,
@@ -596,10 +602,18 @@ Future<void> _openOrderDetail(BuildContext context, ActivityOrder order) async {
         items: order.items,
         orderRefId: order.id,
         nomorPesanan: order.nomorPesanan,
-        statusLabel: _statusDetailLabel(order.status),
+        statusLabel: _statusDetailLabel(
+          order.status,
+          dibatalkanPenyewa: order.dibatalkanPenyewa,
+        ),
         statusKey: _statusDbKey(order.status),
         paymentProofUrl: order.paymentProofUrl,
         paymentProofBytes: order.paymentProofBytes,
+        cancellationReason: order.cancellationReason,
+        cancellationNote: order.cancellationNote,
+        cancelledBy: order.cancelledBy,
+        cancelledAt: order.cancelledAt,
+        cancellationStatus: order.cancellationStatus,
       ),
     ),
   );
@@ -618,7 +632,10 @@ String _statusDbKey(ActivityOrderStatus status) {
   };
 }
 
-String _statusDetailLabel(ActivityOrderStatus status) {
+String _statusDetailLabel(
+  ActivityOrderStatus status, {
+  bool dibatalkanPenyewa = false,
+}) {
   return switch (status) {
     ActivityOrderStatus.pending => 'MENUNGGU ADMIN',
     ActivityOrderStatus.confirmed => 'DISETUJUI ADMIN',
@@ -626,11 +643,15 @@ String _statusDetailLabel(ActivityOrderStatus status) {
     ActivityOrderStatus.rented => 'PESANAN AKTIF',
     ActivityOrderStatus.returned => 'SELESAI',
     ActivityOrderStatus.completed => 'SELESAI',
-    ActivityOrderStatus.cancelled => 'DIBATALKAN ADMIN',
+    ActivityOrderStatus.cancelled =>
+      dibatalkanPenyewa ? 'DIBATALKAN PENYEWA' : 'DIBATALKAN ADMIN',
   };
 }
 
-String _statusDescription(ActivityOrderStatus status) {
+String _statusDescription(
+  ActivityOrderStatus status, {
+  bool dibatalkanPenyewa = false,
+}) {
   return switch (status) {
     ActivityOrderStatus.pending =>
       'Admin sedang mengecek pembayaran sebelum pesanan diteruskan ke pemilik rental.',
@@ -643,12 +664,15 @@ String _statusDescription(ActivityOrderStatus status) {
     ActivityOrderStatus.returned =>
       'Pesanan selesai. Peralatan sudah dikembalikan.',
     ActivityOrderStatus.completed => 'Pesanan selesai.',
-    ActivityOrderStatus.cancelled => 'Pesanan dibatalkan oleh admin.',
+    ActivityOrderStatus.cancelled => dibatalkanPenyewa
+        ? 'Pesanan dibatalkan oleh penyewa.'
+        : 'Pesanan dibatalkan oleh admin.',
   };
 }
 
 bool _isActiveOrder(ActivityOrder order) {
   return switch (order.status) {
+    ActivityOrderStatus.pending ||
     ActivityOrderStatus.confirmed ||
     ActivityOrderStatus.processing ||
     ActivityOrderStatus.rented => true,
