@@ -45,6 +45,11 @@ class AdminOrder {
   final String status;
   final String? paymentStatus;
   final String? paymentProofUrl;
+  final String? cancellationReason;
+  final String? cancellationNote;
+  final String? cancelledBy;
+  final DateTime? cancelledAt;
+  final String? cancellationStatus;
   final DateTime createdAt;
   final List<AdminOrderItem> items;
 
@@ -61,6 +66,11 @@ class AdminOrder {
     required this.status,
     this.paymentStatus,
     this.paymentProofUrl,
+    this.cancellationReason,
+    this.cancellationNote,
+    this.cancelledBy,
+    this.cancelledAt,
+    this.cancellationStatus,
     required this.createdAt,
     required this.items,
   });
@@ -68,6 +78,13 @@ class AdminOrder {
   bool get menungguAdmin => status == 'pending';
   bool get disetujuiAdmin => status == 'confirmed';
   bool get dibatalkanAdmin => status == 'cancelled';
+  bool get dibatalkanPenyewa =>
+      status == 'cancelled' && cancelledBy == 'user';
+  bool get adaInfoPembatalan =>
+      status == 'cancelled' &&
+      ((cancellationReason?.trim().isNotEmpty ?? false) ||
+          (cancellationNote?.trim().isNotEmpty ?? false) ||
+          cancelledAt != null);
   bool get pembayaranLunas {
     final normalized = paymentStatus?.toLowerCase().trim();
     return normalized == 'lunas' ||
@@ -91,7 +108,9 @@ class AdminOrder {
       'rented' => 'Sedang Disewa',
       'returned' => 'Dikembalikan',
       'completed' => 'Selesai',
-      'cancelled' => 'Dibatalkan Admin',
+      'cancelled' =>
+        cancellationStatus ??
+        (dibatalkanPenyewa ? 'Dibatalkan Penyewa' : 'Dibatalkan Admin'),
       _ => status,
     };
   }
@@ -137,8 +156,20 @@ class AdminOrder {
       status: map['status'] as String? ?? 'pending',
       paymentStatus: map['payment_status'] as String?,
       paymentProofUrl: map['payment_proof_url'] as String?,
+      cancellationReason: map['cancellation_reason'] as String?,
+      cancellationNote: map['cancellation_note'] as String?,
+      cancelledBy: map['cancelled_by'] as String?,
+      cancelledAt: _parseOptionalDate(map['cancelled_at']),
+      cancellationStatus: map['cancellation_status'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       items: rawItems.map(AdminOrderItem.fromMap).toList(),
     );
+  }
+
+  static DateTime? _parseOptionalDate(Object? value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    return DateTime.tryParse(text);
   }
 }
