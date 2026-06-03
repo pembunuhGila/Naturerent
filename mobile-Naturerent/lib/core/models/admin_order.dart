@@ -36,6 +36,9 @@ class AdminOrder {
   final String id;
   final String? bookingCode;
   final String namaUser;
+  final String? phoneUser;
+  final String? bankName;
+  final String? accountNumber;
   final String namaRental;
   final DateTime tanggalMulai;
   final DateTime tanggalSelesai;
@@ -50,6 +53,9 @@ class AdminOrder {
   final String? cancelledBy;
   final DateTime? cancelledAt;
   final String? cancellationStatus;
+  final String? refundProofUrl;
+  final DateTime? refundUploadedAt;
+  final String? refundStatus;
   final DateTime createdAt;
   final List<AdminOrderItem> items;
 
@@ -57,6 +63,9 @@ class AdminOrder {
     required this.id,
     this.bookingCode,
     required this.namaUser,
+    this.phoneUser,
+    this.bankName,
+    this.accountNumber,
     required this.namaRental,
     required this.tanggalMulai,
     required this.tanggalSelesai,
@@ -71,6 +80,9 @@ class AdminOrder {
     this.cancelledBy,
     this.cancelledAt,
     this.cancellationStatus,
+    this.refundProofUrl,
+    this.refundUploadedAt,
+    this.refundStatus,
     required this.createdAt,
     required this.items,
   });
@@ -85,6 +97,7 @@ class AdminOrder {
       ((cancellationReason?.trim().isNotEmpty ?? false) ||
           (cancellationNote?.trim().isNotEmpty ?? false) ||
           cancelledAt != null);
+  bool get sudahAdaBuktiRefund => refundProofUrl?.trim().isNotEmpty ?? false;
   bool get pembayaranLunas {
     final normalized = paymentStatus?.toLowerCase().trim();
     return normalized == 'lunas' ||
@@ -144,6 +157,14 @@ class AdminOrder {
           user?['nama_lengkap'] as String? ??
           user?['email'] as String? ??
           'Pengguna',
+      phoneUser:
+          user?['phone_number'] as String? ??
+          user?['phone'] as String? ??
+          user?['no_wa'] as String?,
+      bankName: user?['bank_name'] as String?,
+      accountNumber:
+          user?['account_number'] as String? ??
+          user?['bank_account'] as String?,
       namaRental:
           rental?['nama_rental'] as String? ??
           namaRentalDariItem ??
@@ -161,6 +182,9 @@ class AdminOrder {
       cancelledBy: map['cancelled_by'] as String?,
       cancelledAt: _parseOptionalDate(map['cancelled_at']),
       cancellationStatus: map['cancellation_status'] as String?,
+      refundProofUrl: map['refund_proof_url'] as String?,
+      refundUploadedAt: _parseOptionalDate(map['refund_uploaded_at']),
+      refundStatus: map['refund_status'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       items: rawItems.map(AdminOrderItem.fromMap).toList(),
     );
