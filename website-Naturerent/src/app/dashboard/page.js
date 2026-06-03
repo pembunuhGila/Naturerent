@@ -245,16 +245,25 @@ export default function DashboardPage() {
                     <div className="loading-spinner" />
                     <span>Memuat aktivitas...</span>
                   </div>
-                ) : recentActivity.length > 0 ? recentActivity.map(item => (
-                  <div key={item.id} className="activity-item">
-                    <div className={`activity-icon ${item.icon}`}><i className={`fa-solid ${item.fa}`} /></div>
-                    <div className="activity-content">
-                      <p className="activity-title">{item.title}</p>
-                      <p className="activity-description">{item.desc}</p>
-                      <p className="activity-time">{timeAgo(item.created_at)}</p>
-                    </div>
-                  </div>
-                )) : (
+                ) : recentActivity.length > 0 ? recentActivity.map(item => {
+                  const targetLinks = {
+                    transaction: '/transaksi',
+                    rental: '/pemilik-rental',
+                    payment: '/komisi',
+                    setting: '/settings'
+                  }
+                  const href = targetLinks[item.icon] || '#'
+                  return (
+                    <Link key={item.id} href={href} className="activity-item">
+                      <div className={`activity-icon ${item.icon}`}><i className={`fa-solid ${item.fa}`} /></div>
+                      <div className="activity-content">
+                        <p className="activity-title">{item.title}</p>
+                        <p className="activity-description">{item.desc}</p>
+                        <p className="activity-time">{timeAgo(item.created_at)}</p>
+                      </div>
+                    </Link>
+                  )
+                }) : (
                   <div className="empty-state" style={{ padding: '32px 0' }}>
                     <i className="fa-solid fa-clock-rotate-left empty-icon" />
                     <p>Belum ada aktivitas terbaru.</p>
