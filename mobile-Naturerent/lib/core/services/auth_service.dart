@@ -50,12 +50,14 @@ class AuthService {
         'full_name': namaLengkap,
         'no_wa': noWa,
         'phone': noWa,
+        'phone_number': noWa,
         'role': _petaRole(role),
         'store_name': namaToko,
         'store_address': alamatToko,
         'store_city': kotaToko,
         'bank_name': namaBank,
         'bank_account': nomorRekening,
+        'account_number': nomorRekening,
       },
     );
 
@@ -64,15 +66,23 @@ class AuthService {
     //    data sudah tersimpan di metadata dan akan di-sync saat login pertama).
     if (response.user != null && response.session != null) {
       try {
-        await client.from('users').upsert({
+        final payload = <String, dynamic>{
           'id': response.user!.id,
           'email': email.trim().toLowerCase(),
           'nama_lengkap': namaLengkap,
           'no_wa': noWa,
           'phone': noWa,
+          'phone_number': noWa,
           'role': _petaRole(role),
           'updated_at': DateTime.now().toIso8601String(),
-        }, onConflict: 'id');
+        };
+        if (namaBank != null) payload['bank_name'] = namaBank;
+        if (nomorRekening != null) {
+          payload['account_number'] = nomorRekening;
+          payload['bank_account'] = nomorRekening;
+        }
+
+        await client.from('users').upsert(payload, onConflict: 'id');
       } catch (_) {
         // RLS memblokir update saat email belum dikonfirmasi — normal.
         // Data akan di-sync via syncProfilSetelahLogin() saat pertama login.
@@ -98,9 +108,21 @@ class AuthService {
         (meta['name'] as String?) ??
         user.email?.split('@').first ??
         'Pengguna';
-    final noWa = (meta['no_wa'] as String?) ?? (meta['phone'] as String?);
+    final noWa =
+        (meta['no_wa'] as String?) ??
+        (meta['phone'] as String?) ??
+        (meta['phone_number'] as String?);
     final role = meta['role'] as String?;
-    if (noWa == null && role == null) return;
+    final bankName = meta['bank_name'] as String?;
+    final accountNumber =
+        (meta['account_number'] as String?) ??
+        (meta['bank_account'] as String?);
+    if (noWa == null &&
+        role == null &&
+        bankName == null &&
+        accountNumber == null) {
+      return;
+    }
 
     try {
       final payload = <String, dynamic>{
@@ -112,8 +134,14 @@ class AuthService {
       if (noWa != null) {
         payload['no_wa'] = noWa;
         payload['phone'] = noWa;
+        payload['phone_number'] = noWa;
       }
       if (role != null) payload['role'] = role;
+      if (bankName != null) payload['bank_name'] = bankName;
+      if (accountNumber != null) {
+        payload['account_number'] = accountNumber;
+        payload['bank_account'] = accountNumber;
+      }
 
       await client.from('users').upsert(payload, onConflict: 'id');
     } catch (_) {
@@ -258,23 +286,40 @@ class AuthService {
   Future<void> perbaruiProfil({
     String? namaLengkap,
     String? noWa,
+    String? bankName,
+    String? accountNumber,
     String? avatarUrl,
     String? ktpUrl,
   }) async {
-    if (penggunaSaatIni == null) return;
+    final user = penggunaSaatIni;
+    if (user == null) return;
 
     final data = <String, dynamic>{
+      'id': user.id,
+      'email': user.email,
+      'nama_lengkap':
+          namaLengkap ??
+          (user.userMetadata?['full_name'] as String?) ??
+          (user.userMetadata?['name'] as String?) ??
+          user.email?.split('@').first ??
+          'Pengguna',
       'updated_at': DateTime.now().toIso8601String(),
     };
     if (namaLengkap != null) data['nama_lengkap'] = namaLengkap;
     if (noWa != null) {
       data['no_wa'] = noWa;
       data['phone'] = noWa;
+      data['phone_number'] = noWa;
+    }
+    if (bankName != null) data['bank_name'] = bankName;
+    if (accountNumber != null) {
+      data['account_number'] = accountNumber;
+      data['bank_account'] = accountNumber;
     }
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
     if (ktpUrl != null) data['ktp_url'] = ktpUrl;
 
-    await client.from('users').update(data).eq('id', penggunaSaatIni!.id);
+    await client.from('users').upsert(data, onConflict: 'id');
   }
 
   // ──────────────────────────────────────────────────────────
