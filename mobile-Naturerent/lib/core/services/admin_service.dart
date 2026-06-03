@@ -28,6 +28,11 @@ class AdminService {
           status,
           payment_status,
           payment_proof_url,
+          cancellation_reason,
+          cancellation_note,
+          cancelled_by,
+          cancelled_at,
+          cancellation_status,
           created_at,
           users(nama_lengkap, email),
           rental_profiles(nama_rental),
@@ -60,6 +65,10 @@ class AdminService {
           'status': 'cancelled',
           'payment_status': 'failed',
           'admin_notes': 'Dibatalkan oleh admin',
+          'cancellation_reason': 'Dibatalkan oleh admin',
+          'cancelled_by': 'admin',
+          'cancelled_at': DateTime.now().toIso8601String(),
+          'cancellation_status': 'Dibatalkan Admin',
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', bookingId)

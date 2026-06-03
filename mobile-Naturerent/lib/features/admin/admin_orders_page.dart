@@ -325,6 +325,10 @@ class _OrderCard extends StatelessWidget {
             icon: Icons.verified_rounded,
             label: order.statusPembayaranLabel,
           ),
+          if (order.adaInfoPembatalan) ...[
+            const SizedBox(height: 6),
+            _CancellationInfoBox(order: order),
+          ],
           const SizedBox(height: 4),
           OutlinedButton.icon(
             onPressed: onViewProof,
@@ -434,6 +438,66 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
+class _CancellationInfoBox extends StatelessWidget {
+  final AdminOrder order;
+
+  const _CancellationInfoBox({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final note = order.cancellationNote?.trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            order.statusLabel,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Alasan: ${order.cancellationReason ?? 'Belum tersedia'}',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (note != null && note.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Catatan: $note',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+          if (order.cancelledAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Dibatalkan pada: ${_formatDateTime(order.cancelledAt!)}',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _StateBox extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -481,6 +545,12 @@ String _formatDate(DateTime value) {
   final day = value.day.toString().padLeft(2, '0');
   final month = value.month.toString().padLeft(2, '0');
   return '$day/$month/${value.year}';
+}
+
+String _formatDateTime(DateTime value) {
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '${_formatDate(value)}, $hour:$minute';
 }
 
 String _formatCurrency(double value) {
