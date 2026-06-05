@@ -12,6 +12,8 @@ import '../home/aktivitas_page.dart';
 import '../owner/owner_activity_page.dart';
 import '../owner/widgets/owner_header_widget.dart';
 import 'edit_profil_page.dart';
+import 'help_center_page.dart';
+import 'privacy_policy_page.dart';
 
 class ProfilPage extends StatefulWidget {
   final bool forceMitra;
@@ -373,12 +375,22 @@ class _ProfilPageState extends State<ProfilPage> {
                   _MenuItem(
                     icon: Icons.help_outline_rounded,
                     label: 'Pusat Bantuan',
-                    onTap: () => _snackComingSoon('Pusat Bantuan'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HelpCenterPage(),
+                      ),
+                    ),
                   ),
                   _MenuItem(
                     icon: Icons.privacy_tip_outlined,
                     label: 'Kebijakan Privasi',
-                    onTap: () => _snackComingSoon('Kebijakan Privasi'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PrivacyPolicyPage(),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1266,6 +1278,8 @@ class _TinyEditButton extends StatelessWidget {
     );
   }
 }
+
+
 
 class _MenuItem {
   final IconData icon;
