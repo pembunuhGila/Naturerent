@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/equipment.dart';
 import '../../core/models/rental_profile.dart';
-import '../../core/services/destination_suggestion_service.dart';
 import '../../core/services/equipment_service.dart';
+import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_toast.dart';
@@ -25,7 +25,6 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _rentalService = RentalService();
-  final _destinationSuggestionService = DestinationSuggestionService();
   final _equipmentService = EquipmentService();
 
   List<Equipment> _alat = [];
@@ -74,11 +73,11 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     try {
       final rental = await _rentalService.pastikanRentalSayaAda();
       final alat = await _equipmentService.ambilSemuaAlatByRental(rental.id);
-      final suggestedDestinations = await _loadNearbyDestinations(rental);
+      final suggestedDestinations = await _loadSavedDestinations(rental);
       if (!mounted) return;
       setState(() {
         _rentalId = rental.id;
-        _rentalProfile = rental; // Simpan lengkap
+        _rentalProfile = rental;
         _alat = alat;
         _suggestedDestinations = suggestedDestinations;
         _loading = false;
@@ -96,32 +95,47 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     NrToast.show(context, '$fitur segera hadir.', type: NrToastType.info);
   }
 
-  Future<List<DestinationInfo>> _loadNearbyDestinations(
+  Future<List<DestinationInfo>> _loadSavedDestinations(
     RentalProfile rental,
   ) async {
-    if (rental.lat == null || rental.lng == null) return [];
-
     try {
-      final nearest = await _destinationSuggestionService.ambilSaranUntukRental(
-        rental,
-        limit: 10,
-      );
-      return nearest
-          .map((wd) => DestinationInfo(
-                id: wd.wisata.id,
-                title: wd.wisata.nama,
-                distance: wd.jarakFormatted,
-                detailDistance: '${wd.jarakFormatted} dari rental',
-                icon: _iconForKategori(wd.wisata.kategori),
-                color: _colorForKategori(wd.wisata.kategori),
-                lat: wd.wisata.lat,
-                lng: wd.wisata.lng,
-              ))
+      final wisataList = await _rentalService.ambilWisataRental(rental.id);
+      final destinations = wisataList
+          .map(
+            (wisata) => DestinationInfo(
+              id: wisata.id,
+              title: wisata.nama,
+              distance: _jarakDestinasi(rental, wisata.lat, wisata.lng),
+              detailDistance:
+                  '${_jarakDestinasi(rental, wisata.lat, wisata.lng)} dari rental',
+              icon: _iconForKategori(wisata.kategori),
+              color: _colorForKategori(wisata.kategori),
+              lat: wisata.lat,
+              lng: wisata.lng,
+            ),
+          )
           .toList();
+      return destinations;
     } catch (_) {
       return [];
     }
   }
+
+  String _jarakDestinasi(RentalProfile rental, double? lat, double? lng) {
+    if (rental.lat == null || rental.lng == null || lat == null || lng == null) {
+      return '-';
+    }
+
+    final distance = LocationService.calculateDistanceKm(
+      rental.lat!,
+      rental.lng!,
+      lat,
+      lng,
+    );
+    return LocationService.formatJarak(distance);
+  }
+
+
 
   IconData _iconForKategori(String? kategori) {
     final value = kategori?.toLowerCase() ?? '';
@@ -240,8 +254,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                       _RentalManageTab(
                         rentalProfile: _rentalProfile,
                         onEdit: () async {
-                          final updatedDestinations =
-                              await Navigator.push<List<DestinationInfo>>(
+                          await Navigator.push<List<DestinationInfo>>(
                             context,
                             MaterialPageRoute(
                               builder: (_) => OwnerEditRentalPage(
@@ -250,12 +263,9 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                               ),
                             ),
                           );
-                          if (updatedDestinations != null) {
-                            setState(() {
-                              _suggestedDestinations = updatedDestinations;
-                            });
-                            _muatAlat();
-                          }
+                          // Selalu reload dari Supabase setelah kembali dari edit
+                          // agar data benar-benar sinkron antar device
+                          _muatAlat();
                         },
                         suggestedDestinations: _suggestedDestinations,
                       )

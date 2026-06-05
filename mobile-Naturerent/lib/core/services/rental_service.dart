@@ -32,6 +32,44 @@ class RentalService {
         .toList();
   }
 
+  /// Ambil destinasi wisata yang dipilih pemilik untuk rental tertentu.
+  Future<List<WisataLocation>> ambilWisataRental(String rentalId) async {
+    final data = await client
+        .from('rental_wisata')
+        .select(
+          'wisata_locations(id, nama, deskripsi, foto_url, kategori, lat, lng, created_at)',
+        )
+        .eq('rental_id', rentalId);
+
+    return (data as List)
+        .map((e) => e['wisata_locations'])
+        .whereType<Map<String, dynamic>>()
+        .map(WisataLocation.fromMap)
+        .toList();
+  }
+
+  /// Simpan ulang daftar destinasi pilihan pemilik rental.
+  Future<void> simpanWisataRental({
+    required String rentalId,
+    required List<String> wisataIds,
+  }) async {
+    await client.from('rental_wisata').delete().eq('rental_id', rentalId);
+
+    final uniqueIds = wisataIds.toSet().toList();
+    if (uniqueIds.isEmpty) return;
+
+    await client.from('rental_wisata').insert(
+          uniqueIds
+              .map(
+                (wisataId) => {
+                  'rental_id': rentalId,
+                  'wisata_id': wisataId,
+                },
+              )
+              .toList(),
+        );
+  }
+
   // ──────────────────────────────────────────────────────────
   //  RENTAL PROFILES
   // ──────────────────────────────────────────────────────────

@@ -38,6 +38,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   final _destinationSuggestionService = DestinationSuggestionService();
   late List<DestinationInfo> _suggestedDestinations;
   List<DestinationInfo> _nearbyDestinations = [];
+  final Set<String> _removedDestinationKeys = {};
   bool _loadingDestinations = true;
   String? _destinationMessage;
 
@@ -295,6 +296,12 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     return 'title:${item.title.trim().toLowerCase()}';
   }
 
+  String _destinationKey(DestinationInfo item) {
+    final id = item.id?.trim();
+    if (id != null && id.isNotEmpty) return 'id:$id';
+    return _destinationTitleKey(item);
+  }
+
   bool _isSameDestination(DestinationInfo a, DestinationInfo b) {
     final aId = a.id?.trim();
     final bId = b.id?.trim();
@@ -311,7 +318,10 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   List<DestinationInfo> _mergeNearbyWithSuggested(
     List<DestinationInfo> nearby,
   ) {
-    return _uniqueDestinations([..._suggestedDestinations, ...nearby]);
+    final visibleNearby = nearby
+        .where((item) => !_removedDestinationKeys.contains(_destinationKey(item)))
+        .toList();
+    return _uniqueDestinations([..._suggestedDestinations, ...visibleNearby]);
   }
 
   List<DestinationInfo> _uniqueDestinations(List<DestinationInfo> items) {
@@ -326,6 +336,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   void _tambahDestinasi(DestinationInfo item) {
     if (_isDestinationAdded(item)) return;
     setState(() {
+      _removedDestinationKeys.remove(_destinationKey(item));
       _suggestedDestinations = _uniqueDestinations([
         ..._suggestedDestinations,
         item,
@@ -337,7 +348,11 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   void _hapusDestinasi(DestinationInfo item) {
     if (!_isDestinationAdded(item)) return;
     setState(() {
+      _removedDestinationKeys.add(_destinationKey(item));
       _suggestedDestinations = _suggestedDestinations
+          .where((dest) => !_isSameDestination(dest, item))
+          .toList();
+      _nearbyDestinations = _nearbyDestinations
           .where((dest) => !_isSameDestination(dest, item))
           .toList();
     });
@@ -434,6 +449,15 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
         lng: _lng,
         openTime: _formatJam(_jamBuka!),
         closeTime: _formatJam(_jamTutup!),
+      );
+
+      await _rentalService.simpanWisataRental(
+        rentalId: rentalId,
+        wisataIds: _suggestedDestinations
+            .map((item) => item.id?.trim())
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toList(),
       );
 
       if (!mounted) return;
