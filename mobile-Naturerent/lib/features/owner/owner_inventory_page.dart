@@ -29,9 +29,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   final _equipmentService = EquipmentService();
 
   List<Equipment> _alat = [];
-  List<DestinationInfo> _suggestedDestinations = List.of(
-    ownerNearbyDestinations,
-  );
+  List<DestinationInfo> _suggestedDestinations = [];
   String? _rentalId;
   RentalProfile? _rentalProfile; // Simpan profil rental lengkap (termasuk lat/lng)
   bool _loading = true;
@@ -82,9 +80,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
         _rentalId = rental.id;
         _rentalProfile = rental; // Simpan lengkap
         _alat = alat;
-        if (suggestedDestinations.isNotEmpty) {
-          _suggestedDestinations = suggestedDestinations;
-        }
+        _suggestedDestinations = suggestedDestinations;
         _loading = false;
       });
     } catch (_) {
@@ -128,14 +124,17 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   }
 
   IconData _iconForKategori(String? kategori) {
-    return switch (kategori?.toLowerCase()) {
-      'gunung' => Icons.terrain_rounded,
-      'ranu' || 'danau' => Icons.water_rounded,
-      'hutan' => Icons.forest_rounded,
-      'pantai' => Icons.beach_access_rounded,
-      'air terjun' || 'curug' => Icons.waterfall_chart_rounded,
-      _ => Icons.landscape_rounded,
-    };
+    final value = kategori?.toLowerCase() ?? '';
+    if (value.contains('gunung')) return Icons.terrain_rounded;
+    if (value.contains('ranu') || value.contains('danau')) {
+      return Icons.water_rounded;
+    }
+    if (value.contains('hutan')) return Icons.forest_rounded;
+    if (value.contains('pantai')) return Icons.beach_access_rounded;
+    if (value.contains('air terjun') || value.contains('curug')) {
+      return Icons.waterfall_chart_rounded;
+    }
+    return Icons.landscape_rounded;
   }
 
   Color _colorForKategori(String? kategori) {
