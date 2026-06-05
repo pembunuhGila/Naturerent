@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/models/rental_profile.dart';
 import '../../core/models/wisata_location.dart';
@@ -30,6 +31,8 @@ class OwnerEditRentalPage extends StatefulWidget {
 class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   late final TextEditingController _namaRentalController;
   late final TextEditingController _alamatController;
+  late final TextEditingController _latitudeController;
+  late final TextEditingController _longitudeController;
 
   final _rentalService = RentalService();
   final _destinationSuggestionService = DestinationSuggestionService();
@@ -61,12 +64,12 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     // Muat koordinat yang sudah tersimpan sebelumnya
     _lat = rental?.lat;
     _lng = rental?.lng;
+    _latitudeController = TextEditingController(text: _formatCoordinate(_lat));
+    _longitudeController = TextEditingController(text: _formatCoordinate(_lng));
     _jamBuka = _timeOfDayFromText(rental?.openTime);
     _jamTutup = _timeOfDayFromText(rental?.closeTime);
     _suggestedDestinations = _uniqueDestinations(
-      widget.suggestedDestinations.isEmpty
-          ? ownerNearbyDestinations
-          : widget.suggestedDestinations,
+      widget.suggestedDestinations,
     );
     _muatDestinasiDekat();
   }
@@ -75,6 +78,8 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   void dispose() {
     _namaRentalController.dispose();
     _alamatController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
     super.dispose();
   }
 
@@ -82,8 +87,56 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   //  GPS Logic
   // ─────────────────────────────────────────────────────
 
+  Future<void> _cekLokasiGps() async {
+    setState(() => _loadingGps = true);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _snackError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied) {
+        _snackError('Izin lokasi ditolak. Anda tetap bisa memilih dari maps.');
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _snackError(
+          'Izin lokasi diblokir. Buka pengaturan aplikasi untuk mengizinkan lokasi.',
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+      _setKoordinat(
+        position.latitude,
+        position.longitude,
+        message:
+            'Lokasi GPS diterapkan: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+      );
+    } on LocationServiceDisabledException {
+      _snackError('GPS tidak aktif. Aktifkan lokasi pada perangkat.');
+    } catch (_) {
+      _snackError('Lokasi saat ini belum bisa diambil. Coba lagi sebentar.');
+    } finally {
+      if (mounted) setState(() => _loadingGps = false);
+    }
+  }
+
   /// Buka map picker — user bisa tap peta atau gunakan GPS di dalam map picker.
-  Future<void> _ambilLokasiGps() async {
+  Future<void> _pilihLokasiDariMaps() async {
     setState(() => _loadingGps = true);
 
     // Buka halaman map picker
@@ -97,15 +150,60 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     if (mounted) setState(() => _loadingGps = false);
 
     if (result != null && mounted) {
-      setState(() {
-        _lat = result.latitude;
-        _lng = result.longitude;
-      });
-      _muatDestinasiDekat();
-      _snackSuccess(
-        'Lokasi disimpan: ${result.latitude.toStringAsFixed(6)}, ${result.longitude.toStringAsFixed(6)}',
+      _setKoordinat(
+        result.latitude,
+        result.longitude,
+        message:
+            'Lokasi maps diterapkan: ${result.latitude.toStringAsFixed(6)}, ${result.longitude.toStringAsFixed(6)}',
       );
     }
+  }
+
+  void _terapkanKoordinatManual() {
+    final latText = _latitudeController.text.trim().replaceAll(',', '.');
+    final lngText = _longitudeController.text.trim().replaceAll(',', '.');
+    final lat = double.tryParse(latText);
+    final lng = double.tryParse(lngText);
+
+    if (lat == null) {
+      _snackError('Latitude harus berupa angka.');
+      return;
+    }
+    if (lng == null) {
+      _snackError('Longitude harus berupa angka.');
+      return;
+    }
+    if (lat < -90 || lat > 90) {
+      _snackError('Latitude harus berada di rentang -90 sampai 90.');
+      return;
+    }
+    if (lng < -180 || lng > 180) {
+      _snackError('Longitude harus berada di rentang -180 sampai 180.');
+      return;
+    }
+
+    _setKoordinat(
+      lat,
+      lng,
+      message:
+          'Koordinat manual diterapkan: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
+    );
+  }
+
+  void _setKoordinat(double lat, double lng, {String? message}) {
+    setState(() {
+      _lat = lat;
+      _lng = lng;
+      _latitudeController.text = _formatCoordinate(lat);
+      _longitudeController.text = _formatCoordinate(lng);
+    });
+    _muatDestinasiDekat();
+    if (message != null) _snackSuccess(message);
+  }
+
+  String _formatCoordinate(double? value) {
+    if (value == null) return '';
+    return value.toStringAsFixed(6);
   }
 
   Future<void> _muatDestinasiDekat() async {
@@ -116,9 +214,7 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
 
     if (_lat == null || _lng == null) {
       setState(() {
-        _nearbyDestinations = _mergeNearbyWithSuggested(
-          ownerCandidateDestinations,
-        );
+        _nearbyDestinations = _suggestedDestinations;
         _destinationMessage =
             'Pilih titik lokasi rental untuk melihat destinasi terdekat.';
         _loadingDestinations = false;
@@ -149,11 +245,9 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _nearbyDestinations = _mergeNearbyWithSuggested(
-          ownerCandidateDestinations,
-        );
+        _nearbyDestinations = _suggestedDestinations;
         _destinationMessage =
-            'Gagal memuat data terdekat. Menampilkan kandidat rekomendasi.';
+            'Gagal memuat destinasi wisata terdekat dari database.';
         _loadingDestinations = false;
       });
     }
@@ -176,14 +270,17 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
   }
 
   IconData _iconForKategori(String? kategori) {
-    return switch (kategori?.toLowerCase()) {
-      'gunung' => Icons.terrain_rounded,
-      'ranu' || 'danau' => Icons.water_rounded,
-      'hutan' => Icons.forest_rounded,
-      'pantai' => Icons.beach_access_rounded,
-      'air terjun' || 'curug' => Icons.waterfall_chart_rounded,
-      _ => Icons.landscape_rounded,
-    };
+    final value = kategori?.toLowerCase() ?? '';
+    if (value.contains('gunung')) return Icons.terrain_rounded;
+    if (value.contains('ranu') || value.contains('danau')) {
+      return Icons.water_rounded;
+    }
+    if (value.contains('hutan')) return Icons.forest_rounded;
+    if (value.contains('pantai')) return Icons.beach_access_rounded;
+    if (value.contains('air terjun') || value.contains('curug')) {
+      return Icons.waterfall_chart_rounded;
+    }
+    return Icons.landscape_rounded;
   }
 
   Color _colorForKategori(String? kategori) {
@@ -416,10 +513,14 @@ class _OwnerEditRentalPageState extends State<OwnerEditRentalPage> {
                   const SizedBox(height: 22),
                   _LocationCard(
                     controller: _alamatController,
+                    latitudeController: _latitudeController,
+                    longitudeController: _longitudeController,
                     lat: _lat,
                     lng: _lng,
                     loadingGps: _loadingGps,
-                    onAmbilGps: _ambilLokasiGps,
+                    onCekGps: _cekLokasiGps,
+                    onPilihMaps: _pilihLokasiDariMaps,
+                    onTerapkanKoordinat: _terapkanKoordinatManual,
                   ),
                   const SizedBox(height: 22),
                   _OperationalHoursCard(
@@ -599,17 +700,25 @@ class _IdentityCard extends StatelessWidget {
 
 class _LocationCard extends StatelessWidget {
   final TextEditingController controller;
+  final TextEditingController latitudeController;
+  final TextEditingController longitudeController;
   final double? lat;
   final double? lng;
   final bool loadingGps;
-  final VoidCallback onAmbilGps;
+  final VoidCallback onCekGps;
+  final VoidCallback onPilihMaps;
+  final VoidCallback onTerapkanKoordinat;
 
   const _LocationCard({
     required this.controller,
+    required this.latitudeController,
+    required this.longitudeController,
     required this.lat,
     required this.lng,
     required this.loadingGps,
-    required this.onAmbilGps,
+    required this.onCekGps,
+    required this.onPilihMaps,
+    required this.onTerapkanKoordinat,
   });
 
   @override
@@ -621,6 +730,69 @@ class _LocationCard extends StatelessWidget {
       subtitle: 'Pastikan titik GPS akurat agar penyewa\ntidak tersesat.',
       child: Column(
         children: [
+          _LocationActionButton(
+            icon: Icons.my_location_rounded,
+            label: loadingGps ? 'Mengecek GPS...' : 'Cek Lokasi Sesuai GPS',
+            onTap: loadingGps ? null : onCekGps,
+            loading: loadingGps,
+          ),
+          const SizedBox(height: 10),
+          _LocationActionButton(
+            icon: Icons.map_rounded,
+            label: 'Pilih dari Maps',
+            onTap: loadingGps ? null : onPilihMaps,
+          ),
+          const SizedBox(height: 22),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'INPUT KOORDINAT MANUAL',
+              style: AppTextStyles.caption.copyWith(
+                color: const Color(0xFF798076),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _LabeledInput(
+                  label: 'LATITUDE',
+                  controller: latitudeController,
+                  maxLines: 1,
+                  hint: 'Masukkan latitude',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _LabeledInput(
+                  label: 'LONGITUDE',
+                  controller: longitudeController,
+                  maxLines: 1,
+                  hint: 'Masukkan longitude',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _LocationActionButton(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Terapkan Koordinat',
+            onTap: onTerapkanKoordinat,
+            filled: true,
+          ),
+          const SizedBox(height: 20),
           // ── Area peta / placeholder
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
@@ -738,12 +910,12 @@ class _LocationCard extends StatelessWidget {
                       ],
                     ),
 
-                  // ── Tombol "Buka Peta / GPS" — selalu di pojok kanan bawah
+                  // ── Tombol "Pilih dari Maps" — selalu di pojok kanan bawah
                   Positioned(
                     right: 12,
                     bottom: 12,
                     child: GestureDetector(
-                      onTap: loadingGps ? null : onAmbilGps,
+                      onTap: loadingGps ? null : onPilihMaps,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -784,7 +956,7 @@ class _LocationCard extends StatelessWidget {
                                   ? 'Membuka...'
                                   : hasLocation
                                   ? 'Ubah Lokasi'
-                                  : 'Pilih Lokasi',
+                                  : 'Pilih dari Maps',
                               style: AppTextStyles.caption.copyWith(
                                 color: AppColors.ownerPrimaryGreen,
                                 fontSize: 11,
@@ -847,6 +1019,72 @@ class _LocationCard extends StatelessWidget {
             maxLines: 3,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LocationActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool loading;
+  final bool filled;
+
+  const _LocationActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.loading = false,
+    this.filled = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final background =
+        filled ? AppColors.ownerPrimaryGreen : AppColors.ownerSoftGreen;
+    final foreground =
+        filled ? Colors.white : AppColors.ownerPrimaryGreen;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: loading
+            ? SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: foreground,
+                ),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w900,
+            fontSize: 12,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          foregroundColor: foreground,
+          backgroundColor: background,
+          disabledForegroundColor: foreground.withValues(alpha: 0.55),
+          disabledBackgroundColor: background.withValues(alpha: 0.7),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: filled
+                  ? AppColors.ownerPrimaryGreen
+                  : AppColors.ownerBorderColor,
+              width: AppColors.ownerBorderWidth,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1111,11 +1349,15 @@ class _LabeledInput extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final int maxLines;
+  final String? hint;
+  final TextInputType? keyboardType;
 
   const _LabeledInput({
     required this.label,
     required this.controller,
     required this.maxLines,
+    this.hint,
+    this.keyboardType,
   });
 
   @override
@@ -1136,6 +1378,7 @@ class _LabeledInput extends StatelessWidget {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
           style: AppTextStyles.bodyMedium.copyWith(
             color: const Color(0xFF384036),
             fontSize: 14,
@@ -1145,6 +1388,12 @@ class _LabeledInput extends StatelessWidget {
           decoration: InputDecoration(
             filled: true,
             fillColor: AppColors.ownerCardBackground,
+            hintText: hint,
+            hintStyle: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF9BA19A),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
