@@ -55,8 +55,16 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
     );
     _descCtrl = TextEditingController(text: equipment?.deskripsi ?? '');
     _sizeCtrl = TextEditingController(text: equipment?.size ?? '');
-    _capacityCtrl = TextEditingController();
-    _weightCtrl = TextEditingController();
+    _capacityCtrl = TextEditingController(
+      text: equipment?.capacity == null ? '' : equipment!.capacity.toString(),
+    );
+    _weightCtrl = TextEditingController(
+      text: equipment?.weightKg == null
+          ? ''
+          : equipment!.weightKg!.toStringAsFixed(
+              equipment.weightKg! % 1 == 0 ? 0 : 1,
+            ),
+    );
     _selectedCategoryId = equipment?.categoryId;
     _stock = equipment?.stock ?? 8;
     _loadCategories();
@@ -76,6 +84,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   Future<void> _loadCategories() async {
     try {
       final categories = await _equipmentService.ambilKategori();
+      _ensureCurrentCategory(categories);
       if (!mounted) return;
       setState(() {
         _categories = categories;
@@ -83,7 +92,34 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _loadingCategories = false);
+      final categories = <Map<String, dynamic>>[];
+      _ensureCurrentCategory(categories);
+      setState(() {
+        _categories = categories;
+        _loadingCategories = false;
+      });
+    }
+  }
+
+  void _ensureCurrentCategory(List<Map<String, dynamic>> categories) {
+    final equipment = widget.equipment;
+    if (equipment == null) return;
+
+    final categoryId = equipment.categoryId;
+    final categoryName = equipment.namaKategori;
+    if (categoryId == null ||
+        categoryId.isEmpty ||
+        categoryName == null ||
+        categoryName.isEmpty) {
+      return;
+    }
+
+    final exists = categories.any((category) => category['id'] == categoryId);
+    if (!exists) {
+      categories.add({
+        'id': categoryId,
+        'nama': categoryName,
+      });
     }
   }
 
@@ -96,9 +132,16 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
     return widget.equipment?.namaKategori ?? '';
   }
 
-  bool get _sizeRequired {
+  bool get _usesSize {
     final name = _selectedCategoryName.toLowerCase();
-    return name.contains('sepatu');
+    return name.contains('sepatu') ||
+        name.contains('jaket') ||
+        name.contains('pakaian') ||
+        name.contains('alas kaki');
+  }
+
+  bool get _sizeRequired {
+    return _usesSize;
   }
 
   Future<void> _pickImage() async {
@@ -229,10 +272,18 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
 
     final harga = double.parse(_priceCtrl.text);
     final deskripsi = _descCtrl.text.trim();
-    final size = _sizeCtrl.text.trim();
+    final size = _usesSize ? _sizeCtrl.text.trim() : '';
+    final capacityText = _capacityCtrl.text.trim();
+    final weightText = _weightCtrl.text.trim().replaceAll(',', '.');
+    final capacity = capacityText.isEmpty ? null : int.parse(capacityText);
+    final weightKg = weightText.isEmpty ? null : double.parse(weightText);
 
     setState(() => _isSaving = true);
     try {
+      final categoryId = await _equipmentService.pastikanCategoryId(
+        _selectedCategoryId,
+      );
+
       if (widget.isEdit) {
         String? imageUrl;
         if (_pickedImageBytes != null) {
@@ -248,9 +299,11 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         await _equipmentService.perbaruiAlat(
           equipmentId: widget.equipment!.id,
           nama: _nameCtrl.text.trim(),
-          categoryId: _selectedCategoryId,
+          categoryId: categoryId,
           deskripsi: deskripsi.isEmpty ? null : deskripsi,
           size: size.isEmpty ? null : size,
+          capacity: capacity,
+          weightKg: weightKg,
           hargaPerHari: harga,
           stock: _stock,
           imageUrl: imageUrl,
@@ -274,9 +327,11 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         await _equipmentService.tambahAlat(
           rentalId: rentalId,
           nama: _nameCtrl.text.trim(),
-          categoryId: _selectedCategoryId,
+          categoryId: categoryId,
           deskripsi: deskripsi.isEmpty ? null : deskripsi,
           size: size.isEmpty ? null : size,
+          capacity: capacity,
+          weightKg: weightKg,
           hargaPerHari: harga,
           stock: _stock,
           imageUrl: imageUrl,
@@ -405,25 +460,26 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
                 onChanged: (value) {
                   setState(() {
                     _selectedCategoryId = value;
-                    if (!_sizeRequired) _sizeCtrl.clear();
+                    if (!_usesSize) _sizeCtrl.clear();
                   });
                 },
               ),
-              const SizedBox(height: 22),
-              _SectionLabel(_sizeRequired ? 'Size' : 'Size (Opsional)'),
-              const SizedBox(height: 10),
-              _TextBox(
-                controller: _sizeCtrl,
-                hint: _sizeRequired
-                    ? 'Contoh: 40, 41, 42'
-                    : 'Contoh: S, M, L atau kosongkan',
-                validator: (value) {
-                  if (_sizeRequired && (value == null || value.trim().isEmpty)) {
-                    return 'Size wajib diisi untuk kategori sepatu';
-                  }
-                  return null;
-                },
-              ),
+              if (_usesSize) ...[
+                const SizedBox(height: 22),
+                _SectionLabel('Size'),
+                const SizedBox(height: 10),
+                _TextBox(
+                  controller: _sizeCtrl,
+                  hint: 'Contoh: S, M, L atau 36, 37',
+                  validator: (value) {
+                    if (_sizeRequired &&
+                        (value == null || value.trim().isEmpty)) {
+                      return 'Size wajib diisi untuk kategori ini';
+                    }
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 22),
               _SectionLabel('Nama Produk'),
               const SizedBox(height: 10),
@@ -742,6 +798,7 @@ class _CategoryBox extends StatelessWidget {
     final hasValue = categories.any((category) => category['id'] == value);
     return DropdownButtonFormField<String>(
       value: hasValue ? value : null,
+      isExpanded: true,
       validator: (value) {
         if (value == null || value.isEmpty) return 'Kategori wajib dipilih';
         return null;
@@ -759,7 +816,11 @@ class _CategoryBox extends StatelessWidget {
           .map(
             (category) => DropdownMenuItem<String>(
               value: category['id'] as String,
-              child: Text(category['nama'] as String? ?? 'Kategori'),
+              child: Text(
+                category['nama'] as String? ?? 'Kategori',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           )
           .toList(),
