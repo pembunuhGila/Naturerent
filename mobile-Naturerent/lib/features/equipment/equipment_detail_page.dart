@@ -7,6 +7,7 @@ import '../../core/services/cart_service.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/widgets/nr_image.dart';
 import '../../core/widgets/nr_toast.dart';
+import '../checkout/checkout_page.dart';
 import '../home/rental_detail_page.dart';
 
 class EquipmentDetailPage extends StatefulWidget {
@@ -205,6 +206,11 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                             icon: Icons.category_outlined,
                             label: alat.namaKategori ?? 'Umum',
                           ),
+                          if (alat.size != null && alat.size!.isNotEmpty)
+                            _SpecChip(
+                              icon: Icons.straighten_rounded,
+                              label: 'Size: ${alat.size}',
+                            ),
                           if (alat.isAvailable)
                             _SpecChip(
                               icon: Icons.check_circle_outline_rounded,
@@ -283,7 +289,57 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 40),
+                  ValueListenableBuilder<int>(
+                    valueListenable: CartService().count,
+                    builder: (_, count, __) => Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CheckoutPage(),
+                            ),
+                          ),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Icon(
+                              Icons.shopping_bag_outlined,
+                              color: AppColors.textPrimary,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        if (count > 0)
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '$count',
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
