@@ -103,15 +103,19 @@ class EquipmentService {
   Future<void> tambahAlat({
     required String rentalId,
     required String nama,
+    required String? categoryId,
     required String? deskripsi,
+    required String? size,
     required double hargaPerHari,
     required int stock,
     String? imageUrl,
   }) async {
     await client.from('equipment').insert({
       'rental_id': rentalId,
+      'category_id': categoryId,
       'nama': nama,
       'deskripsi': deskripsi,
+      'size': size,
       'harga_per_hari': hargaPerHari,
       'stock': stock,
       'image_url': imageUrl,
@@ -144,14 +148,18 @@ class EquipmentService {
   Future<void> perbaruiAlat({
     required String equipmentId,
     required String nama,
+    required String? categoryId,
     required String? deskripsi,
+    required String? size,
     required double hargaPerHari,
     required int stock,
     String? imageUrl,
   }) async {
     final data = <String, dynamic>{
       'nama': nama,
+      'category_id': categoryId,
       'deskripsi': deskripsi,
+      'size': size,
       'harga_per_hari': hargaPerHari,
       'stock': stock,
       'updated_at': DateTime.now().toIso8601String(),

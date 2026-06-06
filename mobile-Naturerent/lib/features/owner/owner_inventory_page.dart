@@ -624,7 +624,7 @@ class _SmallDestinationCard extends StatelessWidget {
   }
 }
 
-class _EquipmentManageTab extends StatelessWidget {
+class _EquipmentManageTab extends StatefulWidget {
   final bool loading;
   final String? error;
   final List<Equipment> alat;
@@ -642,31 +642,69 @@ class _EquipmentManageTab extends StatelessWidget {
   });
 
   @override
+  State<_EquipmentManageTab> createState() => _EquipmentManageTabState();
+}
+
+class _EquipmentManageTabState extends State<_EquipmentManageTab> {
+  String? _selectedCategoryId;
+
+  List<MapEntry<String, String>> get _categoryOptions {
+    final map = <String, String>{};
+    for (final item in widget.alat) {
+      final id = item.categoryId;
+      if (id == null || id.isEmpty) continue;
+      map[id] = item.namaKategori ?? 'Kategori';
+    }
+    final entries = map.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    return entries;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final displayItems = alat.map(_OwnerEquipmentItem.fromEquipment).toList();
+    final filtered = _selectedCategoryId == null
+        ? widget.alat
+        : widget.alat
+            .where((item) => item.categoryId == _selectedCategoryId)
+            .toList();
+    final displayItems = filtered.map(_OwnerEquipmentItem.fromEquipment).toList();
 
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        if (loading)
+        _EquipmentTopControls(
+          categories: _categoryOptions,
+          selectedCategoryId: _selectedCategoryId,
+          onCategoryChanged: (value) {
+            setState(() => _selectedCategoryId = value);
+          },
+          onAdd: widget.onAdd,
+          preparingAdd: widget.preparingAdd,
+        ),
+        const SizedBox(height: 24),
+        if (widget.loading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(
               child: CircularProgressIndicator(color: AppColors.ownerPrimaryGreen),
             ),
           )
-        else if (error != null)
+        else if (widget.error != null)
           _EquipmentEmptyState(
             icon: Icons.cloud_off_rounded,
             title: 'Data peralatan gagal dimuat',
-            message: error!,
+            message: widget.error!,
           )
         else if (displayItems.isEmpty)
-          const _EquipmentEmptyState(
+          _EquipmentEmptyState(
             icon: Icons.inventory_2_outlined,
-            title: 'Belum ada peralatan',
-            message: 'Tambahkan alat pertama agar bisa dikelola dan diedit.',
+            title: _selectedCategoryId == null
+                ? 'Belum ada peralatan'
+                : 'Kategori ini masih kosong',
+            message: _selectedCategoryId == null
+                ? 'Tambahkan alat pertama agar bisa dikelola dan diedit.'
+                : 'Pilih kategori lain atau tambahkan alat baru.',
           )
         else
           ...displayItems.map(
@@ -674,15 +712,47 @@ class _EquipmentManageTab extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 36),
               child: _EquipmentProductCard(
                 item: item,
-                onEdit: () => onEdit(item.equipment),
+                onEdit: () => widget.onEdit(item.equipment),
               ),
             ),
           ),
-        const SizedBox(height: 2),
-        Center(
-          child: SizedBox(
-            width: 206,
-            height: 58,
+      ],
+    );
+  }
+}
+
+class _EquipmentTopControls extends StatelessWidget {
+  final List<MapEntry<String, String>> categories;
+  final String? selectedCategoryId;
+  final ValueChanged<String?> onCategoryChanged;
+  final VoidCallback? onAdd;
+  final bool preparingAdd;
+
+  const _EquipmentTopControls({
+    required this.categories,
+    required this.selectedCategoryId,
+    required this.onCategoryChanged,
+    required this.onAdd,
+    required this.preparingAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
+        ),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 52,
             child: ElevatedButton.icon(
               onPressed: onAdd,
               icon: preparingAdd
@@ -705,16 +775,56 @@ class _EquipmentManageTab extends StatelessWidget {
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.ownerPrimaryGreen,
-                elevation: 14,
-                shadowColor: AppColors.ownerPrimaryGreen.withValues(alpha: 0.25),
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(9),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            value: selectedCategoryId ?? '__all',
+            onChanged: (value) {
+              onCategoryChanged(value == '__all' ? null : value);
+            },
+            decoration: InputDecoration(
+              prefixIcon: const Icon(
+                Icons.category_outlined,
+                color: Color(0xFF687369),
+                size: 19,
+              ),
+              filled: true,
+              fillColor: AppColors.ownerCardBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 13,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(9),
+                borderSide: const BorderSide(color: AppColors.ownerBorderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(9),
+                borderSide: const BorderSide(color: AppColors.ownerBorderColor),
+              ),
+            ),
+            hint: const Text('Kelompokkan berdasarkan kategori'),
+            items: [
+              const DropdownMenuItem<String>(
+                value: '__all',
+                child: Text('Semua Kategori'),
+              ),
+              ...categories.map(
+                (entry) => DropdownMenuItem<String>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

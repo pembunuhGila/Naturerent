@@ -30,9 +30,13 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _priceCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _sizeCtrl;
   late final TextEditingController _capacityCtrl;
   late final TextEditingController _weightCtrl;
   late int _stock;
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategoryId;
+  bool _loadingCategories = true;
   Uint8List? _pickedImageBytes;
   String _pickedImageExtension = 'jpg';
   String _pickedImageContentType = 'image/jpeg';
@@ -50,9 +54,12 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
       text: equipment == null ? '' : equipment.hargaPerHari.round().toString(),
     );
     _descCtrl = TextEditingController(text: equipment?.deskripsi ?? '');
+    _sizeCtrl = TextEditingController(text: equipment?.size ?? '');
     _capacityCtrl = TextEditingController();
     _weightCtrl = TextEditingController();
+    _selectedCategoryId = equipment?.categoryId;
     _stock = equipment?.stock ?? 8;
+    _loadCategories();
   }
 
   @override
@@ -60,9 +67,38 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
     _descCtrl.dispose();
+    _sizeCtrl.dispose();
     _capacityCtrl.dispose();
     _weightCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _equipmentService.ambilKategori();
+      if (!mounted) return;
+      setState(() {
+        _categories = categories;
+        _loadingCategories = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingCategories = false);
+    }
+  }
+
+  String get _selectedCategoryName {
+    for (final category in _categories) {
+      if (category['id'] == _selectedCategoryId) {
+        return (category['nama'] as String?) ?? '';
+      }
+    }
+    return widget.equipment?.namaKategori ?? '';
+  }
+
+  bool get _sizeRequired {
+    final name = _selectedCategoryName.toLowerCase();
+    return name.contains('sepatu');
   }
 
   Future<void> _pickImage() async {
@@ -193,6 +229,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
 
     final harga = double.parse(_priceCtrl.text);
     final deskripsi = _descCtrl.text.trim();
+    final size = _sizeCtrl.text.trim();
 
     setState(() => _isSaving = true);
     try {
@@ -211,7 +248,9 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         await _equipmentService.perbaruiAlat(
           equipmentId: widget.equipment!.id,
           nama: _nameCtrl.text.trim(),
+          categoryId: _selectedCategoryId,
           deskripsi: deskripsi.isEmpty ? null : deskripsi,
+          size: size.isEmpty ? null : size,
           hargaPerHari: harga,
           stock: _stock,
           imageUrl: imageUrl,
@@ -235,7 +274,9 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         await _equipmentService.tambahAlat(
           rentalId: rentalId,
           nama: _nameCtrl.text.trim(),
+          categoryId: _selectedCategoryId,
           deskripsi: deskripsi.isEmpty ? null : deskripsi,
+          size: size.isEmpty ? null : size,
           hargaPerHari: harga,
           stock: _stock,
           imageUrl: imageUrl,
@@ -355,6 +396,35 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
                 onTap: _pickImage,
               ),
               const SizedBox(height: 30),
+              _SectionLabel('Kategori Alat'),
+              const SizedBox(height: 10),
+              _CategoryBox(
+                value: _selectedCategoryId,
+                categories: _categories,
+                loading: _loadingCategories,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategoryId = value;
+                    if (!_sizeRequired) _sizeCtrl.clear();
+                  });
+                },
+              ),
+              const SizedBox(height: 22),
+              _SectionLabel(_sizeRequired ? 'Size' : 'Size (Opsional)'),
+              const SizedBox(height: 10),
+              _TextBox(
+                controller: _sizeCtrl,
+                hint: _sizeRequired
+                    ? 'Contoh: 40, 41, 42'
+                    : 'Contoh: S, M, L atau kosongkan',
+                validator: (value) {
+                  if (_sizeRequired && (value == null || value.trim().isEmpty)) {
+                    return 'Size wajib diisi untuk kategori sepatu';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 22),
               _SectionLabel('Nama Produk'),
               const SizedBox(height: 10),
               _TextBox(
@@ -650,6 +720,49 @@ class _SectionLabel extends StatelessWidget {
         fontWeight: FontWeight.w900,
         letterSpacing: 1.8,
       ),
+    );
+  }
+}
+
+class _CategoryBox extends StatelessWidget {
+  final String? value;
+  final List<Map<String, dynamic>> categories;
+  final bool loading;
+  final ValueChanged<String?> onChanged;
+
+  const _CategoryBox({
+    required this.value,
+    required this.categories,
+    required this.loading,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasValue = categories.any((category) => category['id'] == value);
+    return DropdownButtonFormField<String>(
+      value: hasValue ? value : null,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Kategori wajib dipilih';
+        return null;
+      },
+      onChanged: loading ? null : onChanged,
+      icon: const Icon(
+        Icons.keyboard_arrow_down_rounded,
+        color: Color(0xFF748076),
+      ),
+      decoration: _fieldDecoration(
+        loading ? 'Memuat kategori...' : 'Pilih kategori alat',
+      ),
+      dropdownColor: Colors.white,
+      items: categories
+          .map(
+            (category) => DropdownMenuItem<String>(
+              value: category['id'] as String,
+              child: Text(category['nama'] as String? ?? 'Kategori'),
+            ),
+          )
+          .toList(),
     );
   }
 }
