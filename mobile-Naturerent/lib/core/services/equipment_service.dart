@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/equipment.dart';
 import 'auth_service.dart';
@@ -10,6 +9,28 @@ class EquipmentService {
   EquipmentService._internal();
 
   static SupabaseClient get client => AuthService.client;
+  static const String _newCategoryPrefix = '__new_category__:';
+  static const List<String> _defaultCategoryNames = [
+    'Peralatan Masak',
+    'Lainnya',
+    'Tenda',
+    'Aksesoris Camping',
+    'Lampu & Senter',
+    'Sleeping Bag',
+    'Meja & Kursi',
+    'Pakaian & Alas Kaki',
+    'Peralatan Hiking',
+    'P3K',
+    'Matras',
+    'Carrier / Tas',
+  ];
+
+  String? _categoryNameFromMap(Map<String, dynamic> data) {
+    return data['nama'] as String? ??
+        data['name'] as String? ??
+        data['label'] as String? ??
+        data['title'] as String?;
+  }
 
   // ──────────────────────────────────────────────────────────
   //  AMBIL ALAT PER RENTAL
@@ -106,21 +127,34 @@ class EquipmentService {
     required String? categoryId,
     required String? deskripsi,
     required String? size,
+    int? capacity,
+    double? weightKg,
     required double hargaPerHari,
     required int stock,
     String? imageUrl,
   }) async {
-    await client.from('equipment').insert({
+    final data = <String, dynamic>{
       'rental_id': rentalId,
       'category_id': categoryId,
       'nama': nama,
       'deskripsi': deskripsi,
-      'size': size,
       'harga_per_hari': hargaPerHari,
       'stock': stock,
       'image_url': imageUrl,
       'is_available': true,
-    });
+    };
+
+    if (size != null && size.isNotEmpty) {
+      data['size'] = size;
+    }
+    if (capacity != null) {
+      data['capacity'] = capacity;
+    }
+    if (weightKg != null) {
+      data['weight_kg'] = weightKg;
+    }
+
+    await client.from('equipment').insert(data);
   }
 
   Future<String> uploadFotoAlat({
@@ -151,6 +185,8 @@ class EquipmentService {
     required String? categoryId,
     required String? deskripsi,
     required String? size,
+    int? capacity,
+    double? weightKg,
     required double hargaPerHari,
     required int stock,
     String? imageUrl,
@@ -159,11 +195,18 @@ class EquipmentService {
       'nama': nama,
       'category_id': categoryId,
       'deskripsi': deskripsi,
-      'size': size,
       'harga_per_hari': hargaPerHari,
       'stock': stock,
       'updated_at': DateTime.now().toIso8601String(),
     };
+
+    if (size != null && size.isNotEmpty) {
+      data['size'] = size;
+    } else {
+      data['size'] = null;
+    }
+    data['capacity'] = capacity;
+    data['weight_kg'] = weightKg;
 
     if (imageUrl != null) {
       data['image_url'] = imageUrl;
@@ -178,11 +221,89 @@ class EquipmentService {
 
   /// Ambil semua kategori alat (untuk filter chip).
   Future<List<Map<String, dynamic>>> ambilKategori() async {
-    final data = await client
+    try {
+      final data = await client
+          .from('equipment_categories')
+          .select('*');
+      final rows = List<Map<String, dynamic>>.from(data as List);
+      final categories = rows
+          .map((row) {
+            final id = row['id'] as String?;
+            final name = _categoryNameFromMap(row);
+            if (id == null || id.isEmpty || name == null || name.isEmpty) {
+              return null;
+            }
+            return <String, dynamic>{
+              ...row,
+              'id': id,
+              'nama': name,
+            };
+          })
+          .whereType<Map<String, dynamic>>()
+          .toList();
+      categories.sort(
+        (a, b) => (a['nama'] as String).compareTo(b['nama'] as String),
+      );
+      if (categories.isNotEmpty) return categories;
+    } catch (e) {
+      debugPrint('Gagal memuat equipment_categories: $e');
+      // Kalau RLS/policy kategori belum siap, tetap tampilkan opsi kategori
+      // dasar agar pemilik rental bisa memilih kategori saat mengisi alat.
+    }
+    return kategoriBawaan();
+  }
+
+  List<Map<String, dynamic>> kategoriBawaan() {
+    return _defaultCategoryNames
+        .map(
+          (name) => <String, dynamic>{
+            'id': '$_newCategoryPrefix$name',
+            'nama': name,
+            'is_fallback': true,
+          },
+        )
+        .toList(growable: false);
+  }
+
+  Future<String?> pastikanCategoryId(String? categoryId) async {
+    if (categoryId == null || categoryId.isEmpty) return null;
+    if (!categoryId.startsWith(_newCategoryPrefix)) return categoryId;
+
+    final categoryName = categoryId.substring(_newCategoryPrefix.length);
+    if (categoryName.isEmpty) return null;
+
+    final existing = await client
         .from('equipment_categories')
-        .select('id, nama, icon')
-        .order('nama');
-    return List<Map<String, dynamic>>.from(data as List);
+        .select('id')
+        .eq('nama', categoryName)
+        .maybeSingle();
+    if (existing != null && existing['id'] != null) {
+      return existing['id'] as String;
+    }
+
+    try {
+      final inserted = await client
+          .from('equipment_categories')
+          .insert({
+            'nama': categoryName,
+            'icon': categoryName.toLowerCase().replaceAll(' ', '_'),
+          })
+          .select('id')
+          .single();
+      return inserted['id'] as String;
+    } catch (_) {
+      final retry = await client
+          .from('equipment_categories')
+          .select('id')
+          .eq('nama', categoryName)
+          .maybeSingle();
+      if (retry != null && retry['id'] != null) return retry['id'] as String;
+
+      throw Exception(
+        'Kategori "$categoryName" belum bisa disimpan. '
+        'Pastikan table equipment_categories punya policy SELECT dan INSERT untuk user login.',
+      );
+    }
   }
 
   // ──────────────────────────────────────────────────────────
