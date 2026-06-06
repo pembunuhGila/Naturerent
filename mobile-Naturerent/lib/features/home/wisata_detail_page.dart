@@ -430,13 +430,14 @@ class _RentalBottomCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            NrImage(
-              imageUrl: rental.fotoBanner,
-              width: 64,
-              height: 64,
-              borderRadius: BorderRadius.circular(10),
-              placeholderColor: AppColors.primaryDark,
-              placeholderIcon: Icons.storefront_rounded,
+            ClipOval(
+              child: NrImage(
+                imageUrl: rental.fotoProfil,
+                width: 64,
+                height: 64,
+                placeholderColor: AppColors.primaryDark,
+                placeholderIcon: Icons.storefront_rounded,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

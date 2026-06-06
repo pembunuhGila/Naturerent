@@ -572,13 +572,14 @@ class _RentalCard extends StatelessWidget {
             child: Row(
               children: [
                 // ── Foto rental
-                NrImage(
-                  imageUrl: rental.fotoBanner,
-                  width: 72,
-                  height: 72,
-                  borderRadius: BorderRadius.circular(12),
-                  placeholderColor: AppColors.primaryDark,
-                  placeholderIcon: Icons.storefront_rounded,
+                ClipOval(
+                  child: NrImage(
+                    imageUrl: rental.fotoProfil,
+                    width: 72,
+                    height: 72,
+                    placeholderColor: AppColors.primaryDark,
+                    placeholderIcon: Icons.storefront_rounded,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 // ── Info
