@@ -6,6 +6,8 @@ class Equipment {
   final String nama;
   final String? deskripsi;
   final String? size;
+  final int? capacity;
+  final double? weightKg;
   final double hargaPerHari;
   final int stock;
   final String? imageUrl;   // kolom image_url di tabel equipment
@@ -26,6 +28,8 @@ class Equipment {
     required this.nama,
     this.deskripsi,
     this.size,
+    this.capacity,
+    this.weightKg,
     required this.hargaPerHari,
     required this.stock,
     this.imageUrl,
@@ -55,6 +59,8 @@ class Equipment {
       nama: map['nama'] as String,
       deskripsi: map['deskripsi'] as String?,
       size: map['size'] as String?,
+      capacity: (map['capacity'] as num?)?.toInt(),
+      weightKg: (map['weight_kg'] as num?)?.toDouble(),
       hargaPerHari: (map['harga_per_hari'] as num).toDouble(),
       stock: map['stock'] as int,
       imageUrl: map['image_url'] as String?,
