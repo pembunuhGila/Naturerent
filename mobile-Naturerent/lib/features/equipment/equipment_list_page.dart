@@ -20,6 +20,7 @@ class EquipmentListPage extends StatefulWidget {
 
 class _EquipmentListPageState extends State<EquipmentListPage> {
   final _equipmentService = EquipmentService();
+  final _searchCtrl = TextEditingController();
 
   List<Equipment> _semuaAlat = [];
   List<Equipment> _alatFiltered = [];
@@ -27,11 +28,18 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   bool _isLoading = true;
   String? _error;
   String? _selectedKategoriId; // null = Semua
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _muatData();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _muatData() async {
@@ -48,7 +56,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
       setState(() {
         _semuaAlat = results[0] as List<Equipment>;
         _kategori = results[1] as List<Map<String, dynamic>>;
-        _alatFiltered = _semuaAlat;
+        _applyFilters();
         _isLoading = false;
       });
     } catch (e) {
@@ -63,10 +71,34 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   void _filterKategori(String? kategoriId) {
     setState(() {
       _selectedKategoriId = kategoriId;
-      _alatFiltered = kategoriId == null
-          ? _semuaAlat
-          : _semuaAlat.where((a) => a.categoryId == kategoriId).toList();
+      _applyFilters();
     });
+  }
+
+  void _filterSearch(String value) {
+    setState(() {
+      _searchQuery = value.trim().toLowerCase();
+      _applyFilters();
+    });
+  }
+
+  void _applyFilters() {
+    Iterable<Equipment> data = _semuaAlat;
+    if (_selectedKategoriId != null) {
+      data = data.where((a) => a.categoryId == _selectedKategoriId);
+    }
+    if (_searchQuery.isNotEmpty) {
+      data = data.where((a) {
+        final text = [
+          a.nama,
+          a.deskripsi ?? '',
+          a.namaKategori ?? '',
+          a.size ?? '',
+        ].join(' ').toLowerCase();
+        return text.contains(_searchQuery);
+      });
+    }
+    _alatFiltered = data.toList();
   }
 
   // -- Icon untuk tiap kategori berdasarkan nama
@@ -113,8 +145,11 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
+              _buildStickyAppBar(),
               // -- Header rental
               SliverToBoxAdapter(child: _buildHeader()),
+
+              SliverToBoxAdapter(child: _buildSearchBox()),
 
               // -- Filter kategori
               if (_kategori.isNotEmpty)
@@ -163,123 +198,167 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   }
 
   // ----------------------------------------------------------
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        // App bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Row(
-            children: [
-              // Back
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 16,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+  SliverAppBar _buildStickyAppBar() {
+    return SliverAppBar(
+      pinned: true,
+      elevation: 0,
+      backgroundColor: AppColors.background,
+      surfaceTintColor: AppColors.background,
+      automaticallyImplyLeading: false,
+      toolbarHeight: 62,
+      titleSpacing: 16,
+      title: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.rental.namaRental,
-                  style: AppTextStyles.headlineLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 16,
+                color: AppColors.textPrimary,
               ),
-              // Cart icon with badge
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RentalDetailPage(rental: widget.rental),
-                  ),
-                ),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.textPrimary,
-                    size: 18,
-                  ),
-                ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              widget.rental.namaRental,
+              style: AppTextStyles.headlineLarge.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 20,
               ),
-              const SizedBox(width: 8),
-              ValueListenableBuilder<int>(
-                valueListenable: CartService().count,
-                builder: (_, count, widget) => Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CheckoutPage()),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RentalDetailPage(rental: widget.rental),
+              ),
+            ),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.textPrimary,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ValueListenableBuilder<int>(
+            valueListenable: CartService().count,
+            builder: (_, count, widget) => Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CheckoutPage()),
+                  ),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: AppColors.textPrimary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                if (count > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
                       ),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: const Icon(
-                          Icons.shopping_bag_outlined,
-                          color: AppColors.textPrimary,
-                          size: 18,
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                    if (count > 0)
-                      Positioned(
-                        top: -4,
-                        right: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '$count',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: TextField(
+        controller: _searchCtrl,
+        onChanged: _filterSearch,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Cari alat camping...',
+          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
+          suffixIcon: _searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    _filterSearch('');
+                  },
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textHint),
                 ),
-              ),
-            ],
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.primary),
           ),
         ),
+      ),
+    );
+  }
 
+  Widget _buildHeader() {
+    return Column(
+      children: [
         // Banner + info rental
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -647,6 +726,10 @@ class _AlatShowcaseCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (alat.size != null && alat.size!.isNotEmpty) ...[
+                          _SpecChip(label: 'Size ${alat.size}'),
+                          const SizedBox(width: 6),
+                        ],
                         _SpecChip(label: '${alat.stock} unit'),
                       ],
                     ),
