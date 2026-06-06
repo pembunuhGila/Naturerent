@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/rental_profile.dart';
+import '../../core/services/cart_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
@@ -190,7 +191,7 @@ class _RentalPageState extends State<RentalPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(child: _buildAppBar()),
+              _buildPinnedAppBar(),
               if (widget.wisataId != null)
                 SliverToBoxAdapter(child: _buildLokasiBar()),
               SliverToBoxAdapter(child: _buildToggle()),
@@ -239,9 +240,22 @@ class _RentalPageState extends State<RentalPage> {
   //  WIDGETS
   // ──────────────────────────────────────────────────────────
 
+  SliverAppBar _buildPinnedAppBar() {
+    return SliverAppBar(
+      pinned: true,
+      automaticallyImplyLeading: false,
+      backgroundColor: AppColors.background,
+      surfaceTintColor: AppColors.background,
+      elevation: 0,
+      toolbarHeight: 62,
+      titleSpacing: 0,
+      title: _buildAppBar(),
+    );
+  }
+
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
         children: [
           if (widget.wisataId != null) ...[
@@ -273,24 +287,53 @@ class _RentalPageState extends State<RentalPage> {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CheckoutPage()),
-            ),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Icon(
-                Icons.shopping_bag_outlined,
-                color: AppColors.textPrimary,
-                size: 18,
-              ),
+          ValueListenableBuilder<int>(
+            valueListenable: CartService().count,
+            builder: (_, count, __) => Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CheckoutPage()),
+                  ),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: AppColors.textPrimary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                if (count > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
