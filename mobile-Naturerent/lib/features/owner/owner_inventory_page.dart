@@ -24,10 +24,12 @@ class OwnerInventoryPage extends StatefulWidget {
 class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final ScrollController _scrollController = ScrollController();
   final _rentalService = RentalService();
   final _equipmentService = EquipmentService();
 
   List<Equipment> _alat = [];
+  List<Map<String, dynamic>> _categories = [];
   List<DestinationInfo> _suggestedDestinations = [];
   String? _rentalId;
   RentalProfile? _rentalProfile; // Simpan profil rental lengkap (termasuk lat/lng)
@@ -56,12 +58,18 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     if (oldWidget.initialTabIndex != widget.initialTabIndex &&
         _tabController.index != nextIndex) {
       _tabController.index = nextIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
     }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -72,13 +80,19 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     });
     try {
       final rental = await _rentalService.pastikanRentalSayaAda();
-      final alat = await _equipmentService.ambilSemuaAlatByRental(rental.id);
+      final results = await Future.wait([
+        _equipmentService.ambilSemuaAlatByRental(rental.id),
+        _equipmentService.ambilKategori(),
+      ]);
+      final alat = results[0] as List<Equipment>;
+      final categories = results[1] as List<Map<String, dynamic>>;
       final suggestedDestinations = await _loadSavedDestinations(rental);
       if (!mounted) return;
       setState(() {
         _rentalId = rental.id;
         _rentalProfile = rental;
         _alat = alat;
+        _categories = categories;
         _suggestedDestinations = suggestedDestinations;
         _loading = false;
       });
@@ -190,6 +204,13 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     if (changed == true) _muatAlat();
   }
 
+  void _onTabTap(int index) {
+    setState(() {});
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
   Future<void> _bukaEditAlat(Equipment? equipment) async {
     if (equipment == null) {
       _comingSoon('Edit data contoh');
@@ -227,6 +248,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                 color: AppColors.ownerPrimaryGreen,
                 onRefresh: _muatAlat,
                 child: ListView(
+                  controller: _scrollController,
                   padding: const EdgeInsets.fromLTRB(32, 28, 24, 130),
                   children: [
                     Text(
@@ -274,6 +296,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                         loading: _loading,
                         error: _error,
                         alat: _alat,
+                        categories: _categories,
                         onEdit: _bukaEditAlat,
                         onAdd: _preparingAdd ? null : _bukaTambahAlat,
                         preparingAdd: _preparingAdd,
@@ -284,7 +307,6 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
             ),
           ],
         ),
-
       ),
     );
   }
@@ -294,7 +316,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
       children: [
         TabBar(
           controller: _tabController,
-          onTap: (_) => setState(() {}),
+          onTap: _onTabTap,
           labelColor: AppColors.ownerPrimaryGreen,
           unselectedLabelColor: const Color(0xFF496171),
           labelStyle: AppTextStyles.bodyMedium.copyWith(
@@ -628,6 +650,7 @@ class _EquipmentManageTab extends StatefulWidget {
   final bool loading;
   final String? error;
   final List<Equipment> alat;
+  final List<Map<String, dynamic>> categories;
   final ValueChanged<Equipment?> onEdit;
   final VoidCallback? onAdd;
   final bool preparingAdd;
@@ -636,6 +659,7 @@ class _EquipmentManageTab extends StatefulWidget {
     required this.loading,
     required this.error,
     required this.alat,
+    required this.categories,
     required this.onEdit,
     required this.onAdd,
     required this.preparingAdd,
@@ -650,22 +674,30 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
 
   List<MapEntry<String, String>> get _categoryOptions {
     final map = <String, String>{};
+    for (final item in widget.categories) {
+      final id = item['id'] as String?;
+      if (id == null || id.isEmpty) continue;
+      map[id] = item['nama'] as String? ?? 'Kategori';
+    }
     for (final item in widget.alat) {
       final id = item.categoryId;
-      if (id == null || id.isEmpty) continue;
+      if (id == null || id.isEmpty || map.containsKey(id)) continue;
       map[id] = item.namaKategori ?? 'Kategori';
     }
-    final entries = map.entries.toList()
-      ..sort((a, b) => a.value.compareTo(b.value));
-    return entries;
+    return map.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _selectedCategoryId == null
+    final categoryOptions = _categoryOptions;
+    final activeCategoryId =
+        categoryOptions.any((entry) => entry.key == _selectedCategoryId)
+            ? _selectedCategoryId
+            : null;
+    final filtered = activeCategoryId == null
         ? widget.alat
         : widget.alat
-            .where((item) => item.categoryId == _selectedCategoryId)
+            .where((item) => item.categoryId == activeCategoryId)
             .toList();
     final displayItems = filtered.map(_OwnerEquipmentItem.fromEquipment).toList();
 
@@ -674,8 +706,8 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
       physics: const NeverScrollableScrollPhysics(),
       children: [
         _EquipmentTopControls(
-          categories: _categoryOptions,
-          selectedCategoryId: _selectedCategoryId,
+          categories: categoryOptions,
+          selectedCategoryId: activeCategoryId,
           onCategoryChanged: (value) {
             setState(() => _selectedCategoryId = value);
           },
@@ -699,10 +731,10 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
         else if (displayItems.isEmpty)
           _EquipmentEmptyState(
             icon: Icons.inventory_2_outlined,
-            title: _selectedCategoryId == null
+            title: activeCategoryId == null
                 ? 'Belum ada peralatan'
                 : 'Kategori ini masih kosong',
-            message: _selectedCategoryId == null
+            message: activeCategoryId == null
                 ? 'Tambahkan alat pertama agar bisa dikelola dan diedit.'
                 : 'Pilih kategori lain atau tambahkan alat baru.',
           )
@@ -740,14 +772,7 @@ class _EquipmentTopControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppColors.ownerBorderColor,
-          width: AppColors.ownerBorderWidth,
-        ),
-      ),
+      color: Colors.transparent,
       child: Column(
         children: [
           SizedBox(
@@ -784,20 +809,16 @@ class _EquipmentTopControls extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
-            value: selectedCategoryId ?? '__all',
+            value: selectedCategoryId,
+            isExpanded: true,
             onChanged: (value) {
               onCategoryChanged(value == '__all' ? null : value);
             },
             decoration: InputDecoration(
-              prefixIcon: const Icon(
-                Icons.category_outlined,
-                color: Color(0xFF687369),
-                size: 19,
-              ),
               filled: true,
               fillColor: AppColors.ownerCardBackground,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
+                horizontal: 18,
                 vertical: 13,
               ),
               border: OutlineInputBorder(
@@ -809,16 +830,41 @@ class _EquipmentTopControls extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.ownerBorderColor),
               ),
             ),
-            hint: const Text('Kelompokkan berdasarkan kategori'),
+            hint: Text(
+              'Kategori Alat',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF202321),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             items: [
-              const DropdownMenuItem<String>(
+              DropdownMenuItem<String>(
                 value: '__all',
-                child: Text('Semua Kategori'),
+                child: Text(
+                  'Semua Kategori',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               ...categories.map(
                 (entry) => DropdownMenuItem<String>(
                   value: entry.key,
-                  child: Text(entry.value),
+                  child: Text(
+                    entry.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
