@@ -6,7 +6,6 @@ import '../../core/models/rental_profile.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
-import '../../core/widgets/nr_toast.dart';
 import '../checkout/checkout_page.dart';
 import '../home/rental_detail_page.dart';
 import 'equipment_detail_page.dart';
@@ -70,7 +69,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
     });
   }
 
-  // ── Icon untuk tiap kategori berdasarkan nama
+  // -- Icon untuk tiap kategori berdasarkan nama
   IconData _iconKategori(String? nama) {
     switch (nama?.toLowerCase()) {
       case 'tenda':
@@ -114,16 +113,16 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // ── Header rental
+              // -- Header rental
               SliverToBoxAdapter(child: _buildHeader()),
 
-              // ── Filter kategori
+              // -- Filter kategori
               if (_kategori.isNotEmpty)
                 SliverToBoxAdapter(child: _buildKategoriFilter()),
 
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-              // ── Content
+              // -- Content
               if (_isLoading)
                 const SliverFillRemaining(
                   child: Center(
@@ -140,6 +139,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                     (_, i) => _AlatShowcaseCard(
                       alat: _alatFiltered[i],
                       namaRental: widget.rental.namaRental,
+                      lokasi: widget.rental.alamat,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -149,15 +149,6 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                           ),
                         ),
                       ),
-                      onSewa: () {
-                        CartService().tambah(_alatFiltered[i], widget.rental);
-                        NrToast.show(
-                          context,
-                          '${_alatFiltered[i].nama} ditambahkan ke keranjang',
-                          type: NrToastType.success,
-                          duration: const Duration(seconds: 2),
-                        );
-                      },
                     ),
                     childCount: _alatFiltered.length,
                   ),
@@ -171,7 +162,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
     );
   }
 
-  // ──────────────────────────────────────────────────────────
+  // ----------------------------------------------------------
   Widget _buildHeader() {
     return Column(
       children: [
@@ -300,14 +291,15 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               children: [
                 Row(
                   children: [
-                    // Foto banner rental
-                    NrImage(
-                      imageUrl: widget.rental.fotoBanner,
-                      width: 56,
-                      height: 56,
-                      borderRadius: BorderRadius.circular(12),
-                      placeholderColor: AppColors.primaryDark,
-                      placeholderIcon: Icons.storefront_rounded,
+                    // Foto profil rental
+                    ClipOval(
+                      child: NrImage(
+                        imageUrl: widget.rental.fotoProfil,
+                        width: 56,
+                        height: 56,
+                        placeholderColor: AppColors.primaryDark,
+                        placeholderIcon: Icons.storefront_rounded,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -497,222 +489,20 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   }
 }
 
-// ──────────────────────────────────────────────────────────
+// ----------------------------------------------------------
 //  CARD ALAT
-// ──────────────────────────────────────────────────────────
-// ignore: unused_element
-class _AlatCard extends StatelessWidget {
-  final Equipment alat;
-  final String namaRental;
-  final VoidCallback onTap;
-  final VoidCallback onSewa;
-
-  const _AlatCard({
-    required this.alat,
-    required this.namaRental,
-    required this.onTap,
-    required this.onSewa,
-  });
-
-  String get _hargaFormatted {
-    final harga = alat.hargaPerHari.toInt();
-    if (harga >= 1000) {
-      return 'Rp ${(harga / 1000).toStringAsFixed(harga % 1000 == 0 ? 0 : 1)}k';
-    }
-    return 'Rp $harga';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                // ── Foto alat
-                NrImage(
-                  imageUrl: alat.gambarprimaryUrl,
-                  width: 88,
-                  height: 88,
-                  borderRadius: BorderRadius.circular(12),
-                  placeholderColor: const Color(0xFF2D4A2D),
-                  placeholderIcon: Icons.inventory_2_outlined,
-                ),
-
-                const SizedBox(width: 14),
-
-                // ── Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Nama alat
-                      Text(
-                        alat.nama,
-                        style: AppTextStyles.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 3),
-
-                      // Nama rental
-                      Text(
-                        namaRental,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Harga + kategori
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Harga
-                          RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: _hargaFormatted,
-                                  style: AppTextStyles.headlineMedium.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: '/hr',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.textHint,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Badge kategori
-                          if (alat.namaKategori != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                alat.namaKategori!.split(' ').first,
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      // Stok tersedia
-                      Row(
-                        children: [
-                          Icon(
-                            alat.stock > 0
-                                ? Icons.check_circle_outline_rounded
-                                : Icons.cancel_outlined,
-                            size: 13,
-                            color: alat.stock > 0
-                                ? AppColors.primary
-                                : AppColors.error,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              alat.stock > 0
-                                  ? '${alat.stock} unit tersedia'
-                                  : 'Stok habis',
-                              style: AppTextStyles.caption.copyWith(
-                                color: alat.stock > 0
-                                    ? AppColors.primary
-                                    : AppColors.error,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          // ── Tombol Sewa
-                          GestureDetector(
-                            onTap: alat.stock > 0 ? onSewa : null,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: alat.stock > 0
-                                    ? AppColors.primaryDark
-                                    : AppColors.border,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'Sewa',
-                                style: AppTextStyles.caption.copyWith(
-                                  color: alat.stock > 0
-                                      ? Colors.white
-                                      : AppColors.textHint,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+// ----------------------------------------------------------
 class _AlatShowcaseCard extends StatelessWidget {
   final Equipment alat;
   final String namaRental;
+  final String? lokasi;
   final VoidCallback onTap;
-  final VoidCallback onSewa;
 
   const _AlatShowcaseCard({
     required this.alat,
     required this.namaRental,
+    required this.lokasi,
     required this.onTap,
-    required this.onSewa,
   });
 
   String get _hargaFormatted {
@@ -733,129 +523,138 @@ class _AlatShowcaseCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                NrImage(
-                  imageUrl: alat.gambarprimaryUrl,
-                  width: double.infinity,
-                  height: 236,
-                  fit: BoxFit.cover,
-                  borderRadius: BorderRadius.circular(18),
-                  placeholderColor: const Color(0xFF2D4A2D),
-                  placeholderIcon: Icons.inventory_2_outlined,
-                ),
-                Positioned(
-                  left: 10,
-                  top: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: alat.stock > 0
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : AppColors.error.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      alat.stock > 0 ? 'TERSEDIA' : 'STOK HABIS',
-                      style: AppTextStyles.caption.copyWith(
-                        color: alat.stock > 0
-                            ? AppColors.primaryDark
-                            : Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+        child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        alat.nama,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
+          ],
+        ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    height: 172,
+                    width: double.infinity,
+                    color: Colors.white,
+                    alignment: Alignment.center,
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: NrImage(
+                        imageUrl: alat.gambarprimaryUrl,
+                        width: double.infinity,
+                        height: 152,
+                        fit: BoxFit.contain,
+                        placeholderColor: const Color(0xFF2D4A2D),
+                        placeholderIcon: Icons.inventory_2_outlined,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        alat.deskripsi ?? namaRental,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  Positioned(
+                    left: 10,
+                    top: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: alat.stock > 0
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : AppColors.error.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        alat.stock > 0 ? 'TERSEDIA' : 'STOK HABIS',
+                        style: AppTextStyles.caption.copyWith(
+                          color: alat.stock > 0
+                              ? AppColors.primaryDark
+                              : Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _hargaFormatted,
+                      alat.nama,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primaryDark,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
+                    const SizedBox(height: 5),
                     Text(
-                      '/HARI',
+                      namaRental,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textHint,
-                        fontSize: 9,
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: AppColors.textHint,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            lokasi ?? 'Lokasi belum tersedia',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '$_hargaFormatted / hari',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        _SpecChip(label: '${alat.stock} unit'),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                if (alat.namaKategori != null)
-                  _SpecChip(label: alat.namaKategori!),
-                const SizedBox(width: 6),
-                _SpecChip(label: '${alat.stock} unit'),
-                const Spacer(),
-                GestureDetector(
-                  onTap: alat.stock > 0 ? onSewa : null,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: alat.stock > 0
-                          ? AppColors.primaryDark
-                          : AppColors.border,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.add_shopping_cart_rounded,
-                      color: alat.stock > 0 ? Colors.white : AppColors.textHint,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
