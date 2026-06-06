@@ -245,115 +245,101 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
   }
 
   Widget _buildFotoHero(List<String> gambar) {
-    return Stack(
-      children: [
-        // ── Foto utama
-        GestureDetector(
-          onHorizontalDragEnd: (details) {
-            if (gambar.length <= 1) return;
-            if (details.primaryVelocity! < 0) {
-              setState(() => _fotoIndex = (_fotoIndex + 1) % gambar.length);
-            } else {
-              setState(
-                () => _fotoIndex =
-                    (_fotoIndex - 1 + gambar.length) % gambar.length,
-              );
-            }
-          },
-          child: NrImage(
-            imageUrl: gambar.isNotEmpty ? gambar[_fotoIndex] : null,
-            width: double.infinity,
-            height: 300,
-            placeholderColor: AppColors.primaryDark,
-            placeholderIcon: Icons.inventory_2_outlined,
-          ),
-        ),
-
-        // ── Gradient bawah
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 80,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  AppColors.background.withValues(alpha: 0.95),
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: AppColors.textPrimary,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'Detail Peralatan',
+                        style: AppTextStyles.headlineMedium.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 40),
                 ],
               ),
             ),
           ),
-        ),
-
-        // ── Back button
-        Positioned(
-          top: 44,
-          left: 16,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black38,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-          ),
-        ),
-
-        // ── Notif button
-        // ── Foto indicator dots (jika lebih dari 1)
-        if (gambar.length > 1)
-          Positioned(
-            bottom: 12,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(gambar.length, (i) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: i == _fotoIndex ? 20 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: i == _fotoIndex ? AppColors.primary : Colors.white54,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
+          GestureDetector(
+            onHorizontalDragEnd: (details) {
+              if (gambar.length <= 1) return;
+              if (details.primaryVelocity! < 0) {
+                setState(() => _fotoIndex = (_fotoIndex + 1) % gambar.length);
+              } else {
+                setState(
+                  () => _fotoIndex =
+                      (_fotoIndex - 1 + gambar.length) % gambar.length,
                 );
-              }),
-            ),
-          ),
-
-        // ── Title di header
-        Positioned(
-          top: 44,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Text(
-              'Detail Peralatan',
-              style: AppTextStyles.headlineMedium.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                shadows: [Shadow(color: Colors.black45, blurRadius: 8)],
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              height: 300,
+              color: Colors.white,
+              alignment: Alignment.center,
+              child: NrImage(
+                imageUrl: gambar.isNotEmpty ? gambar[_fotoIndex] : null,
+                width: double.infinity,
+                height: 300,
+                fit: BoxFit.contain,
+                placeholderColor: AppColors.primaryDark,
+                placeholderIcon: Icons.inventory_2_outlined,
               ),
             ),
           ),
-        ),
-      ],
+          if (gambar.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(gambar.length, (i) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: i == _fotoIndex ? 20 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: i == _fotoIndex
+                          ? AppColors.primary
+                          : AppColors.border,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
+      ),
     );
   }
-
   Widget _buildKetersediaanCard(Equipment alat) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -430,13 +416,14 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         ),
         child: Row(
           children: [
-            NrImage(
-              imageUrl: widget.rental.fotoBanner ?? widget.rental.fotoProfil,
-              width: 50,
-              height: 50,
-              borderRadius: BorderRadius.circular(12),
-              placeholderColor: AppColors.primaryDark,
-              placeholderIcon: Icons.storefront_rounded,
+            ClipOval(
+              child: NrImage(
+                imageUrl: widget.rental.fotoProfil,
+                width: 50,
+                height: 50,
+                placeholderColor: AppColors.primaryDark,
+                placeholderIcon: Icons.storefront_rounded,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
