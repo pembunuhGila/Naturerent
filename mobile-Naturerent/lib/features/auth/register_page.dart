@@ -29,6 +29,7 @@ class _RegisterPageState extends State<RegisterPage>
   final _namaTokoController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _kotaController = TextEditingController();
   final _alamatController = TextEditingController();
   final _rekeningController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -42,20 +43,11 @@ class _RegisterPageState extends State<RegisterPage>
   _PickedImage? _fotoKtpOwnerImage;
   _PickedImage? _fotoNpwpImage;
   _PickedImage? _fotoNibImage;
-  String? _selectedKota;
   String? _selectedBank;
   StreamSubscription? _authSub;
   late final AnimationController _animController;
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
-
-  static const _kotaOptions = [
-    'Malang',
-    'Surabaya',
-    'Jakarta',
-    'Bandung',
-    'Yogyakarta',
-  ];
 
   static const _bankOptions = ['BCA', 'BRI', 'MANDIRI', 'BNI'];
 
@@ -85,6 +77,7 @@ class _RegisterPageState extends State<RegisterPage>
     _namaTokoController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _kotaController.dispose();
     _alamatController.dispose();
     _rekeningController.dispose();
     _passwordController.dispose();
@@ -174,7 +167,9 @@ class _RegisterPageState extends State<RegisterPage>
         alamatToko: widget.role == UserRole.pemilik
             ? _alamatController.text.trim()
             : null,
-        kotaToko: widget.role == UserRole.pemilik ? _selectedKota : null,
+        kotaToko: widget.role == UserRole.pemilik
+            ? _kotaController.text.trim()
+            : null,
         namaBank: _selectedBank,
         nomorRekening: _rekeningController.text.trim(),
         role: widget.role,
@@ -646,15 +641,16 @@ class _RegisterPageState extends State<RegisterPage>
                 },
               ),
               const SizedBox(height: 18),
-              _MitraDropdownField(
+              _MitraTextField(
                 label: 'Kota',
-                hint: 'Pilih kota',
+                hint: 'Masukkan kota toko',
                 icon: Icons.location_city_outlined,
-                value: _selectedKota,
-                items: _kotaOptions,
-                onChanged: (value) => setState(() => _selectedKota = value),
+                controller: _kotaController,
+                textInputAction: TextInputAction.next,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'Kota wajib dipilih';
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Kota wajib diisi';
+                  }
                   return null;
                 },
               ),
@@ -1334,6 +1330,7 @@ class _MitraTextField extends StatefulWidget {
   final IconData icon;
   final TextEditingController controller;
   final TextInputType keyboardType;
+  final TextInputAction? textInputAction;
   final bool isPassword;
   final String? Function(String?)? validator;
 
@@ -1343,6 +1340,7 @@ class _MitraTextField extends StatefulWidget {
     required this.icon,
     required this.controller,
     this.keyboardType = TextInputType.text,
+    this.textInputAction,
     this.isPassword = false,
     this.validator,
   });
@@ -1372,6 +1370,7 @@ class _MitraTextFieldState extends State<_MitraTextField> {
         TextFormField(
           controller: widget.controller,
           keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
           obscureText: widget.isPassword ? _obscure : false,
           validator: widget.validator,
           style: AppTextStyles.bodyMedium.copyWith(
