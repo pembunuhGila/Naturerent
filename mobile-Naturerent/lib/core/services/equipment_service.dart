@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/equipment.dart';
@@ -43,7 +45,8 @@ class EquipmentService {
           *,
           equipment_categories(nama, icon),
           rental_profiles(nama_rental),
-          equipment_images(image_url, is_primary, sort_order)
+          equipment_images(image_url, is_primary, sort_order),
+          equipment_sizes(size, stock)
         ''')
         .eq('rental_id', rentalId)
         .eq('is_available', true)
@@ -62,7 +65,8 @@ class EquipmentService {
           *,
           equipment_categories(nama, icon),
           rental_profiles(nama_rental),
-          equipment_images(image_url, is_primary, sort_order)
+          equipment_images(image_url, is_primary, sort_order),
+          equipment_sizes(size, stock)
         ''')
         .eq('rental_id', rentalId)
         .order('nama');
@@ -83,7 +87,8 @@ class EquipmentService {
           *,
           equipment_categories(nama, icon),
           rental_profiles(nama_rental),
-          equipment_images(image_url, is_primary, sort_order)
+          equipment_images(image_url, is_primary, sort_order),
+          equipment_sizes(size, stock)
         ''')
         .eq('rental_id', rentalId)
         .eq('category_id', categoryId)
@@ -107,7 +112,8 @@ class EquipmentService {
           *,
           equipment_categories(nama, icon),
           rental_profiles(nama_rental, alamat, no_wa),
-          equipment_images(image_url, is_primary, sort_order)
+          equipment_images(image_url, is_primary, sort_order),
+          equipment_sizes(size, stock)
         ''')
         .eq('id', equipmentId)
         .maybeSingle();
@@ -153,7 +159,15 @@ class EquipmentService {
       data['weight_kg'] = weightKg;
     }
 
-    await client.from('equipment').insert(data);
+    final inserted = await client
+        .from('equipment')
+        .insert(data)
+        .select('id')
+        .single();
+    await _syncEquipmentSizes(
+      equipmentId: inserted['id'] as String,
+      size: size,
+    );
   }
 
   Future<String> uploadFotoAlat({
@@ -212,6 +226,53 @@ class EquipmentService {
     }
 
     await client.from('equipment').update(data).eq('id', equipmentId);
+    await _syncEquipmentSizes(equipmentId: equipmentId, size: size);
+  }
+
+  Future<void> _syncEquipmentSizes({
+    required String equipmentId,
+    required String? size,
+  }) async {
+    final sizeStocks = _parseSizeStocks(size);
+    await client
+        .from('equipment_sizes')
+        .delete()
+        .eq('equipment_id', equipmentId);
+    if (sizeStocks.isEmpty) return;
+
+    await client
+        .from('equipment_sizes')
+        .insert(
+          sizeStocks.entries
+              .map(
+                (entry) => {
+                  'equipment_id': equipmentId,
+                  'size': entry.key,
+                  'stock': entry.value,
+                },
+              )
+              .toList(),
+        );
+  }
+
+  Map<String, int> _parseSizeStocks(String? size) {
+    if (size == null || size.trim().isEmpty) return {};
+    final trimmed = size.trim();
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return {};
+
+    final decoded = jsonDecode(trimmed);
+    if (decoded is! Map) return {};
+
+    final result = <String, int>{};
+    for (final entry in decoded.entries) {
+      final key = entry.key.toString().trim();
+      final rawValue = entry.value;
+      final value = rawValue is num
+          ? rawValue.toInt()
+          : int.tryParse('$rawValue');
+      if (key.isNotEmpty && value != null && value >= 0) result[key] = value;
+    }
+    return result;
   }
 
   Future<void> hapusAlat(String equipmentId) async {
@@ -221,9 +282,7 @@ class EquipmentService {
   /// Ambil semua kategori alat (untuk filter chip).
   Future<List<Map<String, dynamic>>> ambilKategori() async {
     try {
-      final data = await client
-          .from('equipment_categories')
-          .select('*');
+      final data = await client.from('equipment_categories').select('*');
       final rows = List<Map<String, dynamic>>.from(data as List);
       final categories = rows
           .map((row) {
@@ -232,11 +291,7 @@ class EquipmentService {
             if (id == null || id.isEmpty || name == null || name.isEmpty) {
               return null;
             }
-            return <String, dynamic>{
-              ...row,
-              'id': id,
-              'nama': name,
-            };
+            return <String, dynamic>{...row, 'id': id, 'nama': name};
           })
           .whereType<Map<String, dynamic>>()
           .toList();

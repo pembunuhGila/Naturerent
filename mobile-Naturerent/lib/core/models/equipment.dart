@@ -10,7 +10,7 @@ class Equipment {
   final double? weightKg;
   final double hargaPerHari;
   final int stock;
-  final String? imageUrl;   // kolom image_url di tabel equipment
+  final String? imageUrl; // kolom image_url di tabel equipment
   final bool isAvailable;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -48,9 +48,30 @@ class Equipment {
     // Join rental_profiles
     final rental = map['rental_profiles'] as Map<String, dynamic>?;
     // Join equipment_images (list)
-    final imgs = (map['equipment_images'] as List?)
-        ?.map((e) => e['image_url'] as String)
-        .toList() ?? [];
+    final imgs =
+        (map['equipment_images'] as List?)
+            ?.map((e) => e['image_url'] as String)
+            .toList() ??
+        [];
+    final sizeRows =
+        (map['equipment_sizes'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        const [];
+    String? sizeValue = map['size'] as String?;
+    if (sizeRows.isNotEmpty) {
+      final pairs = sizeRows
+          .map((row) {
+            final size = (row['size'] as String? ?? '').trim().replaceAll(
+              '"',
+              r'\"',
+            );
+            final stock = (row['stock'] as num?)?.toInt() ?? 0;
+            return '"$size":$stock';
+          })
+          .where((pair) => !pair.startsWith('"":'));
+      sizeValue = '{${pairs.join(',')}}';
+    }
 
     return Equipment(
       id: map['id'] as String,
@@ -58,7 +79,7 @@ class Equipment {
       categoryId: map['category_id'] as String?,
       nama: map['nama'] as String,
       deskripsi: map['deskripsi'] as String?,
-      size: map['size'] as String?,
+      size: sizeValue,
       capacity: (map['capacity'] as num?)?.toInt(),
       weightKg: (map['weight_kg'] as num?)?.toDouble(),
       hargaPerHari: (map['harga_per_hari'] as num).toDouble(),
@@ -85,5 +106,93 @@ class Equipment {
   }
 
   /// Gambar pertama (untuk thumbnail)
-  String? get gambarprimaryUrl => semuaGambar.isNotEmpty ? semuaGambar.first : null;
+  String? get gambarprimaryUrl =>
+      semuaGambar.isNotEmpty ? semuaGambar.first : null;
+
+  /// Parse size field sebagai map {size: stock}.
+  /// Format baru: JSON `{"S":5,"M":10,"L":3}`
+  /// Format lama: plain string "S, M, L" → semua size = stock equipment
+  Map<String, int> get sizeStockMap {
+    if (size == null || size!.trim().isEmpty) return {};
+    final trimmed = size!.trim();
+
+    // Coba parse sebagai JSON map
+    if (trimmed.startsWith('{')) {
+      try {
+        final decoded = _jsonDecode(trimmed);
+        if (decoded is Map) {
+          return decoded.map(
+            (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+          );
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: plain string "S, M, L" → tiap size = stock penuh
+    final parts = trimmed
+        .split(RegExp(r'[,;/]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty);
+    if (parts.isEmpty) return {};
+    return {for (final s in parts) s: stock};
+  }
+
+  /// Daftar semua size yang tersedia (stock > 0)
+  List<String> get availableSizes =>
+      sizeStockMap.entries.where((e) => e.value > 0).map((e) => e.key).toList();
+
+  /// Semua size (termasuk yang habis)
+  List<String> get allSizes => sizeStockMap.keys.toList();
+
+  static dynamic _jsonDecode(String source) {
+    // Minimal JSON map parser to avoid importing dart:convert everywhere
+    // ignore: avoid_dynamic_calls
+    return _SimpleJsonParser.parse(source);
+  }
+}
+
+/// Minimal JSON map parser for size-stock field
+class _SimpleJsonParser {
+  static dynamic parse(String source) {
+    final s = source.trim();
+    if (!s.startsWith('{') || !s.endsWith('}')) return null;
+    final inner = s.substring(1, s.length - 1).trim();
+    if (inner.isEmpty) return <String, dynamic>{};
+    final map = <String, dynamic>{};
+    // Split by comma, but respect quoted strings
+    for (final pair in _splitPairs(inner)) {
+      final colonIdx = pair.indexOf(':');
+      if (colonIdx < 0) continue;
+      var key = pair.substring(0, colonIdx).trim();
+      final valStr = pair.substring(colonIdx + 1).trim();
+      // Remove quotes from key
+      if (key.startsWith('"') && key.endsWith('"')) {
+        key = key.substring(1, key.length - 1);
+      }
+      final num? val = int.tryParse(valStr) ?? double.tryParse(valStr);
+      if (val != null) map[key] = val;
+    }
+    return map;
+  }
+
+  static List<String> _splitPairs(String s) {
+    final result = <String>[];
+    var depth = 0;
+    var start = 0;
+    var inQuote = false;
+    for (var i = 0; i < s.length; i++) {
+      final c = s[i];
+      if (c == '"') inQuote = !inQuote;
+      if (!inQuote) {
+        if (c == '{' || c == '[') depth++;
+        if (c == '}' || c == ']') depth--;
+        if (c == ',' && depth == 0) {
+          result.add(s.substring(start, i));
+          start = i + 1;
+        }
+      }
+    }
+    if (start < s.length) result.add(s.substring(start));
+    return result;
+  }
 }

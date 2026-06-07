@@ -219,6 +219,16 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                               icon: Icons.straighten_rounded,
                               label: 'Size: ${alat.size}',
                             ),
+                          if (alat.capacity != null && alat.capacity! > 0)
+                            _SpecChip(
+                              icon: Icons.people_outline_rounded,
+                              label: 'Kapasitas: ${alat.capacity} orang',
+                            ),
+                          if (alat.weightKg != null && alat.weightKg! > 0)
+                            _SpecChip(
+                              icon: Icons.fitness_center_rounded,
+                              label: 'Berat: ${alat.weightKg!.toStringAsFixed(alat.weightKg! == alat.weightKg!.roundToDouble() ? 0 : 1)} kg',
+                            ),
                           if (alat.isAvailable)
                             _SpecChip(
                               icon: Icons.check_circle_outline_rounded,
@@ -405,22 +415,13 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
     );
   }
 
-  /// Parse size string "S, M, L" atau "36, 37, 38" menjadi list
-  List<String> _parseSizes(String? sizeStr) {
-    if (sizeStr == null || sizeStr.trim().isEmpty) return [];
-    return sizeStr
-        .split(RegExp(r'[,;/]+'))
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
-  }
-
   Widget _buildSizeSelector(Equipment alat) {
-    final sizes = _parseSizes(alat.size);
-    if (sizes.isEmpty) return const SizedBox.shrink();
+    final sizeMap = alat.sizeStockMap;
+    if (sizeMap.isEmpty) return const SizedBox.shrink();
 
     // Jika hanya 1 size, tampilkan info saja tanpa pilihan
-    if (sizes.length == 1) {
+    if (sizeMap.length == 1) {
+      final entry = sizeMap.entries.first;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -443,7 +444,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
               ),
             ),
             child: Text(
-              sizes.first,
+              '${entry.key}  •  ${entry.value} unit',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w700,
@@ -454,7 +455,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
       );
     }
 
-    // Multi-size: tampilkan pilihan chips
+    // Multi-size: tampilkan pilihan chips dengan info stok
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -470,25 +471,34 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: sizes.map((size) {
+          children: sizeMap.entries.map((entry) {
+            final size = entry.key;
+            final stock = entry.value;
             final isSelected = _selectedSize == size;
+            final isAvailable = stock > 0;
             return GestureDetector(
-              onTap: () => setState(() => _selectedSize = size),
+              onTap: isAvailable
+                  ? () => setState(() => _selectedSize = size)
+                  : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 10,
+                  horizontal: 14,
+                  vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.surface,
+                  color: !isAvailable
+                      ? AppColors.surface.withValues(alpha: 0.5)
+                      : isSelected
+                          ? AppColors.primary
+                          : AppColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.border,
+                    color: !isAvailable
+                        ? AppColors.border.withValues(alpha: 0.5)
+                        : isSelected
+                            ? AppColors.primary
+                            : AppColors.border,
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: isSelected
@@ -501,16 +511,36 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                         ]
                       : null,
                 ),
-                child: Text(
-                  size,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: isSelected
-                        ? Colors.white
-                        : AppColors.textPrimary,
-                    fontWeight: isSelected
-                        ? FontWeight.w800
-                        : FontWeight.w600,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      size,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: !isAvailable
+                            ? AppColors.textHint
+                            : isSelected
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isAvailable ? '$stock unit' : 'Habis',
+                      style: AppTextStyles.caption.copyWith(
+                        color: !isAvailable
+                            ? AppColors.textHint
+                            : isSelected
+                                ? Colors.white.withValues(alpha: 0.8)
+                                : AppColors.textSecondary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -667,8 +697,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
             onPressed: bisa
                 ? () {
                     // Validasi: jika ada pilihan size tapi belum dipilih
-                    final sizes = _parseSizes(alat.size);
-                    if (sizes.length > 1 && _selectedSize == null) {
+                    final sizeMap = alat.sizeStockMap;
+                    if (sizeMap.length > 1 && _selectedSize == null) {
                       NrToast.show(
                         context,
                         'Pilih ukuran terlebih dahulu',
@@ -676,9 +706,9 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                       );
                       return;
                     }
-                    final sizeToSend = sizes.length > 1
+                    final sizeToSend = sizeMap.length > 1
                         ? _selectedSize
-                        : (sizes.length == 1 ? sizes.first : null);
+                        : (sizeMap.length == 1 ? sizeMap.keys.first : null);
                     CartService().tambah(alat, widget.rental, selectedSize: sizeToSend);
                     NrToast.show(
                       context,

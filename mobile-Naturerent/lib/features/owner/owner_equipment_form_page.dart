@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -30,7 +31,9 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _priceCtrl;
   late final TextEditingController _descCtrl;
-  late final TextEditingController _sizeCtrl;
+  late final TextEditingController _draftSizeCtrl;
+  late final TextEditingController _draftStockCtrl;
+  final Map<String, int> _sizeStocks = {}; // {size: stock}
   late final TextEditingController _capacityCtrl;
   late final TextEditingController _weightCtrl;
   late int _stock;
@@ -54,7 +57,13 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
       text: equipment == null ? '' : equipment.hargaPerHari.round().toString(),
     );
     _descCtrl = TextEditingController(text: equipment?.deskripsi ?? '');
-    _sizeCtrl = TextEditingController(text: equipment?.size ?? '');
+    _draftSizeCtrl = TextEditingController();
+    _draftStockCtrl = TextEditingController();
+    // Parse existing sizes from JSON or comma-separated string
+    if (equipment?.size != null && equipment!.size!.trim().isNotEmpty) {
+      final sizeMap = equipment.sizeStockMap;
+      _sizeStocks.addAll(sizeMap);
+    }
     _capacityCtrl = TextEditingController(
       text: equipment?.capacity == null ? '' : equipment!.capacity.toString(),
     );
@@ -75,7 +84,9 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
     _descCtrl.dispose();
-    _sizeCtrl.dispose();
+    _draftSizeCtrl.dispose();
+    _draftStockCtrl.dispose();
+
     _capacityCtrl.dispose();
     _weightCtrl.dispose();
     super.dispose();
@@ -116,10 +127,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
 
     final exists = categories.any((category) => category['id'] == categoryId);
     if (!exists) {
-      categories.add({
-        'id': categoryId,
-        'nama': categoryName,
-      });
+      categories.add({'id': categoryId, 'nama': categoryName});
     }
   }
 
@@ -133,15 +141,222 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   }
 
   bool get _usesSize {
-    final name = _selectedCategoryName.toLowerCase();
-    return name.contains('sepatu') ||
-        name.contains('jaket') ||
-        name.contains('pakaian') ||
-        name.contains('alas kaki');
+    // Size selalu tersedia untuk semua kategori alat
+    return true;
   }
 
   bool get _sizeRequired {
-    return _usesSize;
+    // Size wajib hanya untuk pakaian/alas kaki
+    final name = _selectedCategoryName.toLowerCase();
+    return name.contains('pakaian') || name.contains('alas kaki');
+  }
+
+  // Opsi size standar
+  static const _clothingSizes = ['S', 'M', 'L', 'XL', 'XXL'];
+  static const _shoeSizes = [
+    '36',
+    '37',
+    '38',
+    '39',
+    '40',
+    '41',
+    '42',
+    '43',
+    '44',
+    '45',
+  ];
+
+  void _addOrUpdateSizeFromDraft() {
+    final size = _draftSizeCtrl.text.trim().toUpperCase();
+    final stock = int.tryParse(_draftStockCtrl.text.trim()) ?? 0;
+    if (size.isEmpty || stock <= 0) return;
+
+    setState(() {
+      _sizeStocks[size] = stock;
+      _draftSizeCtrl.clear();
+      _draftStockCtrl.clear();
+    });
+  }
+
+  void _setSizeStock(String size, int stock) {
+    final normalizedSize = size.trim().toUpperCase();
+    if (normalizedSize.isEmpty) return;
+    setState(() {
+      if (stock <= 0) {
+        _sizeStocks.remove(normalizedSize);
+      } else {
+        _sizeStocks[normalizedSize] = stock.clamp(1, 999);
+      }
+    });
+  }
+
+  void _removeSize(String size) {
+    setState(() => _sizeStocks.remove(size));
+  }
+
+  Widget _buildSizeChips() {
+    Widget buildChipRow(String label, List<String> sizes) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF496171),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: sizes.map((size) {
+              final selected = _sizeStocks.containsKey(size);
+              return GestureDetector(
+                onTap: () =>
+                    selected ? _removeSize(size) : _setSizeStock(size, 1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 48,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? _green : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected ? _green : AppColors.ownerBorderColor,
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    size,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: selected ? Colors.white : const Color(0xFF202321),
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildChipRow('Pakaian', _clothingSizes),
+        const SizedBox(height: 16),
+        buildChipRow('Sepatu / Angka', _shoeSizes),
+      ],
+    );
+  }
+
+  Widget _buildSizeStockList() {
+    final entries = _sizeStocks.entries.toList();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAF8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.ownerBorderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Stok per Ukuran',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF496171),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _SizeStockRow(
+                size: entry.key,
+                stock: entry.value,
+                onChanged: (value) => _setSizeStock(entry.key, value),
+                onRemove: () => _removeSize(entry.key),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Total stok: ${_sizeStocks.values.fold(0, (a, b) => a + b)} unit',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: const Color(0xFF7B8794),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomSizeInput() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.ownerBorderColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: _draftSizeCtrl,
+              textCapitalization: TextCapitalization.characters,
+              decoration: _compactDecoration('XL'),
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 4,
+            child: TextField(
+              controller: _draftStockCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: _compactDecoration('10 unit'),
+              onSubmitted: (_) => _addOrUpdateSizeFromDraft(),
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 42,
+            height: 42,
+            child: ElevatedButton(
+              onPressed: _addOrUpdateSizeFromDraft,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _green,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.zero,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Icon(Icons.add_rounded, size: 22),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -269,10 +484,19 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_sizeRequired && _sizeStocks.isEmpty) {
+      setState(() {}); // trigger rebuild untuk show error
+      return;
+    }
 
     final harga = double.parse(_priceCtrl.text);
     final deskripsi = _descCtrl.text.trim();
-    final size = _usesSize ? _sizeCtrl.text.trim() : '';
+    // Simpan size sebagai JSON map {"S":5,"M":10} atau string kosong.
+    final size = _sizeStocks.isEmpty ? '' : jsonEncode(_sizeStocks);
+    // Total stock = jumlah dari semua per-size stock
+    final totalStock = _sizeStocks.isNotEmpty
+        ? _sizeStocks.values.fold(0, (a, b) => a + b)
+        : _stock;
     final capacityText = _capacityCtrl.text.trim();
     final weightText = _weightCtrl.text.trim().replaceAll(',', '.');
     final capacity = capacityText.isEmpty ? null : int.parse(capacityText);
@@ -305,7 +529,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
           capacity: capacity,
           weightKg: weightKg,
           hargaPerHari: harga,
-          stock: _stock,
+          stock: totalStock,
           imageUrl: imageUrl,
         );
       } else {
@@ -333,7 +557,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
           capacity: capacity,
           weightKg: weightKg,
           hargaPerHari: harga,
-          stock: _stock,
+          stock: totalStock,
           imageUrl: imageUrl,
         );
       }
@@ -460,25 +684,40 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
                 onChanged: (value) {
                   setState(() {
                     _selectedCategoryId = value;
-                    if (!_usesSize) _sizeCtrl.clear();
+                    if (!_usesSize) _sizeStocks.clear();
                   });
                 },
               ),
               if (_usesSize) ...[
                 const SizedBox(height: 22),
-                _SectionLabel('Size'),
-                const SizedBox(height: 10),
-                _TextBox(
-                  controller: _sizeCtrl,
-                  hint: 'Contoh: S, M, L atau 36, 37',
-                  validator: (value) {
-                    if (_sizeRequired &&
-                        (value == null || value.trim().isEmpty)) {
-                      return 'Size wajib diisi untuk kategori ini';
-                    }
-                    return null;
-                  },
+                _SectionLabel('Pilih Ukuran'),
+                const SizedBox(height: 6),
+                Text(
+                  'Pilih preset atau tambah ukuran sendiri, lalu isi jumlah unit.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: const Color(0xFF7B8794),
+                    fontSize: 12,
+                  ),
                 ),
+                const SizedBox(height: 12),
+                _buildCustomSizeInput(),
+                const SizedBox(height: 14),
+                _buildSizeChips(),
+                if (_sizeStocks.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildSizeStockList(),
+                ],
+                if (_sizeRequired && _sizeStocks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Ukuran wajib dipilih untuk kategori ini',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: const Color(0xFFD32F2F),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
               ],
               const SizedBox(height: 22),
               _SectionLabel('Nama Produk'),
@@ -797,7 +1036,7 @@ class _CategoryBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasValue = categories.any((category) => category['id'] == value);
     return DropdownButtonFormField<String>(
-      value: hasValue ? value : null,
+      initialValue: hasValue ? value : null,
       isExpanded: true,
       validator: (value) {
         if (value == null || value.isEmpty) return 'Kategori wajib dipilih';
@@ -954,6 +1193,73 @@ class _StockBox extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SizeStockRow extends StatelessWidget {
+  final String size;
+  final int stock;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onRemove;
+
+  const _SizeStockRow({
+    required this.size,
+    required this.stock,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 56,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: _OwnerEquipmentFormPageState._green.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            size,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: _OwnerEquipmentFormPageState._green,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TextFormField(
+            key: ValueKey('size-stock-$size'),
+            initialValue: stock.toString(),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (value) {
+              if (value.trim().isEmpty) return;
+              onChanged(int.tryParse(value) ?? 0);
+            },
+            decoration: _compactDecoration('0 unit'),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF202321),
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        _StockButton(
+          icon: Icons.close_rounded,
+          color: const Color(0xFFF0F1ED),
+          iconColor: const Color(0xFF202321),
+          onTap: onRemove,
+        ),
+      ],
     );
   }
 }
@@ -1243,5 +1549,31 @@ InputDecoration _fieldDecoration(String hint, {Widget? prefix}) {
       borderSide: const BorderSide(color: AppColors.error),
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+  );
+}
+
+InputDecoration _compactDecoration(String hint) {
+  return InputDecoration(
+    filled: true,
+    fillColor: AppColors.ownerCardBackground,
+    hintText: hint,
+    hintStyle: AppTextStyles.bodyMedium.copyWith(
+      color: const Color(0xFF9A9F99),
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: AppColors.ownerBorderColor),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: AppColors.ownerBorderColor),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: AppColors.ownerPrimaryGreen),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
   );
 }
