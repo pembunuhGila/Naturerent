@@ -31,6 +31,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
   bool _isLoading = true;
   String? _error;
   int _fotoIndex = 0; // index foto yang aktif di gallery
+  String? _selectedSize; // ukuran yang dipilih user
 
   @override
   void initState() {
@@ -160,7 +161,14 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                         ],
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 14),
+
+                      // ── Size selector (jika ada)
+                      if (alat.size != null &&
+                          alat.size!.trim().isNotEmpty) ...[
+                        _buildSizeSelector(alat),
+                        const SizedBox(height: 20),
+                      ],
 
                       // ── Deskripsi (jika ada)
                       if (alat.deskripsi != null &&
@@ -291,7 +299,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                   ),
                   ValueListenableBuilder<int>(
                     valueListenable: CartService().count,
-                    builder: (_, count, __) => Stack(
+                    builder: (builderContext, count, child) => Stack(
                       clipBehavior: Clip.none,
                       children: [
                         GestureDetector(
@@ -396,6 +404,122 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
       ),
     );
   }
+
+  /// Parse size string "S, M, L" atau "36, 37, 38" menjadi list
+  List<String> _parseSizes(String? sizeStr) {
+    if (sizeStr == null || sizeStr.trim().isEmpty) return [];
+    return sizeStr
+        .split(RegExp(r'[,;/]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  Widget _buildSizeSelector(Equipment alat) {
+    final sizes = _parseSizes(alat.size);
+    if (sizes.isEmpty) return const SizedBox.shrink();
+
+    // Jika hanya 1 size, tampilkan info saja tanpa pilihan
+    if (sizes.length == 1) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'UKURAN',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              sizes.first,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Multi-size: tampilkan pilihan chips
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PILIH UKURAN',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: sizes.map((size) {
+            final isSelected = _selectedSize == size;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedSize = size),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.border,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Text(
+                  size,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: isSelected
+                        ? Colors.white
+                        : AppColors.textPrimary,
+                    fontWeight: isSelected
+                        ? FontWeight.w800
+                        : FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildKetersediaanCard(Equipment alat) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -542,7 +666,20 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
           child: ElevatedButton.icon(
             onPressed: bisa
                 ? () {
-                    CartService().tambah(alat, widget.rental);
+                    // Validasi: jika ada pilihan size tapi belum dipilih
+                    final sizes = _parseSizes(alat.size);
+                    if (sizes.length > 1 && _selectedSize == null) {
+                      NrToast.show(
+                        context,
+                        'Pilih ukuran terlebih dahulu',
+                        type: NrToastType.info,
+                      );
+                      return;
+                    }
+                    final sizeToSend = sizes.length > 1
+                        ? _selectedSize
+                        : (sizes.length == 1 ? sizes.first : null);
+                    CartService().tambah(alat, widget.rental, selectedSize: sizeToSend);
                     NrToast.show(
                       context,
                       '${alat.nama} ditambahkan ke keranjang',
