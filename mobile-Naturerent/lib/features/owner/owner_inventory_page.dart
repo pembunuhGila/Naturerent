@@ -684,7 +684,11 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
       if (id == null || id.isEmpty || map.containsKey(id)) continue;
       map[id] = item.namaKategori ?? 'Kategori';
     }
-    return map.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
+    return map.entries.toList()..sort((a, b) {
+      if (a.value.toLowerCase() == 'lainnya') return 1;
+      if (b.value.toLowerCase() == 'lainnya') return -1;
+      return a.value.compareTo(b.value);
+    });
   }
 
   @override
