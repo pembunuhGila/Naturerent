@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -480,7 +479,8 @@ class _IncomeTab extends StatelessWidget {
     final incomeOrders =
         orders.where(_isRecognizedIncomeOrder).toList(growable: false);
     final weekOrders =
-        incomeOrders.where(_isCurrentWeek).toList(growable: false);
+        incomeOrders.where(_isCurrentWeek).toList(growable: false)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final previousWeekOrders =
         incomeOrders.where(_isPreviousWeek).toList(growable: false);
     final weekNet = _sumOwnerIncome(weekOrders);
@@ -585,99 +585,6 @@ class _TitleRow extends StatelessWidget {
             Icons.refresh_rounded,
             color: AppColors.textPrimary,
             size: 18,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryStrip extends StatelessWidget {
-  final List<AdminOrder> orders;
-
-  const _SummaryStrip({required this.orders});
-
-  @override
-  Widget build(BuildContext context) {
-    final waiting = orders.where((o) => o.status == 'confirmed').length;
-    final processing = orders
-        .where((o) => o.status == 'processing' || o.status == 'rented')
-        .length;
-    final finished = orders
-        .where((o) => o.status == 'returned' || o.status == 'completed')
-        .length;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.ownerBorderColor,
-          width: AppColors.ownerBorderWidth,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _SummaryItem(
-              icon: Icons.pending_actions_rounded,
-              label: 'Baru',
-              value: '$waiting',
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _SummaryItem(
-              icon: Icons.inventory_rounded,
-              label: 'Diproses',
-              value: '$processing',
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _SummaryItem(
-              icon: Icons.task_alt_rounded,
-              label: 'Selesai',
-              value: '$finished',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _SummaryItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.ownerPrimaryGreen, size: 20),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: AppTextStyles.headlineLarge.copyWith(
-            color: AppColors.ownerPrimaryGreen,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.caption.copyWith(
-            color: const Color(0xFF496171),
-            fontSize: 10,
           ),
         ),
       ],
@@ -2096,7 +2003,7 @@ class _EquipmentThumb extends StatelessWidget {
             ? Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _placeholder(),
+                errorBuilder: (_, error, stackTrace) => _placeholder(),
               )
             : _placeholder(),
       ),
@@ -2110,36 +2017,6 @@ class _EquipmentThumb extends StatelessWidget {
         Icons.hiking_rounded,
         color: AppColors.ownerPrimaryGreen,
         size: 24,
-      ),
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoLine({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF496171)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2252,22 +2129,24 @@ bool _isFullyPaid(AdminOrder order) {
   return normalized == 'lunas' ||
       normalized == 'paid' ||
       normalized == 'settled' ||
-      normalized == 'success';
+      normalized == 'success' ||
+      normalized == 'dp_confirmed';
 }
 
 bool _isCurrentWeek(AdminOrder order) {
   final now = DateTime.now();
   final start = _startOfWeek(now);
   final end = start.add(const Duration(days: 7));
-  return !order.tanggalSelesai.isBefore(start) &&
-      order.tanggalSelesai.isBefore(end);
+  final transactionDate = order.createdAt.toLocal();
+  return !transactionDate.isBefore(start) && transactionDate.isBefore(end);
 }
 
 bool _isPreviousWeek(AdminOrder order) {
   final currentStart = _startOfWeek(DateTime.now());
   final previousStart = currentStart.subtract(const Duration(days: 7));
-  return !order.tanggalSelesai.isBefore(previousStart) &&
-      order.tanggalSelesai.isBefore(currentStart);
+  final transactionDate = order.createdAt.toLocal();
+  return !transactionDate.isBefore(previousStart) &&
+      transactionDate.isBefore(currentStart);
 }
 
 DateTime _startOfWeek(DateTime value) {

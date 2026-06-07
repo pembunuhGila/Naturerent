@@ -38,7 +38,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           net_to_owner,
           status,
           payment_status,
-          payment_proof_url,
           created_at,
           users(nama_lengkap, email),
           rental_profiles(nama_rental),
@@ -47,18 +46,25 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             nama_rental,
             jumlah,
             total_harga,
-            equipment(
-              image_url,
-              equipment_images(image_url, is_primary, sort_order)
-            )
+            equipment(image_url)
           )
         ''')
         .eq('rental_id', rental.id)
-        .inFilter('status', ['returned', 'completed'])
-        .order('tgl_selesai', ascending: false);
+        .inFilter('status', [
+          'confirmed',
+          'processing',
+          'rented',
+          'returned',
+          'completed',
+        ])
+        .order('created_at', ascending: false);
 
-    final orders = (data as List)
+    final allOrders = (data as List)
         .map((row) => AdminOrder.fromMap(row as Map<String, dynamic>))
+        .toList(growable: false)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final orders = allOrders
         .where(_isRecognizedIncomeOrder)
         .toList(growable: false);
 
@@ -68,8 +74,8 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         orders.where(_isPreviousMonth).toList(growable: false);
     final currentTotal = _sumNetIncome(currentMonthOrders);
     final previousTotal = _sumNetIncome(previousMonthOrders);
-    final recentOrders = [...orders]
-      ..sort((a, b) => b.tanggalSelesai.compareTo(a.tanggalSelesai));
+    final recentOrders = [...allOrders]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return _DashboardData(
       incomeSummary: _MonthlyIncomeSummary(
@@ -203,21 +209,27 @@ class _MonthlyIncomeSummary {
 
 bool _isRecognizedIncomeOrder(AdminOrder order) {
   final finished = order.status == 'returned' || order.status == 'completed';
-  return finished && order.pembayaranLunas;
+  final paymentStatus = order.paymentStatus?.toLowerCase().trim();
+  final paid = order.pembayaranLunas ||
+      paymentStatus == 'dp_confirmed' ||
+      paymentStatus == 'paid' ||
+      paymentStatus == 'lunas';
+  return finished && paid;
 }
 
 bool _isCurrentMonth(AdminOrder order) {
   final now = DateTime.now();
-  return order.tanggalSelesai.year == now.year &&
-      order.tanggalSelesai.month == now.month;
+  final transactionDate = order.createdAt.toLocal();
+  return transactionDate.year == now.year && transactionDate.month == now.month;
 }
 
 bool _isPreviousMonth(AdminOrder order) {
   final now = DateTime.now();
   final previousMonth = now.month == 1 ? 12 : now.month - 1;
   final previousYear = now.month == 1 ? now.year - 1 : now.year;
-  return order.tanggalSelesai.year == previousYear &&
-      order.tanggalSelesai.month == previousMonth;
+  final transactionDate = order.createdAt.toLocal();
+  return transactionDate.year == previousYear &&
+      transactionDate.month == previousMonth;
 }
 
 double _sumCompletedPayments(Iterable<AdminOrder> orders) {
@@ -273,6 +285,9 @@ String _shortCode(AdminOrder order) {
 
 String _dashboardStatusLabel(String status) {
   return switch (status) {
+    'confirmed' => 'MENUNGGU',
+    'processing' => 'DIPROSES',
+    'rented' => 'DISEWA',
     'returned' || 'completed' => 'BERHASIL',
     _ => status.toUpperCase(),
   };
@@ -458,7 +473,7 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${_shortCode(order)} • ${_formatDate(order.tanggalSelesai)}',
+                  '${_shortCode(order)} • ${_formatDate(order.createdAt.toLocal())}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
