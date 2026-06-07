@@ -14,7 +14,6 @@ class EquipmentService {
     'Peralatan Masak',
     'Lainnya',
     'Tenda',
-    'Aksesoris Camping',
     'Lampu & Senter',
     'Sleeping Bag',
     'Meja & Kursi',
@@ -241,9 +240,14 @@ class EquipmentService {
           })
           .whereType<Map<String, dynamic>>()
           .toList();
-      categories.sort(
-        (a, b) => (a['nama'] as String).compareTo(b['nama'] as String),
-      );
+      categories.sort((a, b) {
+        final nameA = a['nama'] as String;
+        final nameB = b['nama'] as String;
+        // "Lainnya" selalu di paling bawah
+        if (nameA.toLowerCase() == 'lainnya') return 1;
+        if (nameB.toLowerCase() == 'lainnya') return -1;
+        return nameA.compareTo(nameB);
+      });
       if (categories.isNotEmpty) return categories;
     } catch (e) {
       debugPrint('Gagal memuat equipment_categories: $e');
@@ -254,7 +258,7 @@ class EquipmentService {
   }
 
   List<Map<String, dynamic>> kategoriBawaan() {
-    return _defaultCategoryNames
+    final list = _defaultCategoryNames
         .map(
           (name) => <String, dynamic>{
             'id': '$_newCategoryPrefix$name',
@@ -262,7 +266,15 @@ class EquipmentService {
             'is_fallback': true,
           },
         )
-        .toList(growable: false);
+        .toList();
+    list.sort((a, b) {
+      final nameA = a['nama'] as String;
+      final nameB = b['nama'] as String;
+      if (nameA.toLowerCase() == 'lainnya') return 1;
+      if (nameB.toLowerCase() == 'lainnya') return -1;
+      return nameA.compareTo(nameB);
+    });
+    return list;
   }
 
   Future<String?> pastikanCategoryId(String? categoryId) async {
