@@ -558,6 +558,47 @@ FOR DELETE
 TO authenticated
 USING (true);
 
+-- ----------------------------------------------------------------------------
+-- BAGIAN 5: HAK AKSES & RLS TABEL RENTAL_WISATA
+-- ----------------------------------------------------------------------------
+-- Tabel rental_wisata dipakai pemilik rental untuk mengatur destinasi/wisata
+-- terkait toko rentalnya. Owner perlu SELECT/INSERT/DELETE saat menyimpan
+-- perubahan detail rental.
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.rental_wisata
+TO anon, authenticated, service_role;
+
+ALTER TABLE public.rental_wisata ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access to rental_wisata" ON public.rental_wisata;
+CREATE POLICY "Allow public read access to rental_wisata"
+ON public.rental_wisata
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+DROP POLICY IF EXISTS "Owners can manage rental_wisata for own rentals" ON public.rental_wisata;
+CREATE POLICY "Owners can manage rental_wisata for own rentals"
+ON public.rental_wisata
+FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.rental_profiles rp
+    WHERE rp.id = rental_wisata.rental_id
+      AND rp.owner_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.rental_profiles rp
+    WHERE rp.id = rental_wisata.rental_id
+      AND rp.owner_id = auth.uid()
+  )
+);
+
 -- ============================================================================
 -- AKHIR DARI SCRIPT
 -- ============================================================================
