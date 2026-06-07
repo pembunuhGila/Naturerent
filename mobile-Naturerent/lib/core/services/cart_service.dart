@@ -6,9 +6,10 @@ import '../models/rental_profile.dart';
 class CartItem {
   final Equipment equipment;
   final RentalProfile rental;
+  final String? selectedSize;
   int qty;
 
-  CartItem({required this.equipment, required this.rental, this.qty = 1});
+  CartItem({required this.equipment, required this.rental, this.selectedSize, this.qty = 1});
 
   double get subtotal => equipment.hargaPerHari * qty;
 }
@@ -59,14 +60,14 @@ class CartService {
   }
 
   /// Tambah alat ke keranjang (qty +1 jika sudah ada)
-  void tambah(Equipment equipment, RentalProfile rental) {
+  void tambah(Equipment equipment, RentalProfile rental, {String? selectedSize}) {
     final idx = _items.indexWhere(
-      (i) => i.equipment.id == equipment.id && i.rental.id == rental.id,
+      (i) => i.equipment.id == equipment.id && i.rental.id == rental.id && i.selectedSize == selectedSize,
     );
     if (idx >= 0) {
       _items[idx].qty++;
     } else {
-      _items.add(CartItem(equipment: equipment, rental: rental));
+      _items.add(CartItem(equipment: equipment, rental: rental, selectedSize: selectedSize));
     }
     _updateCount();
   }
