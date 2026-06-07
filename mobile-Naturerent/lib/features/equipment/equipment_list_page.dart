@@ -103,28 +103,19 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
 
   // -- Icon untuk tiap kategori berdasarkan nama
   IconData _iconKategori(String? nama) {
-    switch (nama?.toLowerCase()) {
-      case 'tenda':
-        return Icons.cabin_rounded;
-      case 'sleeping bag':
-        return Icons.airline_seat_flat_rounded;
-      case 'carrier / tas':
-        return Icons.backpack_rounded;
-      case 'matras':
-        return Icons.horizontal_rule_rounded;
-      case 'kompor & masak':
-        return Icons.outdoor_grill_rounded;
-      case 'lampu & senter':
-        return Icons.flashlight_on_rounded;
-      case 'pakaian':
-        return Icons.checkroom_rounded;
-      case 'navigasi':
-        return Icons.explore_rounded;
-      case 'p3k':
-        return Icons.medical_services_rounded;
-      default:
-        return Icons.category_rounded;
-    }
+    final lower = nama?.toLowerCase() ?? '';
+    if (lower.contains('tenda')) return Icons.cabin_rounded;
+    if (lower.contains('sleeping')) return Icons.airline_seat_flat_rounded;
+    if (lower.contains('carrier') || lower.contains('tas')) return Icons.backpack_rounded;
+    if (lower.contains('matras')) return Icons.horizontal_rule_rounded;
+    if (lower.contains('masak')) return Icons.outdoor_grill_rounded;
+    if (lower.contains('lampu') || lower.contains('senter')) return Icons.flashlight_on_rounded;
+    if (lower.contains('pakaian') || lower.contains('alas kaki')) return Icons.checkroom_rounded;
+    if (lower.contains('p3k')) return Icons.medical_services_rounded;
+    if (lower.contains('hiking')) return Icons.hiking_rounded;
+    if (lower.contains('meja') || lower.contains('kursi')) return Icons.chair_rounded;
+    if (lower.contains('lainnya')) return Icons.more_horiz_rounded;
+    return Icons.category_rounded;
   }
 
   @override
@@ -174,7 +165,7 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                     (_, i) => _AlatShowcaseCard(
                       alat: _alatFiltered[i],
                       namaRental: widget.rental.namaRental,
-                      lokasi: widget.rental.alamat,
+                      deskripsiSingkat: _alatFiltered[i].deskripsi,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -324,7 +315,10 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: 'Cari alat camping...',
-          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textHint,
+          ),
           suffixIcon: _searchQuery.isEmpty
               ? null
               : IconButton(
@@ -332,7 +326,10 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                     _searchCtrl.clear();
                     _filterSearch('');
                   },
-                  icon: const Icon(Icons.close_rounded, color: AppColors.textHint),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textHint,
+                  ),
                 ),
           filled: true,
           fillColor: AppColors.surface,
@@ -453,11 +450,11 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
 
   Widget _buildKategoriFilter() {
     return SizedBox(
-      height: 68,
+      height: 52,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemCount: _kategori.length + 1, // +1 untuk "Semua"
         itemBuilder: (context, i) {
           final isAll = i == 0;
@@ -465,13 +462,16 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
           final isSelected = isAll
               ? _selectedKategoriId == null
               : _selectedKategoriId == kategori?['id'];
+          final namaKategori = isAll
+              ? 'Semua'
+              : (kategori?['nama'] as String? ?? 'Kategori');
 
           return GestureDetector(
             onTap: () =>
                 _filterKategori(isAll ? null : kategori?['id'] as String?),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 58,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
@@ -479,29 +479,27 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                   color: isSelected ? AppColors.primary : AppColors.border,
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     isAll
                         ? Icons.grid_view_rounded
                         : _iconKategori(kategori?['nama'] as String?),
-                    size: 20,
+                    size: 16,
                     color: isSelected ? Colors.white : AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(width: 6),
                   Text(
-                    isAll
-                        ? 'Semua'
-                        : (kategori?['nama'] as String? ?? '').split(' ').first,
+                    namaKategori,
                     style: AppTextStyles.caption.copyWith(
                       color: isSelected
                           ? Colors.white
                           : AppColors.textSecondary,
                       fontWeight: isSelected
                           ? FontWeight.w700
-                          : FontWeight.w400,
-                      fontSize: 9,
+                          : FontWeight.w500,
+                      fontSize: 11,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -574,13 +572,13 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
 class _AlatShowcaseCard extends StatelessWidget {
   final Equipment alat;
   final String namaRental;
-  final String? lokasi;
+  final String? deskripsiSingkat;
   final VoidCallback onTap;
 
   const _AlatShowcaseCard({
     required this.alat,
     required this.namaRental,
-    required this.lokasi,
+    required this.deskripsiSingkat,
     required this.onTap,
   });
 
@@ -603,18 +601,18 @@ class _AlatShowcaseCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.035),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.035),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
           clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,14 +692,17 @@ class _AlatShowcaseCard extends StatelessWidget {
                     Row(
                       children: [
                         const Icon(
-                          Icons.location_on_outlined,
+                          Icons.notes_rounded,
                           size: 14,
                           color: AppColors.textHint,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            lokasi ?? 'Lokasi belum tersedia',
+                            (deskripsiSingkat != null &&
+                                    deskripsiSingkat!.trim().isNotEmpty)
+                                ? deskripsiSingkat!.trim()
+                                : 'Deskripsi singkat belum tersedia',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.caption.copyWith(
