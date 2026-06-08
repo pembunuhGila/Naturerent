@@ -6,6 +6,7 @@ import '../../core/models/rental_profile.dart';
 import '../../core/services/equipment_service.dart';
 import '../../core/services/cart_service.dart';
 import '../../core/widgets/nr_image.dart';
+import '../../core/widgets/nr_toast.dart';
 import '../checkout/checkout_page.dart';
 import '../home/rental_detail_page.dart';
 import 'equipment_detail_page.dart';
@@ -160,23 +161,32 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               else if (_alatFiltered.isEmpty)
                 SliverFillRemaining(child: _buildEmptyState())
               else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => _AlatShowcaseCard(
-                      alat: _alatFiltered[i],
-                      namaRental: widget.rental.namaRental,
-                      deskripsiSingkat: _alatFiltered[i].deskripsi,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EquipmentDetailPage(
-                            equipmentId: _alatFiltered[i].id,
-                            rental: widget.rental,
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 18,
+                          crossAxisSpacing: 14,
+                          mainAxisExtent: 304,
+                        ),
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) => _AlatShowcaseCard(
+                        alat: _alatFiltered[i],
+                        rental: widget.rental,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EquipmentDetailPage(
+                              equipmentId: _alatFiltered[i].id,
+                              rental: widget.rental,
+                            ),
                           ),
                         ),
                       ),
+                      childCount: _alatFiltered.length,
                     ),
-                    childCount: _alatFiltered.length,
                   ),
                 ),
 
@@ -229,29 +239,6 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RentalDetailPage(rental: widget.rental),
-              ),
-            ),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Icon(
-                Icons.info_outline_rounded,
-                color: AppColors.textPrimary,
-                size: 18,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           ValueListenableBuilder<int>(
             valueListenable: CartService().count,
             builder: (_, count, widget) => Stack(
@@ -262,38 +249,34 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                     context,
                     MaterialPageRoute(builder: (_) => const CheckoutPage()),
                   ),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Icon(
-                      Icons.shopping_bag_outlined,
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.shopping_cart_outlined,
                       color: AppColors.textPrimary,
-                      size: 18,
+                      size: 24,
                     ),
                   ),
                 ),
                 if (count > 0)
                   Positioned(
-                    top: -4,
-                    right: -4,
+                    top: -2,
+                    right: -2,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      width: 18,
+                      height: 18,
+                      alignment: Alignment.center,
                       decoration: const BoxDecoration(
                         color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
-                        '$count',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
+                        count > 9 ? '9+' : '$count',
+                        style: AppTextStyles.caption.copyWith(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: count > 9 ? 7.5 : 9,
                           fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
                         ),
                       ),
                     ),
@@ -571,32 +554,100 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
 // ----------------------------------------------------------
 class _AlatShowcaseCard extends StatelessWidget {
   final Equipment alat;
-  final String namaRental;
-  final String? deskripsiSingkat;
+  final RentalProfile rental;
   final VoidCallback onTap;
 
   const _AlatShowcaseCard({
     required this.alat,
-    required this.namaRental,
-    required this.deskripsiSingkat,
+    required this.rental,
     required this.onTap,
   });
 
   String get _hargaFormatted {
     final harga = alat.hargaPerHari.toInt();
-    final s = harga.toString();
-    final buf = StringBuffer('Rp ');
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
+    if (harga >= 1000) {
+      final compact = harga / 1000;
+      final text = compact == compact.roundToDouble()
+          ? compact.toInt().toString()
+          : compact.toStringAsFixed(1).replaceAll('.0', '');
+      return 'Rp ${text}k';
     }
-    return buf.toString();
+    return 'Rp $harga';
+  }
+
+  bool get _isTersedia => alat.isAvailable && alat.stock > 0;
+
+  bool get _prioritizeSizeCategory {
+    final kategori = alat.namaKategori?.toLowerCase() ?? '';
+    return kategori.contains('pakaian') || kategori.contains('alas kaki');
+  }
+
+  List<String> get _specChips {
+    final specs = <String>[];
+    final sizes = alat.availableSizes;
+
+    if (_prioritizeSizeCategory && sizes.isNotEmpty) {
+      specs.add(
+        sizes.length == 1 ? 'Size ${sizes.first}' : '${sizes.length} Size',
+      );
+    }
+
+    if (alat.capacity != null && alat.capacity! > 0) {
+      specs.add('${alat.capacity} Org');
+    }
+    if (alat.weightKg != null && alat.weightKg! > 0) {
+      final weight = alat.weightKg!;
+      final text = weight == weight.roundToDouble()
+          ? '${weight.toInt()} Kg'
+          : '${weight.toStringAsFixed(1)} Kg';
+      specs.add(text);
+    }
+    if (!_prioritizeSizeCategory && specs.length < 2) {
+      if (!_prioritizeSizeCategory && sizes.isNotEmpty) {
+        specs.add(
+          sizes.length == 1 ? 'Size ${sizes.first}' : 'Size ${sizes.first}',
+        );
+      }
+    }
+    return specs.take(_prioritizeSizeCategory ? 3 : 2).toList(growable: false);
+  }
+
+  void _handleTambah(BuildContext context) {
+    if (!_isTersedia) {
+      NrToast.show(
+        context,
+        'Maaf, alat tidak tersedia',
+        type: NrToastType.info,
+      );
+      return;
+    }
+
+    final sizes = alat.availableSizes;
+    if (sizes.length > 1) {
+      NrToast.show(
+        context,
+        'Pilih ukuran terlebih dahulu di detail peralatan.',
+        type: NrToastType.info,
+      );
+      return;
+    }
+
+    CartService().tambah(
+      alat,
+      rental,
+      selectedSize: sizes.length == 1 ? sizes.first : null,
+    );
+    NrToast.show(
+      context,
+      'Produk ditambahkan ke keranjang.',
+      type: NrToastType.success,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      padding: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
@@ -607,9 +658,9 @@ class _AlatShowcaseCard extends StatelessWidget {
             border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.035),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -620,7 +671,7 @@ class _AlatShowcaseCard extends StatelessWidget {
               Stack(
                 children: [
                   Container(
-                    height: 172,
+                    height: 162,
                     width: double.infinity,
                     color: Colors.white,
                     alignment: Alignment.center,
@@ -629,7 +680,7 @@ class _AlatShowcaseCard extends StatelessWidget {
                       child: NrImage(
                         imageUrl: alat.gambarprimaryUrl,
                         width: double.infinity,
-                        height: 152,
+                        height: 142,
                         fit: BoxFit.contain,
                         placeholderColor: const Color(0xFF2D4A2D),
                         placeholderIcon: Icons.inventory_2_outlined,
@@ -637,27 +688,28 @@ class _AlatShowcaseCard extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    left: 10,
                     top: 10,
+                    right: 10,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 4,
+                        vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: alat.stock > 0
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : AppColors.error.withValues(alpha: 0.9),
+                        color: _isTersedia
+                            ? AppColors.primaryLight
+                            : const Color(0xFFF2F4F7),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        alat.stock > 0 ? 'TERSEDIA' : 'STOK HABIS',
+                        _isTersedia ? 'Tersedia' : 'Habis',
                         style: AppTextStyles.caption.copyWith(
-                          color: alat.stock > 0
+                          color: _isTersedia
                               ? AppColors.primaryDark
-                              : Colors.white,
+                              : AppColors.textSecondary,
                           fontSize: 9,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
                         ),
                       ),
                     ),
@@ -665,74 +717,101 @@ class _AlatShowcaseCard extends StatelessWidget {
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 24),
+                  child: _specChips.isEmpty
+                      ? const SizedBox.shrink()
+                      : Align(
+                          alignment: Alignment.topLeft,
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: _specChips
+                                .map(
+                                  (label) => _SpecChip(
+                                    label: label,
+                                    isPrimary: label == _specChips.first,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                child: Text(
+                  alat.nama,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      alat.nama,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w900,
+                    Expanded(
+                      child: RichText(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: _hargaFormatted,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.primaryDark,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 17,
+                              ),
+                            ),
+                            TextSpan(
+                              text: '/hari',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      namaRental,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w700,
+                    GestureDetector(
+                      onTap: () => _handleTambah(context),
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: _isTersedia
+                              ? AppColors.primaryDark
+                              : const Color(0xFFE5E7EB),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: _isTersedia
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primaryDark.withValues(
+                                      alpha: 0.18,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: _isTersedia
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                          size: 20,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.notes_rounded,
-                          size: 14,
-                          color: AppColors.textHint,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            (deskripsiSingkat != null &&
-                                    deskripsiSingkat!.trim().isNotEmpty)
-                                ? deskripsiSingkat!.trim()
-                                : 'Deskripsi singkat belum tersedia',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '$_hargaFormatted / hari',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.primaryDark,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        if (alat.size != null && alat.size!.isNotEmpty) ...[
-                          _SpecChip(label: 'Size ${alat.size}'),
-                          const SizedBox(width: 6),
-                        ],
-                        _SpecChip(label: '${alat.stock} unit'),
-                      ],
                     ),
                   ],
                 ),
@@ -747,16 +826,19 @@ class _AlatShowcaseCard extends StatelessWidget {
 
 class _SpecChip extends StatelessWidget {
   final String label;
+  final bool isPrimary;
 
-  const _SpecChip({required this.label});
+  const _SpecChip({required this.label, this.isPrimary = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 120),
+      constraints: const BoxConstraints(maxWidth: 110),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.primaryDark.withValues(alpha: 0.9),
+        color: isPrimary
+            ? AppColors.primaryDark.withValues(alpha: 0.88)
+            : AppColors.primaryLight,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -764,9 +846,10 @@ class _SpecChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppTextStyles.caption.copyWith(
-          color: Colors.white,
-          fontSize: 8,
+          color: isPrimary ? Colors.white : AppColors.primaryDark,
+          fontSize: 8.5,
           fontWeight: FontWeight.w800,
+          letterSpacing: 0,
         ),
       ),
     );
