@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/wisata_location.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/order_activity_service.dart';
 import '../../core/services/rental_service.dart';
 import '../../core/widgets/nr_image.dart';
-import '../home/rental_page.dart';
 import '../home/wisata_detail_page.dart';
 
 class BerandaPage extends StatefulWidget {
-  const BerandaPage({super.key});
+  final VoidCallback? onOpenNotifications;
+
+  const BerandaPage({super.key, this.onOpenNotifications});
 
   @override
   State<BerandaPage> createState() => _BerandaPageState();
@@ -32,6 +35,7 @@ class _BerandaPageState extends State<BerandaPage> {
     super.initState();
     _muatWisata();
     _searchController.addListener(_filterWisata);
+    OrderActivityService().muatDariDatabase();
   }
 
   @override
@@ -85,6 +89,20 @@ class _BerandaPageState extends State<BerandaPage> {
     });
   }
 
+  String get _displayName {
+    final user = AuthService().penggunaSaatIni;
+    final meta = user?.userMetadata;
+    final rawName =
+        meta?['full_name'] as String? ??
+        meta?['name'] as String? ??
+        user?.email?.split('@').first;
+    final cleaned = rawName?.trim();
+    if (cleaned == null || cleaned.isEmpty) return 'User';
+    final first = cleaned.split(RegExp(r'\s+')).first;
+    if (first.isEmpty) return 'User';
+    return first;
+  }
+
   // ──────────────────────────────────────────────────────────
   //  BUILD
   // ──────────────────────────────────────────────────────────
@@ -105,8 +123,7 @@ class _BerandaPageState extends State<BerandaPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(child: _buildAppBar()),
-              SliverToBoxAdapter(child: _buildHeadline()),
+              SliverToBoxAdapter(child: _buildHeader()),
               SliverToBoxAdapter(child: _buildSearchBar()),
               SliverToBoxAdapter(child: _buildFilterChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 4)),
@@ -147,41 +164,82 @@ class _BerandaPageState extends State<BerandaPage> {
   //  WIDGETS
   // ──────────────────────────────────────────────────────────
 
-  Widget _buildAppBar() {
+  Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.park_rounded, color: AppColors.primary, size: 22),
-          const SizedBox(width: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Hi, $_displayName \u{1F44B}',
+                  style: AppTextStyles.headlineLarge.copyWith(
+                    color: AppColors.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+              ValueListenableBuilder<List<ActivityOrder>>(
+                valueListenable: OrderActivityService().orders,
+                builder: (_, orders, __) {
+                  final count = orders.length;
+                  return GestureDetector(
+                    onTap: widget.onOpenNotifications,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.notifications_none_rounded,
+                            color: AppColors.textPrimary,
+                            size: 24,
+                          ),
+                        ),
+                        if (count > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                count > 9 ? '9+' : '$count',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: Colors.white,
+                                  fontSize: count > 9 ? 7.5 : 9,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
-            'NatureRent',
-            style: AppTextStyles.headlineLarge.copyWith(
-              color: AppColors.primaryDark,
-              letterSpacing: 0.3,
+            'Mau sewa alat apa hari ini?',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF6B7280),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeadline() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-      child: RichText(
-        text: TextSpan(
-          style: AppTextStyles.displayLarge,
-          children: [
-            const TextSpan(text: 'Pilih Destinasi\n'),
-            TextSpan(
-              text: 'Petualanganmu!',
-              style: AppTextStyles.displayLarge.copyWith(
-                color: AppColors.primary,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -190,11 +248,18 @@ class _BerandaPageState extends State<BerandaPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Container(
-        height: 48,
+        height: 52,
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -207,7 +272,7 @@ class _BerandaPageState extends State<BerandaPage> {
                 style: AppTextStyles.bodyMedium
                     .copyWith(color: AppColors.textPrimary),
                 decoration: InputDecoration(
-                  hintText: 'Cari destinasi petualanganmu...',
+                  hintText: 'Cari alat camping',
                   hintStyle: AppTextStyles.bodyMedium
                       .copyWith(color: AppColors.textHint),
                   border: InputBorder.none,
@@ -218,6 +283,7 @@ class _BerandaPageState extends State<BerandaPage> {
                 ),
               ),
             ),
+            const SizedBox(width: 14),
           ],
         ),
       ),
@@ -263,15 +329,6 @@ class _BerandaPageState extends State<BerandaPage> {
                                 ? AppColors.primary
                                 : AppColors.border,
                           ),
-                          boxShadow: [
-                            if (isSelected)
-                              BoxShadow(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.18),
-                                blurRadius: 14,
-                                offset: const Offset(0, 6),
-                              ),
-                          ],
                         ),
                         child: Text(
                           _filters[i],
