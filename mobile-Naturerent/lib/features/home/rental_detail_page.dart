@@ -126,39 +126,50 @@ class RentalDetailPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Container(
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            NrImage(
-              imageUrl: rental.fotoBanner ?? rental.fotoProfil,
-              width: 72,
-              height: 72,
-              borderRadius: BorderRadius.circular(14),
-              placeholderColor: AppColors.primaryDark,
-              placeholderIcon: Icons.storefront_rounded,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    rental.namaRental,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.headlineLarge.copyWith(
-                      fontWeight: FontWeight.w800,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                NrImage(
+                  imageUrl: rental.fotoBanner,
+                  width: double.infinity,
+                  height: 176,
+                  fit: BoxFit.cover,
+                  placeholderColor: AppColors.primaryDark,
+                  placeholderIcon: Icons.landscape_rounded,
+                ),
+                Positioned(
+                  left: 16,
+                  bottom: -28,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: NrImage(
+                      imageUrl: rental.fotoProfil,
+                      width: 72,
+                      height: 72,
+                      borderRadius: BorderRadius.circular(16),
+                      placeholderColor: AppColors.primaryDark,
+                      placeholderIcon: Icons.storefront_rounded,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _StatusPill(hours: _hours, isActive: rental.isActive),
-                ],
-              ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
+              child: const SizedBox.shrink(),
             ),
           ],
         ),
