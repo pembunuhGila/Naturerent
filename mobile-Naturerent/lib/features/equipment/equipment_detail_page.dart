@@ -319,38 +319,34 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                               builder: (_) => const CheckoutPage(),
                             ),
                           ),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Icon(
-                              Icons.shopping_bag_outlined,
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.shopping_cart_outlined,
                               color: AppColors.textPrimary,
-                              size: 18,
+                              size: 24,
                             ),
                           ),
                         ),
                         if (count > 0)
                           Positioned(
-                            top: -4,
-                            right: -4,
+                            top: -2,
+                            right: -2,
                             child: Container(
-                              padding: const EdgeInsets.all(4),
+                              width: 18,
+                              height: 18,
+                              alignment: Alignment.center,
                               decoration: const BoxDecoration(
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
-                                '$count',
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
+                                count > 9 ? '9+' : '$count',
+                                style: AppTextStyles.caption.copyWith(
                                   color: Colors.white,
-                                  fontSize: 9,
+                                  fontSize: count > 9 ? 7.5 : 9,
                                   fontWeight: FontWeight.w800,
+                                  letterSpacing: 0,
                                 ),
                               ),
                             ),
@@ -718,7 +714,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                     );
                   }
                 : null,
-            icon: const Icon(Icons.shopping_basket_outlined, size: 20),
+            icon: const Icon(Icons.shopping_cart_outlined, size: 20),
             label: Text(
               bisa ? 'Tambahkan ke Pesanan' : 'Stok Tidak Tersedia',
               style: AppTextStyles.labelMedium.copyWith(
