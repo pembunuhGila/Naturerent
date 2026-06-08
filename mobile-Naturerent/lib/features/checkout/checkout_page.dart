@@ -313,37 +313,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 children: [
                   // ── Item Sewa
                   _buildSection(
-                    header: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Item Sewa',
-                          style: AppTextStyles.headlineMedium.copyWith(
-                            fontWeight: FontWeight.w700,
+                    header: _buildSectionHeader(
+                      title: 'Item Sewa',
+                      trailing: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
-                                Icons.add_circle_rounded,
+                                Icons.add_rounded,
                                 color: AppColors.primary,
-                                size: 16,
+                                size: 14,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'TAMBAH PESANAN',
+                                'Tambah',
                                 style: AppTextStyles.caption.copyWith(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 10,
+                                  letterSpacing: 0,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                     child: _cart.items.isEmpty
                         ? Center(
@@ -362,8 +366,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 .map(
                                   (group) => _RentalCartGroupView(
                                     group: group,
-                                    onHapus: (item) =>
-                                        setState(() => _cart.hapusItem(item)),
+                                    onHapus: (item) => setState(
+                                      () => _cart.hapusItem(item),
+                                    ),
+                                    onTambah: (item) => setState(
+                                      () => _cart.tambahQty(item),
+                                    ),
+                                    onKurang: (item) => setState(
+                                      () => _cart.kurangQty(item),
+                                    ),
+                                    durasiLabel: _durasi > 0
+                                        ? '$_durasi Hari Sewa'
+                                        : 'Pilih tanggal sewa',
                                   ),
                                 )
                                 .toList(),
@@ -373,26 +387,61 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                   // ── Rentang Waktu Sewa
                   _buildSection(
-                    header: Text(
-                      'Rentang Waktu Sewa',
-                      style: AppTextStyles.headlineMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    header: _buildSectionHeader(
+                      title: 'Rentang Waktu Sewa',
                     ),
                     child: Column(
                       children: [
                         _buildTanggalRow(
-                          label: 'TANGGAL PINJAM',
+                          label: 'Tanggal Mulai',
                           value: _fmtTgl(_tanggalMulai),
                           icon: Icons.calendar_today_rounded,
                           onTap: _pilihTanggal,
                         ),
-                        const Divider(height: 1, color: AppColors.border),
+                        const SizedBox(height: 10),
                         _buildTanggalRow(
-                          label: 'TANGGAL KEMBALI',
+                          label: 'Tanggal Selesai',
                           value: _fmtTgl(_tanggalSelesai),
                           icon: Icons.event_available_rounded,
                           onTap: _pilihTanggal,
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F8F5),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.timelapse_rounded,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Durasi Sewa',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                _durasi > 0 ? '$_durasi Hari' : '-',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -401,27 +450,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                   // ── Metode Pengambilan
                   _buildSection(
-                    header: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Metode Pengambilan',
-                          style: AppTextStyles.headlineMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _pilihTanggal,
-                          child: Text(
-                            'PILIH OPSI',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
+                    header: _buildSectionHeader(
+                      title: 'Metode Pengambilan',
                     ),
                     child: Column(
                       children: [
@@ -435,7 +465,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             _deliveryResult = null;
                           }),
                         ),
-                        const Divider(height: 1, color: AppColors.border),
+                        const SizedBox(height: 10),
                         _MetodeRow(
                           isSelected: _metodeAmbil == 1,
                           icon: Icons.delivery_dining_rounded,
@@ -445,9 +475,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           onTap: () => setState(() => _metodeAmbil = 1),
                         ),
                         if (_metodeAmbil == 1 && _deliveryResult != null) ...[
-                          const Divider(height: 1, color: AppColors.border),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 10),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F8F5),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                             child: Row(
                               children: [
                                 const Icon(
@@ -482,11 +520,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                   // ── Metode Pembayaran
                   _buildSection(
-                    header: Text(
-                      'Metode Pembayaran',
-                      style: AppTextStyles.headlineMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    header: _buildSectionHeader(
+                      title: 'Metode Pembayaran',
                     ),
                     child: _MetodeRow(
                       isSelected: true,
@@ -500,21 +535,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                   // ── Rincian Biaya
                   _buildSection(
-                    header: Row(
-                      children: [
-                        const Icon(
-                          Icons.receipt_long_rounded,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Rincian Biaya Sewa',
-                          style: AppTextStyles.headlineMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                    header: _buildSectionHeader(
+                      title: 'Rincian Biaya Sewa',
+                      icon: Icons.receipt_long_rounded,
                     ),
                     child: Column(
                       children: [
@@ -564,30 +587,37 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 : _fmtRupiah(_biayaDelivery),
                             isHighlight: false,
                           ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1, color: AppColors.border),
-                        const SizedBox(height: 12),
-                        // Total
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'TOTAL PEMBAYARAN',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Pembayaran',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            Text(
-                              _fmtRupiah(_totalCheckout),
-                              style: AppTextStyles.displayLarge.copyWith(
-                                color: AppColors.primaryDark,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 22,
+                              Text(
+                                _fmtRupiah(_totalCheckout),
+                                style: AppTextStyles.displayLarge.copyWith(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 22,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -698,14 +728,46 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [header, const SizedBox(height: 14), child],
       ),
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required String title,
+    Widget? trailing,
+    IconData? icon,
+  }) {
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, color: AppColors.primary, size: 18),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Text(
+            title,
+            style: AppTextStyles.headlineMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
     );
   }
 
@@ -717,32 +779,53 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8F5),
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.primary, size: 18),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 18),
+            ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textHint,
-                    fontSize: 10,
-                    letterSpacing: 0.5,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textHint,
+                      fontSize: 10,
+                      letterSpacing: 0.3,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textHint,
+              size: 20,
             ),
           ],
         ),
@@ -758,8 +841,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
 class _RentalCartGroupView extends StatelessWidget {
   final CartRentalGroup group;
   final ValueChanged<CartItem> onHapus;
+  final ValueChanged<CartItem> onTambah;
+  final ValueChanged<CartItem> onKurang;
+  final String durasiLabel;
 
-  const _RentalCartGroupView({required this.group, required this.onHapus});
+  const _RentalCartGroupView({
+    required this.group,
+    required this.onHapus,
+    required this.onTambah,
+    required this.onKurang,
+    required this.durasiLabel,
+  });
 
   String _fmtRupiah(double v) {
     final s = v.toInt().toString();
@@ -775,25 +867,32 @@ class _RentalCartGroupView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFCFCFB),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                const Icon(
-                  Icons.storefront_rounded,
-                  color: AppColors.primary,
-                  size: 18,
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.storefront_rounded,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     group.rental.namaRental,
@@ -808,20 +907,31 @@ class _RentalCartGroupView extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   _fmtRupiah(group.subtotalPerHari),
-                  style: AppTextStyles.caption.copyWith(
+                  style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.primaryDark,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          ...group.items.map(
-            (item) => _ItemSewaRow(item: item, onHapus: () => onHapus(item)),
-          ),
-        ],
+            const SizedBox(height: 14),
+            ...group.items.asMap().entries.map((entry) {
+              final isLast = entry.key == group.items.length - 1;
+              final item = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                child: _ItemSewaRow(
+                  item: item,
+                  onHapus: () => onHapus(item),
+                  onTambah: () => onTambah(item),
+                  onKurang: () => onKurang(item),
+                  durasiLabel: durasiLabel,
+                  showDivider: !isLast,
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -830,7 +940,19 @@ class _RentalCartGroupView extends StatelessWidget {
 class _ItemSewaRow extends StatelessWidget {
   final CartItem item;
   final VoidCallback onHapus;
-  const _ItemSewaRow({required this.item, required this.onHapus});
+  final VoidCallback onTambah;
+  final VoidCallback onKurang;
+  final String durasiLabel;
+  final bool showDivider;
+
+  const _ItemSewaRow({
+    required this.item,
+    required this.onHapus,
+    required this.onTambah,
+    required this.onKurang,
+    required this.durasiLabel,
+    this.showDivider = false,
+  });
 
   String _fmtRupiah(double v) {
     final s = v.toInt().toString();
@@ -856,46 +978,71 @@ class _ItemSewaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: NrImage(
-              imageUrl: item.equipment.gambarprimaryUrl,
-              width: 72,
-              height: 72,
-              fit: BoxFit.cover,
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: NrImage(
+                imageUrl: item.equipment.gambarprimaryUrl,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.equipment.namaKategori?.toUpperCase() ?? 'ALAT',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 9,
-                    letterSpacing: 0.8,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.equipment.nama,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              durasiLabel,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textHint,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: onHapus,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: AppColors.textHint,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.equipment.nama,
-                  style: AppTextStyles.headlineMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                if (_displaySize(item) != null) ...[
-                  const SizedBox(height: 5),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
+                  if (_displaySize(item) != null) ...[
+                    const SizedBox(height: 6),
+                    Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 4,
@@ -916,29 +1063,50 @@ class _ItemSewaRow extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Text(
+                        _fmtRupiah(item.equipment.hargaPerHari),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.primaryDark,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
+                      _QtyButton(
+                        icon: Icons.remove_rounded,
+                        onTap: onKurang,
+                      ),
+                      Container(
+                        width: 34,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${item.qty}',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      _QtyButton(
+                        icon: Icons.add_rounded,
+                        onTap: onTambah,
+                        isPrimary: true,
+                      ),
+                    ],
                   ),
                 ],
-                const SizedBox(height: 4),
-                Text(
-                  _fmtRupiah(item.equipment.hargaPerHari),
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: onHapus,
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: AppColors.textHint,
-              size: 20,
-            ),
-          ),
+          ],
+        ),
+        if (showDivider) ...[
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: AppColors.border),
         ],
-      ),
+      ],
     );
   }
 }
@@ -961,10 +1129,60 @@ class _MetodeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+          ),
+        ),
         child: Row(
           children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.14)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    judul,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (subjudul != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subjudul!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
             Container(
               width: 22,
               height: 22,
@@ -988,32 +1206,6 @@ class _MetodeRow extends StatelessWidget {
                     )
                   : null,
             ),
-            const SizedBox(width: 12),
-            Icon(icon, color: AppColors.primary, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    judul,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (subjudul != null)
-                    Text(
-                      subjudul!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -1034,7 +1226,7 @@ class _BiayaRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1056,6 +1248,39 @@ class _BiayaRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QtyButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isPrimary;
+
+  const _QtyButton({
+    required this.icon,
+    required this.onTap,
+    this.isPrimary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: isPrimary ? AppColors.primaryDark : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: isPrimary ? Colors.white : AppColors.textPrimary,
+          size: 18,
+        ),
       ),
     );
   }
