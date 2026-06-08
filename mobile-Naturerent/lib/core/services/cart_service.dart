@@ -85,6 +85,25 @@ class CartService {
     _updateCount();
   }
 
+  void tambahQty(CartItem item) {
+    final idx = _items.indexOf(item);
+    if (idx >= 0) {
+      _items[idx].qty++;
+      _updateCount();
+    }
+  }
+
+  void kurangQty(CartItem item) {
+    final idx = _items.indexOf(item);
+    if (idx < 0) return;
+    if (_items[idx].qty > 1) {
+      _items[idx].qty--;
+    } else {
+      _items.removeAt(idx);
+    }
+    _updateCount();
+  }
+
   /// Kosongkan keranjang
   void bersihkan() {
     _items.clear();
