@@ -87,6 +87,29 @@ class RentalService {
         .toList();
   }
 
+  /// Hitung total stok alat yang tersedia untuk setiap rental.
+  Future<Map<String, int>> ambilJumlahAlatTersedia(
+    List<String> rentalIds,
+  ) async {
+    if (rentalIds.isEmpty) return {};
+
+    final data = await client
+        .from('equipment')
+        .select('rental_id, stock, is_available')
+        .inFilter('rental_id', rentalIds)
+        .eq('is_available', true);
+
+    final counts = <String, int>{};
+    for (final row in (data as List).whereType<Map<String, dynamic>>()) {
+      final rentalId = row['rental_id'] as String?;
+      final stock = (row['stock'] as num?)?.toInt() ?? 0;
+      if (rentalId == null || stock <= 0) continue;
+      counts[rentalId] = (counts[rentalId] ?? 0) + stock;
+    }
+
+    return counts;
+  }
+
   /// Ambil profil rental milik user owner yang sedang login.
   Future<RentalProfile?> ambilRentalSaya() async {
     final user = AuthService().penggunaSaatIni;
