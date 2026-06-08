@@ -335,8 +335,6 @@ class _ProfilPageState extends State<ProfilPage> {
 
               // ── Avatar + Info
               _buildProfileHeader(),
-              const SizedBox(height: 20),
-              _buildEditProfileButton(),
               const SizedBox(height: 24),
               _buildSectionLabel('INFORMASI PROFIL'),
               const SizedBox(height: 8),
@@ -494,30 +492,33 @@ class _ProfilPageState extends State<ProfilPage> {
               color: Colors.white.withValues(alpha: 0.78),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditProfileButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: _bukaEditProfil,
-        icon: const Icon(Icons.edit_rounded, size: 18),
-        label: Text(
-          'Edit Profil',
-          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryDark,
-          backgroundColor: AppColors.surface,
-          side: const BorderSide(color: AppColors.border),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 42,
+            child: OutlinedButton.icon(
+              onPressed: _bukaEditProfil,
+              icon: const Icon(Icons.edit_rounded, size: 16),
+              label: Text(
+                'Edit Profil',
+                style: AppTextStyles.bodySmall.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.white.withValues(alpha: 0.10),
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.22),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
