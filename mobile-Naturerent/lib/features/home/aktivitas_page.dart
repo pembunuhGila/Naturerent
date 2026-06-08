@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/services/cart_service.dart';
 import '../../core/services/order_activity_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/nr_image.dart';
@@ -352,66 +353,70 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final item = order.items.isNotEmpty ? order.items.first : null;
+    final item = _previewItem(order);
     final rentalCount = _rentalCount(order);
     final title = rentalCount > 1
         ? '$rentalCount Toko Rental'
         : order.namaRental;
-    final subtitle = '${_itemCount(order)} item disewa';
+    final subtitle = rentalCount > 1
+        ? _multiRentalSubtitle(order, item)
+        : '${_itemCount(order)} item disewa';
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () => _openOrderDetail(context, order),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.025),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: item == null || rentalCount > 1
+              borderRadius: BorderRadius.circular(12),
+              child: item == null
                   ? Container(
-                      width: 92,
-                      height: 92,
-                      color: AppColors.primary,
+                      width: 72,
+                      height: 72,
+                      color: AppColors.primary.withValues(alpha: 0.12),
                       child: const Icon(
                         Icons.storefront_rounded,
-                        color: Colors.white,
-                        size: 34,
+                        color: AppColors.primary,
+                        size: 26,
                       ),
                     )
                   : NrImage(
                       imageUrl: item.equipment.gambarprimaryUrl,
-                      width: 92,
-                      height: 92,
+                      width: 72,
+                      height: 72,
                       fit: BoxFit.cover,
                     ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.headlineMedium.copyWith(
+                          style: AppTextStyles.bodyLarge.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w800,
                           ),
@@ -421,50 +426,51 @@ class _OrderCard extends StatelessWidget {
                       _StatusBadge(status: order.status),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyMedium.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     '${_fmtTgl(order.tanggalMulai)} - ${_fmtTgl(order.tanggalSelesai)} - ${_durasi(order)} Hari',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textHint,
+                      fontSize: 11.5,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Text(
                           _fmtRupiah(order.total),
-                          style: AppTextStyles.headlineMedium.copyWith(
+                          style: AppTextStyles.bodyLarge.copyWith(
                             color: AppColors.primaryDark,
                             fontWeight: FontWeight.w900,
+                            fontSize: 18,
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(9),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text(
-                          'Lihat',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 15,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -576,6 +582,19 @@ class _EmptyTab extends StatelessWidget {
 
 int _rentalCount(ActivityOrder order) {
   return order.items.map((item) => item.rental.id).toSet().length;
+}
+
+CartItem? _previewItem(ActivityOrder order) {
+  if (order.items.isEmpty) return null;
+  return order.items.last;
+}
+
+String _multiRentalSubtitle(ActivityOrder order, CartItem? previewItem) {
+  final totalItems = _itemCount(order);
+  if (previewItem == null) return '$totalItems item disewa';
+  final otherItems = totalItems - previewItem.qty;
+  if (otherItems <= 0) return previewItem.equipment.nama;
+  return '${previewItem.equipment.nama} +$otherItems item lainnya';
 }
 
 int _itemCount(ActivityOrder order) {
