@@ -247,7 +247,7 @@ class _RentalPageState extends State<RentalPage> {
       backgroundColor: AppColors.background,
       surfaceTintColor: AppColors.background,
       elevation: 0,
-      toolbarHeight: 62,
+      toolbarHeight: 74,
       titleSpacing: 0,
       title: _buildAppBar(),
     );
@@ -255,7 +255,7 @@ class _RentalPageState extends State<RentalPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       child: Row(
         children: [
           if (widget.wisataId != null) ...[
@@ -266,7 +266,7 @@ class _RentalPageState extends State<RentalPage> {
                 height: 38,
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: const Icon(
@@ -283,7 +283,8 @@ class _RentalPageState extends State<RentalPage> {
               'Pilih Tempat Rental',
               style: AppTextStyles.headlineLarge.copyWith(
                 color: AppColors.textPrimary,
-                fontSize: 20,
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -302,7 +303,7 @@ class _RentalPageState extends State<RentalPage> {
                     height: 38,
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: const Icon(
@@ -343,7 +344,7 @@ class _RentalPageState extends State<RentalPage> {
 
   Widget _buildLokasiBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
       child: Row(
         children: [
           const Icon(
@@ -391,32 +392,51 @@ class _RentalPageState extends State<RentalPage> {
   Widget _buildToggle() {
     if (widget.wisataId == null) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: _ToggleTab(
-            label: 'Lokasi Saya',
-            isActive: _lokasiSaya,
-            onTap: _switchLokasiSaya,
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: _switchLokasiSaya,
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.38),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.my_location_rounded,
+                  color: AppColors.primaryDark,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Lokasi Saya',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.primaryDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
       child: Container(
-        height: 44,
-        padding: const EdgeInsets.all(4),
+        height: 46,
+        padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
@@ -443,7 +463,7 @@ class _RentalPageState extends State<RentalPage> {
 
   Widget _buildSectionHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -454,6 +474,8 @@ class _RentalPageState extends State<RentalPage> {
                 'Rental Terdekat',
                 style: AppTextStyles.headlineLarge.copyWith(
                   color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               Text(
@@ -557,13 +579,15 @@ class _ToggleTab extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive ? AppColors.primaryDark : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(11),
         ),
         child: Text(
           label,
           style: AppTextStyles.bodySmall.copyWith(
             color: isActive ? Colors.white : AppColors.textSecondary,
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -593,33 +617,28 @@ class _RentalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.38),
+          ),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
             child: Row(
               children: [
                 // ── Foto rental
                 ClipOval(
                   child: NrImage(
                     imageUrl: rental.fotoProfil,
-                    width: 72,
-                    height: 72,
+                    width: 56,
+                    height: 56,
                     placeholderColor: AppColors.primaryDark,
                     placeholderIcon: Icons.storefront_rounded,
                   ),
@@ -635,17 +654,24 @@ class _RentalCard extends StatelessWidget {
                         style: AppTextStyles.headlineLarge.copyWith(
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
-                          fontSize: 19,
+                          fontSize: 17,
+                          height: 1.18,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
+                      if (rental.isActive)
+                        const _Badge(
+                          label: 'AKTIF',
+                          color: AppColors.primary,
+                        ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           const Icon(
                             Icons.place_outlined,
-                            size: 16,
+                            size: 15,
                             color: AppColors.textHint,
                           ),
                           const SizedBox(width: 5),
@@ -656,6 +682,7 @@ class _RentalCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.bodyMedium.copyWith(
                                 color: AppColors.textSecondary,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -669,7 +696,7 @@ class _RentalCard extends StatelessWidget {
                             jarak == null
                                 ? Icons.location_on_outlined
                                 : Icons.near_me_rounded,
-                            size: 16,
+                            size: 15,
                             color: AppColors.textHint,
                           ),
                           const SizedBox(width: 5),
@@ -680,34 +707,21 @@ class _RentalCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.bodyMedium.copyWith(
                                 color: AppColors.textHint,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          if (rental.isActive)
-                            const _Badge(
-                              label: 'AKTIF',
-                              color: AppColors.primary,
-                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.primaryDark,
-                    size: 22,
-                  ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: AppColors.primaryDark,
+                  size: 15,
                 ),
               ],
             ),
@@ -728,16 +742,17 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.38)),
       ),
       child: Text(
         label,
         style: AppTextStyles.caption.copyWith(
-          color: Colors.white,
+          color: color,
           fontWeight: FontWeight.w800,
-          fontSize: 9,
-          letterSpacing: 0.5,
+          fontSize: 10,
+          letterSpacing: 0,
         ),
       ),
     );
