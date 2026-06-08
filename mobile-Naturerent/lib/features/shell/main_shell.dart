@@ -14,21 +14,34 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  int _activityInitialTab = 0;
+  int _activityPageVersion = 0;
 
-  final List<Widget> _pages = const [
-    BerandaPage(),
-    RentalPage(),
-    AktivitasPage(),
-    ProfilPage(),
-  ];
+  void _openActivityTab(int index) {
+    setState(() {
+      _activityInitialTab = index;
+      _activityPageVersion++;
+      _currentIndex = 2;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      BerandaPage(onOpenNotifications: () => _openActivityTab(0)),
+      const RentalPage(),
+      AktivitasPage(
+        key: ValueKey('activity-$_activityPageVersion-$_activityInitialTab'),
+        initialTab: _activityInitialTab,
+      ),
+      const ProfilPage(),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
-        children: _pages,
+        children: pages,
       ),
       extendBody: true,
       bottomNavigationBar: _NrBottomNav(
@@ -49,80 +62,73 @@ class _NrBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(icon: Icons.home_rounded, label: 'HOME'),
-      _NavItem(icon: Icons.storefront_rounded, label: 'RENTAL'),
-      _NavItem(icon: Icons.explore_rounded, label: 'AKTIFITAS'),
-      _NavItem(icon: Icons.person_rounded, label: 'PROFILE'),
+      _NavItem(icon: Icons.home_rounded, label: 'Home'),
+      _NavItem(icon: Icons.storefront_rounded, label: 'Rental'),
+      _NavItem(icon: Icons.receipt_long_rounded, label: 'Aktifitas'),
+      _NavItem(icon: Icons.person_rounded, label: 'Profile'),
     ];
 
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border),
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(22),
+            topRight: Radius.circular(22),
+          ),
+          border: Border(
+            top: BorderSide(color: const Color(0xFFE5E7EB)),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 14,
+              offset: const Offset(0, -2),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final isActive = i == currentIndex;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        isActive
-                            ? Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryDark,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(
-                                  items[i].icon,
-                                  size: 22,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Icon(
-                                items[i].icon,
-                                size: 22,
-                                color: AppColors.textHint,
-                              ),
-                        const SizedBox(height: 4),
-                        Text(
-                          items[i].label,
-                          style: AppTextStyles.caption.copyWith(
-                            color: isActive
-                                ? AppColors.primaryDark
-                                : AppColors.textHint,
-                            fontWeight: isActive
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                          ),
+        child: Row(
+          children: List.generate(items.length, (i) {
+            final isActive = i == currentIndex;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onTap(i),
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  height: 58,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        items[i].icon,
+                        size: 24,
+                        color: isActive
+                            ? const Color(0xFF14532D)
+                            : const Color(0xFF6B7280),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        items[i].label,
+                        style: AppTextStyles.caption.copyWith(
+                          color: isActive
+                              ? const Color(0xFF14532D)
+                              : const Color(0xFF6B7280),
+                          fontSize: 12,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          letterSpacing: 0,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            }),
-          ),
+              ),
+            );
+          }),
         ),
       ),
     );
