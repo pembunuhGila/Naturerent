@@ -137,7 +137,11 @@ class EquipmentService {
     required double hargaPerHari,
     required int stock,
     String? imageUrl,
+    List<String> imageUrls = const [],
   }) async {
+    final normalizedImages = _normalizeImageUrls(
+      imageUrls.isEmpty ? <String?>[imageUrl] : imageUrls,
+    );
     final data = <String, dynamic>{
       'rental_id': rentalId,
       'category_id': categoryId,
@@ -145,7 +149,7 @@ class EquipmentService {
       'deskripsi': deskripsi,
       'harga_per_hari': hargaPerHari,
       'stock': stock,
-      'image_url': imageUrl,
+      'image_url': normalizedImages.isNotEmpty ? normalizedImages.first : null,
       'is_available': true,
     };
 
@@ -164,6 +168,10 @@ class EquipmentService {
         .insert(data)
         .select('id')
         .single();
+    await _syncEquipmentImages(
+      equipmentId: inserted['id'] as String,
+      imageUrls: normalizedImages,
+    );
     await _syncEquipmentSizes(
       equipmentId: inserted['id'] as String,
       size: size,
@@ -203,7 +211,13 @@ class EquipmentService {
     required double hargaPerHari,
     required int stock,
     String? imageUrl,
+    List<String>? imageUrls,
   }) async {
+    final normalizedImages = imageUrls == null
+        ? null
+        : _normalizeImageUrls(
+            imageUrls.isEmpty ? <String?>[imageUrl] : imageUrls,
+          );
     final data = <String, dynamic>{
       'nama': nama,
       'category_id': categoryId,
@@ -221,12 +235,55 @@ class EquipmentService {
     data['capacity'] = capacity;
     data['weight_kg'] = weightKg;
 
-    if (imageUrl != null) {
+    if (normalizedImages != null) {
+      data['image_url'] = normalizedImages.isNotEmpty
+          ? normalizedImages.first
+          : null;
+    } else if (imageUrl != null) {
       data['image_url'] = imageUrl;
     }
 
     await client.from('equipment').update(data).eq('id', equipmentId);
+    if (normalizedImages != null) {
+      await _syncEquipmentImages(
+        equipmentId: equipmentId,
+        imageUrls: normalizedImages,
+      );
+    }
     await _syncEquipmentSizes(equipmentId: equipmentId, size: size);
+  }
+
+  Future<void> _syncEquipmentImages({
+    required String equipmentId,
+    required List<String> imageUrls,
+  }) async {
+    await client.from('equipment_images').delete().eq('equipment_id', equipmentId);
+    if (imageUrls.isEmpty) return;
+
+    await client.from('equipment_images').insert(
+      imageUrls.asMap().entries.map((entry) {
+        final index = entry.key;
+        final imageUrl = entry.value;
+        return <String, dynamic>{
+          'equipment_id': equipmentId,
+          'image_url': imageUrl,
+          'is_primary': index == 0,
+          'sort_order': index,
+        };
+      }).toList(growable: false),
+    );
+  }
+
+  List<String> _normalizeImageUrls(Iterable<String?> urls) {
+    final normalized = <String>[];
+    for (final raw in urls) {
+      final value = raw?.trim();
+      if (value == null || value.isEmpty || normalized.contains(value)) {
+        continue;
+      }
+      normalized.add(value);
+    }
+    return normalized;
   }
 
   Future<void> _syncEquipmentSizes({
