@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:naturerent/core/models/equipment.dart';
@@ -40,9 +37,9 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   List<Map<String, dynamic>> _categories = [];
   String? _selectedCategoryId;
   bool _loadingCategories = true;
-  Uint8List? _pickedImageBytes;
-  String _pickedImageExtension = 'jpg';
-  String _pickedImageContentType = 'image/jpeg';
+  late final List<String> _existingImageUrls;
+  final List<_PickedEquipmentImage> _pickedImages = <_PickedEquipmentImage>[];
+  int _selectedImageIndex = 0;
   bool _isSaving = false;
 
   static const _green = AppColors.ownerPrimaryGreen;
@@ -76,6 +73,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
     );
     _selectedCategoryId = equipment?.categoryId;
     _stock = equipment?.stock ?? 8;
+    _existingImageUrls = List<String>.from(equipment?.semuaGambar ?? const []);
     _loadCategories();
   }
 
@@ -256,7 +254,8 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
   }
 
   Widget _buildSizeStockList() {
-    final entries = _sizeStocks.entries.toList();
+    final entries = _sizeStocks.entries.toList()
+      ..sort((a, b) => Equipment.compareSizeLabels(a.key, b.key));
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -359,123 +358,89 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
     );
   }
 
-  Future<void> _pickImage() async {
+  List<_EquipmentImagePreview> get _previewImages {
+    return <_EquipmentImagePreview>[
+      ..._existingImageUrls.map(_EquipmentImagePreview.network),
+      ..._pickedImages.map(_EquipmentImagePreview.memory),
+    ];
+  }
+
+  Future<void> _pickImages() async {
     try {
-      final picked = await _picker.pickImage(
-        source: ImageSource.gallery,
+      final pickedFiles = await _picker.pickMultiImage(
         imageQuality: 85,
         maxWidth: 1200,
       );
-      if (picked == null) return;
-      if (!mounted) return;
+      if (pickedFiles.isEmpty || !mounted) return;
 
-      if (kIsWeb) {
-        final originalBytes = await picked.readAsBytes();
-        if (!mounted) return;
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (_) => _SimpleWebCropDialog(imageBytes: originalBytes),
+      final newImages = <_PickedEquipmentImage>[];
+      for (final picked in pickedFiles) {
+        final bytes = await picked.readAsBytes();
+        final extension = _extensionForPath(picked.path);
+        newImages.add(
+          _PickedEquipmentImage(
+            bytes: bytes,
+            extension: extension,
+            contentType: _contentTypeForExtension(extension),
+          ),
         );
-        if (confirm != true) return;
-        final croppedBytes = await _centerCropToPng(originalBytes);
-        if (!mounted) return;
-        setState(() {
-          _pickedImageBytes = croppedBytes;
-          _pickedImageExtension = 'png';
-          _pickedImageContentType = 'image/png';
-        });
-        return;
       }
 
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
-        aspectRatio: const CropAspectRatio(ratioX: 4, ratioY: 5),
-        compressQuality: 80,
-        compressFormat: ImageCompressFormat.jpg,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Pangkas Foto Produk',
-            toolbarColor: AppColors.ownerPrimaryGreen,
-            toolbarWidgetColor: Colors.white,
-            statusBarLight: false,
-            backgroundColor: Colors.black,
-            activeControlsWidgetColor: AppColors.ownerPrimaryGreen,
-            lockAspectRatio: true,
-            hideBottomControls: false,
-            showCropGrid: true,
-          ),
-          IOSUiSettings(
-            title: 'Pangkas Foto',
-            aspectRatioLockEnabled: true,
-            resetAspectRatioEnabled: false,
-          ),
-        ],
-      );
-
-      if (cropped == null || !mounted) return;
-      final bytes = await cropped.readAsBytes();
       if (!mounted) return;
       setState(() {
-        _pickedImageBytes = bytes;
-        _pickedImageExtension = 'jpg';
-        _pickedImageContentType = 'image/jpeg';
+        _pickedImages.addAll(newImages);
+        final lastIndex = _previewImages.length - 1;
+        if (lastIndex >= 0) {
+          _selectedImageIndex = lastIndex;
+        }
       });
     } catch (e) {
       if (!mounted) return;
       NrToast.show(
         context,
-        'Gagal memilih/memangkas foto: ${e.toString()}',
+        'Gagal memilih foto: ${e.toString()}',
         type: NrToastType.error,
       );
     }
   }
 
-  Future<Uint8List> _centerCropToPng(Uint8List bytes) async {
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    final image = frame.image;
-    const targetAspect = 4 / 5;
-    final imageAspect = image.width / image.height;
+  String _extensionForPath(String path) {
+    final normalized = path.trim().toLowerCase();
+    if (normalized.endsWith('.png')) return 'png';
+    if (normalized.endsWith('.webp')) return 'webp';
+    if (normalized.endsWith('.jpeg')) return 'jpeg';
+    return 'jpg';
+  }
 
-    late final Rect source;
-    if (imageAspect > targetAspect) {
-      final cropWidth = image.height * targetAspect;
-      source = Rect.fromLTWH(
-        (image.width - cropWidth) / 2,
-        0,
-        cropWidth,
-        image.height.toDouble(),
-      );
-    } else {
-      final cropHeight = image.width / targetAspect;
-      source = Rect.fromLTWH(
-        0,
-        (image.height - cropHeight) / 2,
-        image.width.toDouble(),
-        cropHeight,
-      );
-    }
+  String _contentTypeForExtension(String extension) {
+    return switch (extension.toLowerCase()) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'jpeg' => 'image/jpeg',
+      _ => 'image/jpeg',
+    };
+  }
 
-    const outputWidth = 1080;
-    const outputHeight = 1350;
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    canvas.drawImageRect(
-      image,
-      source,
-      Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble()),
-      Paint(),
-    );
-    final picture = recorder.endRecording();
-    final cropped = await picture.toImage(outputWidth, outputHeight);
-    final byteData = await cropped.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    cropped.dispose();
+  void _selectImage(int index) {
+    if (index < 0 || index >= _previewImages.length) return;
+    setState(() => _selectedImageIndex = index);
+  }
 
-    if (byteData == null) {
-      throw Exception('Gagal memproses foto.');
-    }
-    return byteData.buffer.asUint8List();
+  void _removeImageAt(int index) {
+    final existingCount = _existingImageUrls.length;
+    setState(() {
+      if (index < existingCount) {
+        _existingImageUrls.removeAt(index);
+      } else {
+        _pickedImages.removeAt(index - existingCount);
+      }
+      final lastIndex = _previewImages.length - 1;
+      if (lastIndex < 0) {
+        _selectedImageIndex = 0;
+        return;
+      }
+      _selectedImageIndex = _selectedImageIndex.clamp(0, lastIndex).toInt();
+    });
   }
 
   void _changeStock(int delta) {
@@ -509,15 +474,16 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
       );
 
       if (widget.isEdit) {
-        String? imageUrl;
-        if (_pickedImageBytes != null) {
-          imageUrl = await _equipmentService.uploadFotoAlat(
-            bytes: _pickedImageBytes!,
+        final uploadedImageUrls = <String>[..._existingImageUrls];
+        for (final image in _pickedImages) {
+          final uploadedUrl = await _equipmentService.uploadFotoAlat(
+            bytes: image.bytes,
             rentalId: widget.equipment!.rentalId,
             equipmentId: widget.equipment!.id,
-            extension: _pickedImageExtension,
-            contentType: _pickedImageContentType,
+            extension: image.extension,
+            contentType: image.contentType,
           );
+          uploadedImageUrls.add(uploadedUrl);
         }
 
         await _equipmentService.perbaruiAlat(
@@ -530,7 +496,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
           weightKg: weightKg,
           hargaPerHari: harga,
           stock: totalStock,
-          imageUrl: imageUrl,
+          imageUrls: uploadedImageUrls,
         );
       } else {
         final rentalId = widget.rentalId;
@@ -538,14 +504,15 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
           throw Exception('Profil rental belum ditemukan.');
         }
 
-        String? imageUrl;
-        if (_pickedImageBytes != null) {
-          imageUrl = await _equipmentService.uploadFotoAlat(
-            bytes: _pickedImageBytes!,
+        final uploadedImageUrls = <String>[];
+        for (final image in _pickedImages) {
+          final uploadedUrl = await _equipmentService.uploadFotoAlat(
+            bytes: image.bytes,
             rentalId: rentalId,
-            extension: _pickedImageExtension,
-            contentType: _pickedImageContentType,
+            extension: image.extension,
+            contentType: image.contentType,
           );
+          uploadedImageUrls.add(uploadedUrl);
         }
 
         await _equipmentService.tambahAlat(
@@ -558,7 +525,7 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
           weightKg: weightKg,
           hargaPerHari: harga,
           stock: totalStock,
-          imageUrl: imageUrl,
+          imageUrls: uploadedImageUrls,
         );
       }
 
@@ -669,10 +636,11 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
             children: [
               _ImagePickerCard(
-                isEdit: widget.isEdit,
-                imageUrl: widget.equipment?.gambarprimaryUrl,
-                pickedImageBytes: _pickedImageBytes,
-                onTap: _pickImage,
+                previews: _previewImages,
+                selectedIndex: _selectedImageIndex,
+                onTapAdd: _pickImages,
+                onTapPreview: _selectImage,
+                onRemove: _removeImageAt,
               ),
               const SizedBox(height: 30),
               _SectionLabel('Kategori Alat'),
@@ -794,54 +762,147 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
 }
 
 class _ImagePickerCard extends StatelessWidget {
-  final bool isEdit;
-  final String? imageUrl;
-  final Uint8List? pickedImageBytes;
-  final VoidCallback onTap;
+  final List<_EquipmentImagePreview> previews;
+  final int selectedIndex;
+  final VoidCallback onTapAdd;
+  final ValueChanged<int> onTapPreview;
+  final ValueChanged<int> onRemove;
 
   const _ImagePickerCard({
-    required this.isEdit,
-    required this.imageUrl,
-    required this.pickedImageBytes,
-    required this.onTap,
+    required this.previews,
+    required this.selectedIndex,
+    required this.onTapAdd,
+    required this.onTapPreview,
+    required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        pickedImageBytes != null || (imageUrl != null && imageUrl!.isNotEmpty);
+    final hasImage = previews.isNotEmpty;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AspectRatio(
-        aspectRatio: 4 / 5,
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.ownerCardBackground,
-            borderRadius: BorderRadius.circular(8),
-            border: hasImage
-                ? null
-                : Border.all(
-                    color: AppColors.ownerBorderColor,
-                    width: 1.5,
-                    style: BorderStyle.solid,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: onTapAdd,
+          child: AspectRatio(
+            aspectRatio: 4 / 5,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.ownerCardBackground,
+                borderRadius: BorderRadius.circular(8),
+                border: hasImage
+                    ? null
+                    : Border.all(
+                        color: AppColors.ownerBorderColor,
+                        width: 1.5,
+                        style: BorderStyle.solid,
+                      ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: hasImage
+                  ? _buildImage(
+                      previews[selectedIndex.clamp(0, previews.length - 1).toInt()],
+                    )
+                  : _buildEmptyState(context),
+            ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: hasImage ? _buildImage() : _buildEmptyState(context),
         ),
-      ),
+        if (hasImage) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 72,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: previews.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      final image = previews[index];
+                      final isSelected = index == selectedIndex;
+                      return GestureDetector(
+                        onTap: () => onTapPreview(index),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.ownerPrimaryGreen
+                                      : AppColors.ownerBorderColor,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: image.build(fit: BoxFit.cover),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => onRemove(index),
+                                child: Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 14,
+                                    color: Color(0xFF344B3B),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: onTapAdd,
+                icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                label: const Text('Tambah'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.ownerPrimaryGreen,
+                  side: const BorderSide(color: AppColors.ownerBorderColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 
-  Widget _buildImage() {
+  Widget _buildImage(_EquipmentImagePreview preview) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (pickedImageBytes != null)
-          Image.memory(pickedImageBytes!, fit: BoxFit.cover)
-        else
-          Image.network(imageUrl!, fit: BoxFit.cover),
+        preview.build(fit: BoxFit.cover),
         Positioned(
           right: 16,
           bottom: 16,
@@ -913,87 +974,46 @@ class _ImagePickerCard extends StatelessWidget {
   }
 }
 
-class _SimpleWebCropDialog extends StatelessWidget {
-  final Uint8List imageBytes;
+class _PickedEquipmentImage {
+  final Uint8List bytes;
+  final String extension;
+  final String contentType;
 
-  const _SimpleWebCropDialog({required this.imageBytes});
+  const _PickedEquipmentImage({
+    required this.bytes,
+    required this.extension,
+    required this.contentType,
+  });
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Pangkas Foto Produk',
-                      style: AppTextStyles.headlineMedium.copyWith(
-                        color: const Color(0xFF202321),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: AspectRatio(
-                aspectRatio: 4 / 5,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(imageBytes, fit: BoxFit.cover),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-              child: Text(
-                'Foto akan dipangkas otomatis ke rasio 4:5 dari area tengah.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: const Color(0xFF687369),
-                  height: 1.35,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              child: Row(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Batal'),
-                  ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _OwnerEquipmentFormPageState._green,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Gunakan Foto'),
-                  ),
-                ],
-              ),
-            ),
-          ],
+class _EquipmentImagePreview {
+  final String? url;
+  final Uint8List? bytes;
+
+  const _EquipmentImagePreview._({this.url, this.bytes});
+
+  factory _EquipmentImagePreview.network(String url) {
+    return _EquipmentImagePreview._(url: url);
+  }
+
+  factory _EquipmentImagePreview.memory(_PickedEquipmentImage image) {
+    return _EquipmentImagePreview._(bytes: image.bytes);
+  }
+
+  Widget build({BoxFit fit = BoxFit.cover}) {
+    if (bytes != null) {
+      return Image.memory(bytes!, fit: fit);
+    }
+    return Image.network(
+      url!,
+      fit: fit,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: AppColors.ownerCardBackground,
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.image_not_supported_outlined,
+          color: Color(0xFF7B8794),
+          size: 24,
         ),
       ),
     );
