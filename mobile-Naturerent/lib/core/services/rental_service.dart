@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../models/wisata_location.dart';
 import '../models/rental_profile.dart';
 import 'auth_service.dart';
@@ -307,7 +308,7 @@ class RentalService {
 
   /// Konfirmasi pesanan yang telah disetujui admin, dilakukan oleh pemilik rental.
   Future<void> konfirmasiPesananPemilik(String bookingId) async {
-    await client
+    final updated = await client
         .from('bookings')
         .update({
           'status': 'processing',
@@ -315,19 +316,43 @@ class RentalService {
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', bookingId)
-        .eq('status', 'confirmed');
+        .eq('status', 'confirmed')
+        .select('customer_id, booking_code')
+        .maybeSingle();
+
+    debugPrint('konfirmasiPesananPemilik updated=$updated');
+    if (updated == null) return;
+    await _insertBookingNotification(
+      userId: updated['customer_id'] as String?,
+      bookingId: bookingId,
+      title: 'Pesanan kamu telah dikonfirmasi oleh pemilik rental.',
+      message:
+          'Pesanan #${updated['booking_code'] ?? bookingId} sudah dikonfirmasi. Silakan lanjutkan proses pengambilan peralatan sesuai jadwal.',
+    );
   }
 
   /// Konfirmasi bahwa peralatan telah diambil oleh penyewa.
   Future<void> konfirmasiPengambilanPesananPemilik(String bookingId) async {
-    await client
+    final updated = await client
         .from('bookings')
         .update({
           'status': 'rented',
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', bookingId)
-        .eq('status', 'processing');
+        .eq('status', 'processing')
+        .select('customer_id, booking_code')
+        .maybeSingle();
+
+    debugPrint('konfirmasiPengambilanPesananPemilik updated=$updated');
+    if (updated == null) return;
+    await _insertBookingNotification(
+      userId: updated['customer_id'] as String?,
+      bookingId: bookingId,
+      title: 'Peralatan kamu telah dikonfirmasi diambil.',
+      message:
+          'Masa sewa untuk pesanan #${updated['booking_code'] ?? bookingId} sudah dimulai. Jangan lupa kembalikan sesuai jadwal.',
+    );
   }
 
   /// Konfirmasi bahwa pesanan telah dikembalikan oleh penyewa.
@@ -340,6 +365,38 @@ class RentalService {
         })
         .eq('id', bookingId)
         .eq('status', 'rented');
+  }
+
+  Future<void> _insertBookingNotification({
+    required String? userId,
+    required String bookingId,
+    required String title,
+    required String message,
+  }) async {
+    if (userId == null || userId.isEmpty) {
+      debugPrint(
+        'Notification skipped for booking=$bookingId because userId is empty.',
+      );
+      return;
+    }
+    try {
+      await client.from('notifications').insert({
+        'user_id': userId,
+        'judul': title,
+        'pesan': message,
+        'type': 'booking',
+        'ref_id': bookingId,
+        'is_read': false,
+      });
+      debugPrint(
+        'Notification inserted for booking=$bookingId userId=$userId title=$title',
+      );
+    } catch (e, stackTrace) {
+      debugPrint(
+        'Failed to insert notification for booking=$bookingId userId=$userId error=$e',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   /// Tandai pesanan telah selesai diproses oleh pemilik (siap diambil atau dikirim),
