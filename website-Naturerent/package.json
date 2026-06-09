@@ -6,7 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:check:profiles": "node scripts/database/check-profiles-schema.mjs",
+    "db:check:rentals": "node scripts/database/check-rental-schema.mjs",
+    "db:check:users": "node scripts/database/check-users-schema.mjs",
+    "db:check:users:detailed": "node scripts/database/check-users-detailed.mjs",
+    "db:get:rental": "node scripts/database/get-rental-by-id.mjs",
+    "db:test:columns": "node scripts/database/test-columns.mjs",
+    "db:test:join": "node scripts/database/test-join-query.mjs",
+    "db:test:settings": "node scripts/database/test-settings.mjs",
+    "db:test:tables": "node scripts/database/test-tables.mjs",
+    "db:test:users": "node scripts/database/test-users-without-id.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
