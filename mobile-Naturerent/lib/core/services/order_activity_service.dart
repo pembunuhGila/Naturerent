@@ -105,11 +105,53 @@ class RefundProofInfo {
   final DateTime? uploadedAt;
   final String? status;
 
-  const RefundProofInfo({
-    this.proofUrl,
-    this.uploadedAt,
-    this.status,
+  const RefundProofInfo({this.proofUrl, this.uploadedAt, this.status});
+}
+
+class UserNotification {
+  final String id;
+  final String judul;
+  final String pesan;
+  final String? type;
+  final String? refId;
+  final bool isRead;
+  final DateTime createdAt;
+
+  const UserNotification({
+    required this.id,
+    required this.judul,
+    required this.pesan,
+    required this.createdAt,
+    this.type,
+    this.refId,
+    this.isRead = false,
   });
+
+  factory UserNotification.fromMap(Map<String, dynamic> map) {
+    return UserNotification(
+      id: map['id'] as String,
+      judul: map['judul'] as String? ?? 'Notifikasi',
+      pesan: map['pesan'] as String? ?? '',
+      type: map['type'] as String?,
+      refId: map['ref_id'] as String?,
+      isRead: map['is_read'] as bool? ?? false,
+      createdAt:
+          DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+    );
+  }
+
+  UserNotification copyWith({bool? isRead}) {
+    return UserNotification(
+      id: id,
+      judul: judul,
+      pesan: pesan,
+      type: type,
+      refId: refId,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt,
+    );
+  }
 }
 
 class OrderActivityService {
@@ -121,6 +163,129 @@ class OrderActivityService {
 
   final ValueNotifier<List<ActivityOrder>> orders =
       ValueNotifier<List<ActivityOrder>>(<ActivityOrder>[]);
+  final ValueNotifier<List<UserNotification>> notifications =
+      ValueNotifier<List<UserNotification>>(<UserNotification>[]);
+  final ValueNotifier<int> unreadNotificationCount = ValueNotifier<int>(0);
+
+  Future<void> muatNotifikasi() async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) {
+      notifications.value = <UserNotification>[];
+      _syncUnreadNotificationCount();
+      return;
+    }
+
+    try {
+      final data = await AuthService.client
+          .from('notifications')
+          .select('id, judul, pesan, type, ref_id, is_read, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', ascending: false);
+
+      notifications.value = (data as List)
+          .whereType<Map<String, dynamic>>()
+          .map(UserNotification.fromMap)
+          .toList(growable: false);
+      _syncUnreadNotificationCount();
+    } catch (e) {
+      debugPrint('Gagal memuat notifikasi: $e');
+    }
+  }
+
+  Future<void> tandaiSemuaNotifikasiDibaca() async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null) return;
+
+    if (notifications.value.isEmpty) {
+      await muatNotifikasi();
+    }
+
+    final unreadIds = notifications.value
+        .where((notification) => !notification.isRead)
+        .map((notification) => notification.id)
+        .toList(growable: false);
+    if (unreadIds.isEmpty) return;
+
+    final success = await _updateNotifikasiTerbaca(
+      userId: user.id,
+      notificationIds: unreadIds,
+    );
+    if (!success) return;
+
+    notifications.value = notifications.value
+        .map(
+          (notification) => unreadIds.contains(notification.id)
+              ? notification.copyWith(isRead: true)
+              : notification,
+        )
+        .toList(growable: false);
+    _syncUnreadNotificationCount();
+  }
+
+  Future<void> tandaiNotifikasiDibaca(String notificationId) async {
+    final user = AuthService().penggunaSaatIni;
+    if (user == null || notificationId.isEmpty) return;
+
+    final success = await _updateNotifikasiTerbaca(
+      userId: user.id,
+      notificationIds: <String>[notificationId],
+    );
+    if (!success) return;
+
+    notifications.value = notifications.value
+        .map(
+          (notification) => notification.id == notificationId
+              ? notification.copyWith(isRead: true)
+              : notification,
+        )
+        .toList(growable: false);
+    _syncUnreadNotificationCount();
+  }
+
+  Future<bool> _updateNotifikasiTerbaca({
+    required String userId,
+    required List<String> notificationIds,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    try {
+      await AuthService.client
+          .from('notifications')
+          .update({'is_read': true, 'read_at': now})
+          .eq('user_id', userId)
+          .inFilter('id', notificationIds);
+      return true;
+    } on PostgrestException catch (e) {
+      final missingReadAt =
+          e.message.toLowerCase().contains('read_at') ||
+          e.code == 'PGRST204' ||
+          e.code == '42703';
+      if (!missingReadAt) {
+        debugPrint('Gagal menandai notifikasi terbaca: ${e.message}');
+        return false;
+      }
+
+      try {
+        await AuthService.client
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('user_id', userId)
+            .inFilter('id', notificationIds);
+        return true;
+      } catch (fallbackError) {
+        debugPrint('Gagal menandai notifikasi terbaca: $fallbackError');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Gagal menandai notifikasi terbaca: $e');
+      return false;
+    }
+  }
+
+  void _syncUnreadNotificationCount() {
+    unreadNotificationCount.value = notifications.value
+        .where((notification) => !notification.isRead)
+        .length;
+  }
 
   Future<ActivityOrder> buatBookingDariKeranjang({
     required String namaRental,
@@ -422,7 +587,9 @@ class OrderActivityService {
         .update({
           'status': 'cancelled',
           'cancellation_reason': cleanedReason,
-          'cancellation_note': cleanedNote?.isEmpty == true ? null : cleanedNote,
+          'cancellation_note': cleanedNote?.isEmpty == true
+              ? null
+              : cleanedNote,
           'cancelled_by': 'user',
           'cancelled_at': cancelledAt.toIso8601String(),
           'cancellation_status': 'Dibatalkan Penyewa',
@@ -548,7 +715,9 @@ class OrderActivityService {
       cancelledAt: _parseOptionalDate(_firstNonEmpty(rows, 'cancelled_at')),
       cancellationStatus: _firstNonEmpty(rows, 'cancellation_status'),
       refundProofUrl: null,
-      refundUploadedAt: _parseOptionalDate(_firstNonEmpty(rows, 'refund_uploaded_at')),
+      refundUploadedAt: _parseOptionalDate(
+        _firstNonEmpty(rows, 'refund_uploaded_at'),
+      ),
       refundStatus: _firstNonEmpty(rows, 'refund_status'),
     );
   }
