@@ -7,9 +7,9 @@ import 'package:naturerent/core/models/wisata_location.dart';
 import 'package:naturerent/core/models/rental_profile.dart';
 import 'package:naturerent/core/services/location_service.dart';
 import 'package:naturerent/core/services/rental_service.dart';
-import 'package:naturerent/core/widgets/nr_image.dart';
 import 'package:naturerent/features/user/rental/equipment_list_page.dart';
 import 'package:naturerent/features/user/rental/rental_selection_page.dart';
+import 'package:naturerent/features/user/rental/widgets/user_rental_card.dart';
 
 class WisataDetailPage extends StatefulWidget {
   final WisataLocation wisata;
@@ -24,6 +24,7 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
   final _rentalService = RentalService();
 
   List<RentalWithDistance> _rentals = [];
+  Map<String, int> _equipmentCounts = {};
   bool _isLoading = true;
 
   // Koordinat default wisata
@@ -41,9 +42,13 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
   Future<void> _muatRental() async {
     try {
       final data = await _rentalService.ambilRentalAktif();
+      final counts = await _rentalService.ambilJumlahAlatTersedia(
+        data.map((item) => item.id).toList(),
+      );
       if (!mounted) return;
       setState(() {
         _rentals = _urutkanRental(data);
+        _equipmentCounts = counts;
         _isLoading = false;
       });
     } catch (_) {
@@ -376,6 +381,8 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
                               itemBuilder: (_, i) => _RentalBottomCard(
                                 rental: _rentals[i].rental,
                                 jarak: _rentals[i].distanceKm,
+                                equipmentCount:
+                                    _equipmentCounts[_rentals[i].rental.id] ?? 0,
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -404,103 +411,22 @@ class _WisataDetailPageState extends State<WisataDetailPage> {
 class _RentalBottomCard extends StatelessWidget {
   final RentalProfile rental;
   final double? jarak;
+  final int equipmentCount;
   final VoidCallback onTap;
   const _RentalBottomCard({
     required this.rental,
     required this.jarak,
+    required this.equipmentCount,
     required this.onTap,
   });
 
-  String get _jarakText {
-    if (jarak == null) return 'Lokasi belum tersedia';
-    return LocationService.formatJarak(jarak!);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return UserRentalCard(
+      rental: rental,
+      distanceKm: jarak,
+      equipmentCount: equipmentCount,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            ClipOval(
-              child: NrImage(
-                imageUrl: rental.fotoProfil,
-                width: 64,
-                height: 64,
-                placeholderColor: AppColors.primaryDark,
-                placeholderIcon: Icons.storefront_rounded,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    rental.namaRental,
-                    style: AppTextStyles.headlineMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    rental.alamat ?? 'Alamat belum tersedia',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.near_me_rounded,
-                        size: 12,
-                        color: AppColors.textHint,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          _jarakText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textHint,
-                          ),
-                        ),
-                      ),
-                      if (rental.isActive)
-                        Text(
-                          'AKTIF',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textHint,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
