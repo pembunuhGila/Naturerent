@@ -48,11 +48,25 @@ class Equipment {
     // Join rental_profiles
     final rental = map['rental_profiles'] as Map<String, dynamic>?;
     // Join equipment_images (list)
-    final imgs =
+    final imageRows =
         (map['equipment_images'] as List?)
-            ?.map((e) => e['image_url'] as String)
+            ?.whereType<Map<String, dynamic>>()
             .toList() ??
-        [];
+        const [];
+    imageRows.sort((a, b) {
+      final aPrimary = a['is_primary'] == true ? 0 : 1;
+      final bPrimary = b['is_primary'] == true ? 0 : 1;
+      if (aPrimary != bPrimary) return aPrimary.compareTo(bPrimary);
+
+      final aOrder = (a['sort_order'] as num?)?.toInt() ?? 9999;
+      final bOrder = (b['sort_order'] as num?)?.toInt() ?? 9999;
+      return aOrder.compareTo(bOrder);
+    });
+    final imgs = imageRows
+        .map((e) => e['image_url'] as String?)
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
     final sizeRows =
         (map['equipment_sizes'] as List?)
             ?.whereType<Map<String, dynamic>>()
@@ -138,11 +152,54 @@ class Equipment {
   }
 
   /// Daftar semua size yang tersedia (stock > 0)
-  List<String> get availableSizes =>
-      sizeStockMap.entries.where((e) => e.value > 0).map((e) => e.key).toList();
+  List<String> get availableSizes => sortedSizeEntries
+      .where((e) => e.value > 0)
+      .map((e) => e.key)
+      .toList(growable: false);
 
   /// Semua size (termasuk yang habis)
-  List<String> get allSizes => sizeStockMap.keys.toList();
+  List<String> get allSizes =>
+      sortedSizeEntries.map((e) => e.key).toList(growable: false);
+
+  /// Semua size-stock yang sudah diurutkan rapi untuk UI.
+  List<MapEntry<String, int>> get sortedSizeEntries {
+    final entries = sizeStockMap.entries.toList(growable: false);
+    entries.sort((a, b) => compareSizeLabels(a.key, b.key));
+    return entries;
+  }
+
+  static const List<String> _alphaSizeOrder = <String>[
+    'XXS',
+    'XS',
+    'S',
+    'M',
+    'L',
+    'XL',
+    'XXL',
+    'XXXL',
+  ];
+
+  static int compareSizeLabels(String left, String right) {
+    final a = left.trim().toUpperCase();
+    final b = right.trim().toUpperCase();
+
+    final aNumber = num.tryParse(a);
+    final bNumber = num.tryParse(b);
+    if (aNumber != null && bNumber != null) {
+      return aNumber.compareTo(bNumber);
+    }
+
+    final aAlphaIndex = _alphaSizeOrder.indexOf(a);
+    final bAlphaIndex = _alphaSizeOrder.indexOf(b);
+    if (aAlphaIndex >= 0 && bAlphaIndex >= 0) {
+      return aAlphaIndex.compareTo(bAlphaIndex);
+    }
+    if (aAlphaIndex >= 0) return -1;
+    if (bAlphaIndex >= 0) return 1;
+    if (aNumber != null) return -1;
+    if (bNumber != null) return 1;
+    return a.compareTo(b);
+  }
 
   static dynamic _jsonDecode(String source) {
     // Minimal JSON map parser to avoid importing dart:convert everywhere
