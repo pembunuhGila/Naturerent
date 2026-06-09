@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:naturerent/core/services/order_activity_service.dart';
 import 'package:naturerent/core/theme/app_theme.dart';
 import 'package:naturerent/features/user/home/user_home_page.dart';
 import 'package:naturerent/features/user/rental/rental_selection_page.dart';
@@ -23,6 +24,16 @@ class _MainShellState extends State<MainShell> {
       _activityPageVersion++;
       _currentIndex = 2;
     });
+    if (index == 0) {
+      OrderActivityService().tandaiSemuaNotifikasiDibaca();
+    }
+  }
+
+  void _setTab(int index) {
+    setState(() => _currentIndex = index);
+    if (index == 2 && _activityInitialTab == 0) {
+      OrderActivityService().tandaiSemuaNotifikasiDibaca();
+    }
   }
 
   @override
@@ -34,19 +45,16 @@ class _MainShellState extends State<MainShell> {
         key: ValueKey('activity-$_activityPageVersion-$_activityInitialTab'),
         initialTab: _activityInitialTab,
       ),
-      const ProfilPage(),
+      ProfilPage(onUserActivityTabTap: _openActivityTab),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: pages),
       extendBody: true,
       bottomNavigationBar: _NrBottomNav(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: _setTab,
       ),
     );
   }
@@ -79,9 +87,7 @@ class _NrBottomNav extends StatelessWidget {
             topLeft: Radius.circular(22),
             topRight: Radius.circular(22),
           ),
-          border: Border(
-            top: BorderSide(color: const Color(0xFFE5E7EB)),
-          ),
+          border: Border(top: BorderSide(color: const Color(0xFFE5E7EB))),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
