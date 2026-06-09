@@ -25,7 +25,6 @@ class AktivitasPage extends StatefulWidget {
 class _AktivitasPageState extends State<AktivitasPage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabCtrl;
-  bool _markingNotificationsAsRead = false;
 
   @override
   void initState() {
@@ -36,7 +35,6 @@ class _AktivitasPageState extends State<AktivitasPage>
       vsync: this,
       initialIndex: widget.initialTab,
     );
-    _tabCtrl.addListener(_handleTabChanged);
     OrderActivityService().muatDariDatabase();
     OrderActivityService().muatNotifikasi();
   }
@@ -44,22 +42,8 @@ class _AktivitasPageState extends State<AktivitasPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _tabCtrl.removeListener(_handleTabChanged);
     _tabCtrl.dispose();
     super.dispose();
-  }
-
-  void _handleTabChanged() {
-    if (_tabCtrl.index == 0) {
-      _markVisibleNotificationsAsRead();
-    }
-  }
-
-  Future<void> _markVisibleNotificationsAsRead() async {
-    if (_markingNotificationsAsRead) return;
-    _markingNotificationsAsRead = true;
-    await OrderActivityService().tandaiSemuaNotifikasiDibaca();
-    _markingNotificationsAsRead = false;
   }
 
   @override
@@ -301,12 +285,16 @@ class _NotificationCard extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: isUnread
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_none_rounded,
-                color: AppColors.primaryDark,
+                color: isUnread
+                    ? AppColors.primaryDark
+                    : AppColors.textSecondary,
                 size: 20,
               ),
             ),
@@ -323,7 +311,9 @@ class _NotificationCard extends StatelessWidget {
                           notification.judul,
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: isUnread
+                                ? FontWeight.w800
+                                : FontWeight.w700,
                           ),
                         ),
                       ),
