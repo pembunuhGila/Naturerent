@@ -25,6 +25,7 @@ class AktivitasPage extends StatefulWidget {
 class _AktivitasPageState extends State<AktivitasPage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabCtrl;
+  bool _markingNotificationsAsRead = false;
 
   @override
   void initState() {
@@ -35,20 +36,37 @@ class _AktivitasPageState extends State<AktivitasPage>
       vsync: this,
       initialIndex: widget.initialTab,
     );
+    _tabCtrl.addListener(_handleTabChanged);
     OrderActivityService().muatDariDatabase();
+    OrderActivityService().muatNotifikasi();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _tabCtrl.removeListener(_handleTabChanged);
     _tabCtrl.dispose();
     super.dispose();
+  }
+
+  void _handleTabChanged() {
+    if (_tabCtrl.index == 0) {
+      _markVisibleNotificationsAsRead();
+    }
+  }
+
+  Future<void> _markVisibleNotificationsAsRead() async {
+    if (_markingNotificationsAsRead) return;
+    _markingNotificationsAsRead = true;
+    await OrderActivityService().tandaiSemuaNotifikasiDibaca();
+    _markingNotificationsAsRead = false;
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       OrderActivityService().muatDariDatabase();
+      OrderActivityService().muatNotifikasi();
     }
   }
 
@@ -167,10 +185,10 @@ class _TabNotifikasi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<List<ActivityOrder>>(
-      valueListenable: OrderActivityService().orders,
-      builder: (context, orders, _) {
-        if (orders.isEmpty) {
+    return ValueListenableBuilder<List<UserNotification>>(
+      valueListenable: OrderActivityService().notifications,
+      builder: (context, notifications, _) {
+        if (notifications.isEmpty) {
           return const _EmptyTab(
             icon: Icons.notifications_none_rounded,
             judul: 'Belum ada notifikasi',
@@ -181,10 +199,10 @@ class _TabNotifikasi extends StatelessWidget {
 
         return ListView.separated(
           padding: _activityListPadding(context),
-          itemCount: orders.length,
+          itemCount: notifications.length,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) =>
-              _NotificationCard(order: orders[index]),
+              _NotificationCard(notification: notifications[index]),
         );
       },
     );
@@ -252,23 +270,29 @@ class _TabRiwayat extends StatelessWidget {
 }
 
 class _NotificationCard extends StatelessWidget {
-  final ActivityOrder order;
+  final UserNotification notification;
 
-  const _NotificationCard({required this.order});
+  const _NotificationCard({required this.notification});
 
   @override
   Widget build(BuildContext context) {
-    final waiting = order.status == ActivityOrderStatus.pending;
+    final isUnread = !notification.isRead;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () => _openOrderDetail(context, order),
+      onTap: () => _openNotification(context, notification),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isUnread
+              ? AppColors.primary.withValues(alpha: 0.06)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: isUnread
+                ? AppColors.primary.withValues(alpha: 0.22)
+                : AppColors.border,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,15 +301,12 @@ class _NotificationCard extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: (waiting ? AppColors.primary : AppColors.success)
-                    .withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                waiting
-                    ? Icons.hourglass_top_rounded
-                    : Icons.check_circle_outline_rounded,
-                color: waiting ? AppColors.primaryDark : AppColors.success,
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                color: AppColors.primaryDark,
                 size: 20,
               ),
             ),
@@ -294,35 +315,35 @@ class _NotificationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    waiting
-                        ? 'Menunggu Verifikasi'
-                        : _statusDetailLabel(
-                            order.status,
-                            dibatalkanPenyewa: order.dibatalkanPenyewa,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.judul,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
                           ),
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.primaryDark,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
-                    ),
+                        ),
+                      ),
+                      if (isUnread) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 5),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Pesanan #${order.nomorPesanan}',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    waiting
-                        ? 'Bukti pembayaran lunas sudah diupload. Admin akan cek pembayaran, lalu pemilik rental mengonfirmasi alat.'
-                        : _statusDescription(
-                            order.status,
-                            dibatalkanPenyewa: order.dibatalkanPenyewa,
-                          ),
+                    notification.pesan,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.35,
@@ -330,7 +351,7 @@ class _NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${order.namaRental} - ${_fmtRupiah(order.total)}',
+                    _fmtTgl(notification.createdAt),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textHint,
                       fontWeight: FontWeight.w600,
@@ -610,6 +631,31 @@ EdgeInsets _activityListPadding(BuildContext context) {
   );
 }
 
+Future<void> _openNotification(
+  BuildContext context,
+  UserNotification notification,
+) async {
+  if (!notification.isRead) {
+    await OrderActivityService().tandaiNotifikasiDibaca(notification.id);
+  }
+
+  final order = _findOrderForNotification(notification);
+  if (order == null || !context.mounted) return;
+  await _openOrderDetail(context, order);
+}
+
+ActivityOrder? _findOrderForNotification(UserNotification notification) {
+  final refId = notification.refId;
+  final text = '${notification.judul} ${notification.pesan}';
+  for (final order in OrderActivityService().orders.value) {
+    if (refId != null && refId.isNotEmpty && order.id == refId) {
+      return order;
+    }
+    if (text.contains(order.nomorPesanan)) return order;
+  }
+  return null;
+}
+
 Future<void> _openOrderDetail(BuildContext context, ActivityOrder order) async {
   await Navigator.of(context).push(
     MaterialPageRoute(
@@ -667,28 +713,6 @@ String _statusDetailLabel(
     ActivityOrderStatus.completed => 'SELESAI',
     ActivityOrderStatus.cancelled =>
       dibatalkanPenyewa ? 'DIBATALKAN PENYEWA' : 'DIBATALKAN ADMIN',
-  };
-}
-
-String _statusDescription(
-  ActivityOrderStatus status, {
-  bool dibatalkanPenyewa = false,
-}) {
-  return switch (status) {
-    ActivityOrderStatus.pending =>
-      'Admin sedang mengecek pembayaran sebelum pesanan diteruskan ke pemilik rental.',
-    ActivityOrderStatus.confirmed =>
-      'Admin sudah ACC. Pesanan sudah diteruskan ke pemilik rental.',
-    ActivityOrderStatus.processing =>
-      'Peralatan sedang disiapkan oleh pemilik rental.',
-    ActivityOrderStatus.rented =>
-      'Pesanan sedang aktif hingga tanggal pengembalian.',
-    ActivityOrderStatus.returned =>
-      'Pesanan selesai. Peralatan sudah dikembalikan.',
-    ActivityOrderStatus.completed => 'Pesanan selesai.',
-    ActivityOrderStatus.cancelled => dibatalkanPenyewa
-        ? 'Pesanan dibatalkan oleh penyewa.'
-        : 'Pesanan dibatalkan oleh admin.',
   };
 }
 
