@@ -285,11 +285,6 @@ export default function LandingPage() {
 
       <footer className="footer">
         <div className="container">
-          <div className="footer-map-rail" aria-hidden="true">
-            <span><i className="fas fa-magnifying-glass"></i></span>
-            <span><i className="fas fa-plus"></i></span>
-            <span><i className="fas fa-list"></i></span>
-          </div>
           <div className="footer-profile">
             <p className="footer-company">PT NATURERENT INDONESIA</p>
             <div className="footer-mark">

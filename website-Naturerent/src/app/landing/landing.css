@@ -740,31 +740,6 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .footer .container {
   position: relative;
-  display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
-  gap: 48px;
-}
-.footer-map-rail {
-  min-height: 560px;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.68)),
-    repeating-linear-gradient(180deg, transparent 0 46px, rgba(16, 34, 29, 0.12) 46px 47px);
-  color: rgba(16, 34, 29, 0.7);
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 28px;
-  padding-top: 26px;
-  box-shadow: inset -1px 0 0 rgba(16, 34, 29, 0.08);
-}
-.footer-map-rail span {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
 }
 .footer-profile {
   max-width: 720px;
@@ -838,7 +813,6 @@ img { max-width: 100%; height: auto; display: block; }
   color: var(--lime);
 }
 .footer-bottom {
-  grid-column: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -880,8 +854,6 @@ img { max-width: 100%; height: auto; display: block; }
   .mitra-phone-stage { order: -1; }
   .partner-phone { transform: none; }
   .download-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
-  .footer .container { grid-template-columns: 64px minmax(0, 1fr); gap: 30px; }
-  .footer-map-rail { min-height: 520px; }
   .footer-mark strong { font-size: 48px; }
 }
 
@@ -911,14 +883,12 @@ img { max-width: 100%; height: auto; display: block; }
   .compare-toggle { width: 100%; }
   .compare-toggle button { min-width: 0; }
   .footer { padding-top: 52px; }
-  .footer .container { grid-template-columns: 1fr; gap: 24px; }
-  .footer-map-rail { display: none; }
   .footer-profile { max-width: none; padding-bottom: 28px; }
   .footer-company { margin-bottom: 24px; font-size: 15px; }
   .footer-mark { margin-bottom: 30px; }
   .footer-mark strong { font-size: 36px; }
   .footer-mark i { width: 48px; height: 48px; font-size: 24px; }
-  .footer-bottom { grid-column: 1; display: grid; justify-content: start; }
+  .footer-bottom { display: grid; justify-content: start; }
 }
 
 @media (max-width: 460px) {
