@@ -36,6 +36,7 @@ class _BerandaPageState extends State<BerandaPage> {
     _muatWisata();
     _searchController.addListener(_filterWisata);
     OrderActivityService().muatDariDatabase();
+    OrderActivityService().muatNotifikasi();
   }
 
   @override
@@ -79,11 +80,11 @@ class _BerandaPageState extends State<BerandaPage> {
 
     setState(() {
       _wisataFiltered = _semuaWisata.where((w) {
-        final matchQuery = query.isEmpty ||
+        final matchQuery =
+            query.isEmpty ||
             w.nama.toLowerCase().contains(query) ||
             (w.deskripsi?.toLowerCase().contains(query) ?? false);
-        final matchKategori =
-            kategori == null || w.kategori == kategori;
+        final matchKategori = kategori == null || w.kategori == kategori;
         return matchQuery && matchKategori;
       }).toList();
     });
@@ -109,10 +110,12 @@ class _BerandaPageState extends State<BerandaPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -136,13 +139,9 @@ class _BerandaPageState extends State<BerandaPage> {
                   ),
                 )
               else if (_error != null)
-                SliverFillRemaining(
-                  child: _buildErrorState(),
-                )
+                SliverFillRemaining(child: _buildErrorState())
               else if (_wisataFiltered.isEmpty)
-                SliverFillRemaining(
-                  child: _buildEmptyState(),
-                )
+                SliverFillRemaining(child: _buildEmptyState())
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -183,10 +182,9 @@ class _BerandaPageState extends State<BerandaPage> {
                   ),
                 ),
               ),
-              ValueListenableBuilder<List<ActivityOrder>>(
-                valueListenable: OrderActivityService().orders,
-                builder: (_, orders, __) {
-                  final count = orders.length;
+              ValueListenableBuilder<int>(
+                valueListenable: OrderActivityService().unreadNotificationCount,
+                builder: (_, count, __) {
                   return GestureDetector(
                     onTap: widget.onOpenNotifications,
                     child: Stack(
@@ -213,10 +211,10 @@ class _BerandaPageState extends State<BerandaPage> {
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
-                                count > 9 ? '9+' : '$count',
+                                count > 99 ? '99+' : '$count',
                                 style: AppTextStyles.caption.copyWith(
                                   color: Colors.white,
-                                  fontSize: count > 9 ? 7.5 : 9,
+                                  fontSize: count > 99 ? 7 : 9,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0,
                                 ),
@@ -264,17 +262,23 @@ class _BerandaPageState extends State<BerandaPage> {
         child: Row(
           children: [
             const SizedBox(width: 14),
-            const Icon(Icons.search_rounded, color: AppColors.textHint, size: 20),
+            const Icon(
+              Icons.search_rounded,
+              color: AppColors.textHint,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
                 controller: _searchController,
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textPrimary),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Cari alat camping',
-                  hintStyle: AppTextStyles.bodyMedium
-                      .copyWith(color: AppColors.textHint),
+                  hintStyle: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textHint,
+                  ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -336,8 +340,9 @@ class _BerandaPageState extends State<BerandaPage> {
                             color: isSelected
                                 ? AppColors.white
                                 : AppColors.textSecondary,
-                            fontWeight:
-                                isSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             letterSpacing: 0,
                           ),
                         ),
@@ -358,20 +363,19 @@ class _BerandaPageState extends State<BerandaPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.explore_off_rounded,
-              size: 52, color: AppColors.textHint),
+          Icon(Icons.explore_off_rounded, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
           Text(
             'Belum ada destinasi',
-            style: AppTextStyles.headlineMedium
-                .copyWith(color: AppColors.textHint),
+            style: AppTextStyles.headlineMedium.copyWith(
+              color: AppColors.textHint,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Data akan muncul setelah admin\nmenambahkan lokasi wisata.',
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.textHint),
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
           ),
         ],
       ),
@@ -385,17 +389,21 @@ class _BerandaPageState extends State<BerandaPage> {
         children: [
           Icon(Icons.wifi_off_rounded, size: 52, color: AppColors.textHint),
           const SizedBox(height: 12),
-          Text(_error!,
-              textAlign: TextAlign.center,
-              style:
-                  AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint)),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+          ),
           const SizedBox(height: 16),
           TextButton.icon(
             onPressed: _muatWisata,
             icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            label: Text('Coba Lagi',
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.primary)),
+            label: Text(
+              'Coba Lagi',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ],
       ),
@@ -441,7 +449,9 @@ class _WisataCard extends StatelessWidget {
 
             // ── Dark gradient overlay
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               height: 130,
               child: Container(
                 decoration: BoxDecoration(
@@ -462,8 +472,10 @@ class _WisataCard extends StatelessWidget {
               top: 12,
               right: 12,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -471,8 +483,11 @@ class _WisataCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.landscape_rounded,
-                        color: AppColors.primary, size: 13),
+                    const Icon(
+                      Icons.landscape_rounded,
+                      color: AppColors.primary,
+                      size: 13,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       wisata.kategori ?? 'Wisata',
@@ -489,7 +504,9 @@ class _WisataCard extends StatelessWidget {
 
             // ── Teks info bawah
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -517,8 +534,9 @@ class _WisataCard extends StatelessWidget {
                         wisata.deskripsi!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: Colors.white60),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: Colors.white60,
+                        ),
                       ),
                     ],
                   ],
