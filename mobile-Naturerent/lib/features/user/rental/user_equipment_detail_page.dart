@@ -214,11 +214,6 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                             icon: Icons.category_outlined,
                             label: alat.namaKategori ?? 'Umum',
                           ),
-                          if (alat.size != null && alat.size!.isNotEmpty)
-                            _SpecChip(
-                              icon: Icons.straighten_rounded,
-                              label: 'Size: ${alat.size}',
-                            ),
                           if (alat.capacity != null && alat.capacity! > 0)
                             _SpecChip(
                               icon: Icons.people_outline_rounded,
@@ -243,6 +238,11 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                             ),
                         ],
                       ),
+
+                      if (alat.sizeStockMap.isNotEmpty) ...[
+                        const SizedBox(height: 18),
+                        _buildSizeAvailabilitySection(alat),
+                      ],
 
                       const SizedBox(height: 20),
 
@@ -412,12 +412,12 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
   }
 
   Widget _buildSizeSelector(Equipment alat) {
-    final sizeMap = alat.sizeStockMap;
-    if (sizeMap.isEmpty) return const SizedBox.shrink();
+    final sizeEntries = alat.sortedSizeEntries;
+    if (sizeEntries.isEmpty) return const SizedBox.shrink();
 
     // Jika hanya 1 size, tampilkan info saja tanpa pilihan
-    if (sizeMap.length == 1) {
-      final entry = sizeMap.entries.first;
+    if (sizeEntries.length == 1) {
+      final entry = sizeEntries.first;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -467,7 +467,7 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: sizeMap.entries.map((entry) {
+          children: sizeEntries.map((entry) {
             final size = entry.key;
             final stock = entry.value;
             final isSelected = _selectedSize == size;
@@ -541,6 +541,33 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
               ),
             );
           }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSizeAvailabilitySection(Equipment alat) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'UKURAN TERSEDIA',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: alat.sortedSizeEntries.map((entry) {
+            return _SpecChip(
+              icon: Icons.straighten_rounded,
+              label: '${entry.key} (${entry.value} unit)',
+            );
+          }).toList(growable: false),
         ),
       ],
     );
@@ -693,8 +720,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
             onPressed: bisa
                 ? () {
                     // Validasi: jika ada pilihan size tapi belum dipilih
-                    final sizeMap = alat.sizeStockMap;
-                    if (sizeMap.length > 1 && _selectedSize == null) {
+                    final sizeEntries = alat.sortedSizeEntries;
+                    if (sizeEntries.length > 1 && _selectedSize == null) {
                       NrToast.show(
                         context,
                         'Pilih ukuran terlebih dahulu',
@@ -702,9 +729,11 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                       );
                       return;
                     }
-                    final sizeToSend = sizeMap.length > 1
+                    final sizeToSend = sizeEntries.length > 1
                         ? _selectedSize
-                        : (sizeMap.length == 1 ? sizeMap.keys.first : null);
+                        : (sizeEntries.length == 1
+                              ? sizeEntries.first.key
+                              : null);
                     CartService().tambah(alat, widget.rental, selectedSize: sizeToSend);
                     NrToast.show(
                       context,
