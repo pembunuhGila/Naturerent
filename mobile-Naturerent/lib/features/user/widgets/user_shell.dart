@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:naturerent/core/services/order_activity_service.dart';
 import 'package:naturerent/core/theme/app_theme.dart';
 import 'package:naturerent/features/user/home/user_home_page.dart';
 import 'package:naturerent/features/user/rental/rental_selection_page.dart';
@@ -24,16 +23,10 @@ class _MainShellState extends State<MainShell> {
       _activityPageVersion++;
       _currentIndex = 2;
     });
-    if (index == 0) {
-      OrderActivityService().tandaiSemuaNotifikasiDibaca();
-    }
   }
 
   void _setTab(int index) {
     setState(() => _currentIndex = index);
-    if (index == 2 && _activityInitialTab == 0) {
-      OrderActivityService().tandaiSemuaNotifikasiDibaca();
-    }
   }
 
   @override
