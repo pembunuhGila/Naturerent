@@ -170,10 +170,13 @@ class OrderActivityService {
   Future<void> muatNotifikasi() async {
     final user = AuthService().penggunaSaatIni;
     if (user == null) {
+      debugPrint('muatNotifikasi: user is null');
       notifications.value = <UserNotification>[];
       _syncUnreadNotificationCount();
       return;
     }
+
+    debugPrint('muatNotifikasi: userId=${user.id}');
 
     try {
       final data = await AuthService.client
@@ -182,13 +185,17 @@ class OrderActivityService {
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
 
-      notifications.value = (data as List)
+      debugPrint(
+        'muatNotifikasi: fetched ${(data as List).length} rows for userId=${user.id}',
+      );
+
+      notifications.value = data
           .whereType<Map<String, dynamic>>()
           .map(UserNotification.fromMap)
           .toList(growable: false);
       _syncUnreadNotificationCount();
     } catch (e) {
-      debugPrint('Gagal memuat notifikasi: $e');
+      debugPrint('Gagal memuat notifikasi untuk userId=${user.id}: $e');
     }
   }
 
