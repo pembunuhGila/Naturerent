@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/admin_order.dart';
@@ -57,7 +56,7 @@ class AdminService {
   }
 
   Future<void> accPesanan(String bookingId) async {
-    await _client
+    final updated = await _client
         .from('bookings')
         .update({
           'status': 'confirmed',
@@ -66,7 +65,40 @@ class AdminService {
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', bookingId)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .select('customer_id, booking_code')
+        .maybeSingle();
+
+    debugPrint('accPesanan updated=$updated');
+    if (updated == null) return;
+
+    final customerId = updated['customer_id'] as String?;
+    if (customerId == null || customerId.isEmpty) {
+      debugPrint(
+        'Admin notification skipped for booking=$bookingId because customerId is empty.',
+      );
+      return;
+    }
+
+    try {
+      await _client.from('notifications').insert({
+        'user_id': customerId,
+        'judul': 'Pesanan kamu telah disetujui admin.',
+        'pesan':
+            'Pesanan #${updated['booking_code'] ?? bookingId} sudah disetujui dan akan diteruskan ke pemilik rental.',
+        'type': 'booking',
+        'ref_id': bookingId,
+        'is_read': false,
+      });
+      debugPrint(
+        'Admin notification inserted for booking=$bookingId userId=$customerId',
+      );
+    } catch (e, stackTrace) {
+      debugPrint(
+        'Failed to insert admin notification for booking=$bookingId userId=$customerId error=$e',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   Future<void> batalkanPesanan(String bookingId) async {
