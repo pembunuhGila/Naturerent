@@ -15,10 +15,14 @@ class OwnerDashboardPage extends StatefulWidget {
 
 class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   late final Future<_DashboardData> _dashboardFuture;
+  late final List<DateTime> _monthOptions;
+  late DateTime _selectedMonth;
 
   @override
   void initState() {
     super.initState();
+    _selectedMonth = _monthStart(DateTime.now());
+    _monthOptions = _buildMonthOptions(DateTime.now());
     _dashboardFuture = _loadDashboardData();
   }
 
@@ -59,35 +63,20 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         ])
         .order('created_at', ascending: false);
 
-    final allOrders = (data as List)
-        .map((row) => AdminOrder.fromMap(row as Map<String, dynamic>))
-        .toList(growable: false)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final allOrders =
+        (data as List)
+            .map((row) => AdminOrder.fromMap(row as Map<String, dynamic>))
+            .toList(growable: false)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final orders = allOrders
         .where(_isRecognizedIncomeOrder)
         .toList(growable: false);
 
-    final currentMonthOrders =
-        orders.where(_isCurrentMonth).toList(growable: false);
-    final previousMonthOrders =
-        orders.where(_isPreviousMonth).toList(growable: false);
-    final currentTotal = _sumNetIncome(currentMonthOrders);
-    final previousTotal = _sumNetIncome(previousMonthOrders);
     final recentOrders = [...allOrders]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    return _DashboardData(
-      incomeSummary: _MonthlyIncomeSummary(
-        amount: _formatCurrency(currentTotal),
-        subtext: _growthText(
-          current: currentTotal,
-          previous: previousTotal,
-          periodLabel: 'bulan lalu',
-        ),
-      ),
-      recentOrders: recentOrders.take(5).toList(growable: false),
-    );
+    return _DashboardData(incomeOrders: orders, allOrders: recentOrders);
   }
 
   @override
@@ -117,13 +106,25 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                     future: _dashboardFuture,
                     builder: (context, snapshot) {
                       final data = snapshot.data ?? _DashboardData.empty();
+                      final monthlyView = _buildMonthlyView(
+                        data,
+                        _selectedMonth,
+                      );
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _IncomeHighlightCard(
-                            label: 'Pendapatan Bulan Ini',
-                            amount: data.incomeSummary.amount,
-                            subtext: data.incomeSummary.subtext,
+                            label: monthlyView.label,
+                            amount: monthlyView.incomeSummary.amount,
+                            subtext: monthlyView.incomeSummary.subtext,
+                          ),
+                          const SizedBox(height: 14),
+                          _MonthSelector(
+                            months: _monthOptions,
+                            selectedMonth: _selectedMonth,
+                            onSelected: (month) {
+                              setState(() => _selectedMonth = month);
+                            },
                           ),
                           const SizedBox(height: 20),
                           Row(
@@ -149,10 +150,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          if (data.recentOrders.isEmpty)
+                          if (monthlyView.recentOrders.isEmpty)
                             const _EmptyTransactionsCard()
                           else
-                            ...data.recentOrders.map(
+                            ...monthlyView.recentOrders.map(
                               (order) => Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: _TransactionCard(order: order),
@@ -172,21 +173,14 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   }
 }
 
-
 class _DashboardData {
-  final _MonthlyIncomeSummary incomeSummary;
-  final List<AdminOrder> recentOrders;
+  final List<AdminOrder> incomeOrders;
+  final List<AdminOrder> allOrders;
 
-  const _DashboardData({
-    required this.incomeSummary,
-    required this.recentOrders,
-  });
+  const _DashboardData({required this.incomeOrders, required this.allOrders});
 
   factory _DashboardData.empty() {
-    return _DashboardData(
-      incomeSummary: _MonthlyIncomeSummary.empty(),
-      recentOrders: const [],
-    );
+    return _DashboardData(incomeOrders: const [], allOrders: const []);
   }
 }
 
@@ -194,42 +188,79 @@ class _MonthlyIncomeSummary {
   final String amount;
   final String subtext;
 
-  const _MonthlyIncomeSummary({
-    required this.amount,
-    required this.subtext,
-  });
+  const _MonthlyIncomeSummary({required this.amount, required this.subtext});
+}
 
-  factory _MonthlyIncomeSummary.empty() {
-    return const _MonthlyIncomeSummary(
-      amount: 'Rp 0',
-      subtext: 'Data bulan lalu belum tersedia',
-    );
-  }
+class _MonthlyDashboardView {
+  final String label;
+  final _MonthlyIncomeSummary incomeSummary;
+  final List<AdminOrder> recentOrders;
+
+  const _MonthlyDashboardView({
+    required this.label,
+    required this.incomeSummary,
+    required this.recentOrders,
+  });
 }
 
 bool _isRecognizedIncomeOrder(AdminOrder order) {
   final finished = order.status == 'returned' || order.status == 'completed';
   final paymentStatus = order.paymentStatus?.toLowerCase().trim();
-  final paid = order.pembayaranLunas ||
+  final paid =
+      order.pembayaranLunas ||
       paymentStatus == 'dp_confirmed' ||
       paymentStatus == 'paid' ||
       paymentStatus == 'lunas';
   return finished && paid;
 }
 
-bool _isCurrentMonth(AdminOrder order) {
-  final now = DateTime.now();
-  final transactionDate = order.createdAt.toLocal();
-  return transactionDate.year == now.year && transactionDate.month == now.month;
+_MonthlyDashboardView _buildMonthlyView(
+  _DashboardData data,
+  DateTime selectedMonth,
+) {
+  final selectedIncomeOrders = data.incomeOrders
+      .where((order) => _isSameMonth(order.createdAt, selectedMonth))
+      .toList(growable: false);
+  final previousMonth = _addMonths(selectedMonth, -1);
+  final previousIncomeOrders = data.incomeOrders
+      .where((order) => _isSameMonth(order.createdAt, previousMonth))
+      .toList(growable: false);
+  final selectedTotal = _sumNetIncome(selectedIncomeOrders);
+  final previousTotal = _sumNetIncome(previousIncomeOrders);
+  final selectedRecentOrders = data.allOrders
+      .where((order) => _isSameMonth(order.createdAt, selectedMonth))
+      .take(5)
+      .toList(growable: false);
+
+  return _MonthlyDashboardView(
+    label: 'Pendapatan ${_monthLabel(selectedMonth)}',
+    incomeSummary: _MonthlyIncomeSummary(
+      amount: _formatCurrency(selectedTotal),
+      subtext: _growthText(
+        current: selectedTotal,
+        previous: previousTotal,
+        periodLabel: _monthLabel(previousMonth),
+      ),
+    ),
+    recentOrders: selectedRecentOrders,
+  );
 }
 
-bool _isPreviousMonth(AdminOrder order) {
-  final now = DateTime.now();
-  final previousMonth = now.month == 1 ? 12 : now.month - 1;
-  final previousYear = now.month == 1 ? now.year - 1 : now.year;
-  final transactionDate = order.createdAt.toLocal();
-  return transactionDate.year == previousYear &&
-      transactionDate.month == previousMonth;
+bool _isSameMonth(DateTime value, DateTime month) {
+  final transactionDate = value.toLocal();
+  return transactionDate.year == month.year &&
+      transactionDate.month == month.month;
+}
+
+DateTime _monthStart(DateTime value) => DateTime(value.year, value.month);
+
+DateTime _addMonths(DateTime month, int offset) {
+  return DateTime(month.year, month.month + offset);
+}
+
+List<DateTime> _buildMonthOptions(DateTime now) {
+  final currentMonth = _monthStart(now);
+  return List.generate(6, (index) => _addMonths(currentMonth, -index));
 }
 
 double _sumCompletedPayments(Iterable<AdminOrder> orders) {
@@ -274,6 +305,24 @@ String _formatDate(DateTime value) {
   return '$day/$month/${value.year}';
 }
 
+String _monthLabel(DateTime value) {
+  const months = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+  return '${months[value.month - 1]} ${value.year}';
+}
+
 String _shortCode(AdminOrder order) {
   final code = order.bookingCode;
   if (code != null && code.isNotEmpty) return code;
@@ -293,6 +342,69 @@ String _dashboardStatusLabel(String status) {
   };
 }
 
+class _MonthSelector extends StatelessWidget {
+  final List<DateTime> months;
+  final DateTime selectedMonth;
+  final ValueChanged<DateTime> onSelected;
+
+  const _MonthSelector({
+    required this.months,
+    required this.selectedMonth,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currentMonth = _monthStart(DateTime.now());
+
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: months.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final month = months[index];
+          final selected = _isSameMonth(month, selectedMonth);
+          final label = _isSameMonth(month, currentMonth)
+              ? 'Bulan Ini'
+              : _monthLabel(month);
+
+          return InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => onSelected(month),
+            child: Container(
+              height: 42,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.ownerPrimaryGreen : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.ownerPrimaryGreen
+                      : AppColors.ownerBorderColor,
+                  width: AppColors.ownerBorderWidth,
+                ),
+              ),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: selected ? Colors.white : const Color(0xFF496171),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class _IncomeHighlightCard extends StatelessWidget {
   final String label;
