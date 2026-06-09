@@ -18,12 +18,14 @@ import 'privacy_policy_page.dart';
 class ProfilPage extends StatefulWidget {
   final bool forceMitra;
   final ValueChanged<int>? onOwnerNavTap;
+  final ValueChanged<int>? onUserActivityTabTap;
   final int refreshToken;
 
   const ProfilPage({
     super.key,
     this.forceMitra = false,
     this.onOwnerNavTap,
+    this.onUserActivityTabTap,
     this.refreshToken = 0,
   });
 
@@ -193,7 +195,7 @@ class _ProfilPageState extends State<ProfilPage> {
   /// Navigasi ke halaman aktivitas yang sesuai dengan role user.
   /// Owner → OwnerActivityPage, Customer → AktivitasPage
   Future<void> _bukaAktivitas() async {
-    await _bukaHalamanAktivitas(initialTab: 0);
+    await _bukaHalamanAktivitas(initialTab: 1);
   }
 
   Future<void> _bukaRiwayatTransaksi() async {
@@ -229,6 +231,12 @@ class _ProfilPageState extends State<ProfilPage> {
         MaterialPageRoute(builder: (_) => const OwnerActivityPage()),
       );
     } else {
+      final onUserActivityTabTap = widget.onUserActivityTabTap;
+      if (onUserActivityTabTap != null) {
+        onUserActivityTabTap(initialTab);
+        return;
+      }
+
       // Default: halaman aktivitas customer
       await Navigator.push(
         context,
