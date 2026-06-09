@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../profil/profil_page.dart';
+import 'package:naturerent/features/user/profile/user_profile_page.dart';
 import 'admin_destinations_page.dart';
 import 'admin_orders_page.dart';
 

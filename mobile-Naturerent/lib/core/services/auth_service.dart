@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
-import '../../features/auth/onboarding_page.dart';
+import 'package:naturerent/features/user/auth/onboarding_page.dart';
 
 /// Satu-satunya pintu masuk ke Supabase Auth & data Users.
 /// Nama method disesuaikan dengan Class Diagram (Bahasa Indonesia).

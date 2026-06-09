@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:naturerent/core/theme/app_theme.dart';
 
 /// Reusable header "Mitra NatureRent" yang digunakan di semua halaman
 /// area Pemilik Rental (Owner). Jangan digunakan di halaman Customer/User.

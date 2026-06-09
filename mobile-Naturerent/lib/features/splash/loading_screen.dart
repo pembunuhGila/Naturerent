@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/services/auth_service.dart';
-import '../auth/onboarding_page.dart';
-import '../auth/reset_password_page.dart';
-import '../shell/role_gate.dart';
+import 'package:naturerent/core/theme/app_theme.dart';
+import 'package:naturerent/core/services/auth_service.dart';
+import 'package:naturerent/features/user/auth/onboarding_page.dart';
+import 'package:naturerent/features/user/auth/reset_password_page.dart';
+import 'package:naturerent/features/user/auth/role_gate.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
