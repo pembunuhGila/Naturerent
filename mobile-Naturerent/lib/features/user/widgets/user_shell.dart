@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:naturerent/core/services/order_activity_service.dart';
 import 'package:naturerent/core/theme/app_theme.dart';
 import 'package:naturerent/features/user/home/user_home_page.dart';
 import 'package:naturerent/features/user/rental/rental_selection_page.dart';
@@ -26,6 +27,16 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _setTab(int index) {
+    if (index == 2) {
+      OrderActivityService().muatDariDatabase();
+      OrderActivityService().muatNotifikasi();
+      setState(() {
+        _activityPageVersion++;
+        _currentIndex = index;
+      });
+      return;
+    }
+
     setState(() => _currentIndex = index);
   }
 
