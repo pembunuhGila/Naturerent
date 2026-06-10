@@ -32,7 +32,8 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   List<Map<String, dynamic>> _categories = [];
   List<DestinationInfo> _suggestedDestinations = [];
   String? _rentalId;
-  RentalProfile? _rentalProfile; // Simpan profil rental lengkap (termasuk lat/lng)
+  RentalProfile?
+  _rentalProfile; // Simpan profil rental lengkap (termasuk lat/lng)
   bool _loading = true;
   bool _preparingAdd = false;
   String? _error;
@@ -136,7 +137,10 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
   }
 
   String _jarakDestinasi(RentalProfile rental, double? lat, double? lng) {
-    if (rental.lat == null || rental.lng == null || lat == null || lng == null) {
+    if (rental.lat == null ||
+        rental.lng == null ||
+        lat == null ||
+        lng == null) {
       return '-';
     }
 
@@ -148,8 +152,6 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     );
     return LocationService.formatJarak(distance);
   }
-
-
 
   IconData _iconForKategori(String? kategori) {
     final value = kategori?.toLowerCase() ?? '';
@@ -226,6 +228,52 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     if (changed == true) _muatAlat();
   }
 
+  Future<void> _hapusAlat(Equipment? equipment) async {
+    if (equipment == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Peralatan'),
+        content: Text('Hapus ${equipment.nama} dari inventaris?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await _equipmentService.hapusAlat(equipment.id);
+      if (!mounted) return;
+      NrToast.show(
+        context,
+        'Peralatan berhasil dihapus.',
+        type: NrToastType.success,
+      );
+      _muatAlat();
+    } catch (e) {
+      if (!mounted) return;
+      NrToast.show(
+        context,
+        'Gagal menghapus peralatan: ${e.toString()}',
+        type: NrToastType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -298,6 +346,7 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                         alat: _alat,
                         categories: _categories,
                         onEdit: _bukaEditAlat,
+                        onDelete: _hapusAlat,
                         onAdd: _preparingAdd ? null : _bukaTambahAlat,
                         preparingAdd: _preparingAdd,
                       ),
@@ -384,13 +433,10 @@ class _RentalManageTab extends StatelessWidget {
         const SizedBox(height: 32),
         _RentalProfileCard(rentalProfile: rentalProfile),
         const SizedBox(height: 24),
-        _NearbyDestinationSection(
-          destinations: suggestedDestinations,
-        ),
+        _NearbyDestinationSection(destinations: suggestedDestinations),
       ],
     );
   }
-
 }
 
 class _RentalProfileCard extends StatelessWidget {
@@ -401,7 +447,8 @@ class _RentalProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final namaRental = rentalProfile?.namaRental ?? 'Base Camp Ranu Kumbolo';
-    final alamat = rentalProfile?.alamat ??
+    final alamat =
+        rentalProfile?.alamat ??
         'Kaki Gunung Semeru, Desa Ranupani, Senduro, Lumajang, Jawa Timur';
 
     return Container(
@@ -652,6 +699,7 @@ class _EquipmentManageTab extends StatefulWidget {
   final List<Equipment> alat;
   final List<Map<String, dynamic>> categories;
   final ValueChanged<Equipment?> onEdit;
+  final ValueChanged<Equipment?> onDelete;
   final VoidCallback? onAdd;
   final bool preparingAdd;
 
@@ -661,6 +709,7 @@ class _EquipmentManageTab extends StatefulWidget {
     required this.alat,
     required this.categories,
     required this.onEdit,
+    required this.onDelete,
     required this.onAdd,
     required this.preparingAdd,
   });
@@ -696,14 +745,16 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
     final categoryOptions = _categoryOptions;
     final activeCategoryId =
         categoryOptions.any((entry) => entry.key == _selectedCategoryId)
-            ? _selectedCategoryId
-            : null;
+        ? _selectedCategoryId
+        : null;
     final filtered = activeCategoryId == null
         ? widget.alat
         : widget.alat
-            .where((item) => item.categoryId == activeCategoryId)
-            .toList();
-    final displayItems = filtered.map(_OwnerEquipmentItem.fromEquipment).toList();
+              .where((item) => item.categoryId == activeCategoryId)
+              .toList();
+    final displayItems = filtered
+        .map(_OwnerEquipmentItem.fromEquipment)
+        .toList();
 
     return ListView(
       shrinkWrap: true,
@@ -723,7 +774,9 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(
-              child: CircularProgressIndicator(color: AppColors.ownerPrimaryGreen),
+              child: CircularProgressIndicator(
+                color: AppColors.ownerPrimaryGreen,
+              ),
             ),
           )
         else if (widget.error != null)
@@ -745,10 +798,11 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
         else
           ...displayItems.map(
             (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 36),
+              padding: const EdgeInsets.only(bottom: 18),
               child: _EquipmentProductCard(
                 item: item,
                 onEdit: () => widget.onEdit(item.equipment),
+                onDelete: () => widget.onDelete(item.equipment),
               ),
             ),
           ),
@@ -941,122 +995,105 @@ class _EquipmentEmptyState extends StatelessWidget {
 class _EquipmentProductCard extends StatelessWidget {
   final _OwnerEquipmentItem item;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _EquipmentProductCard({required this.item, required this.onEdit});
+  const _EquipmentProductCard({
+    required this.item,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: AppColors.ownerBorderColor,
+          color: AppColors.ownerBorderColor.withValues(alpha: 0.8),
           width: AppColors.ownerBorderWidth,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _EquipmentVisual(item: item),
-          const SizedBox(height: 24),
+          const SizedBox(height: 10),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _OwnerSpecChip(label: item.categoryLabel),
+                const SizedBox(width: 8),
+                _OwnerSpecChip(label: '${item.stock} unit'),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: const Color(0xFF202321),
+                fontWeight: FontWeight.w900,
+                height: 1.2,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    item.name,
-                    style: AppTextStyles.headlineMedium.copyWith(
-                      color: const Color(0xFF222523),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      height: 1.15,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text.rich(
-                  TextSpan(
-                    text: item.price,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.ownerPrimaryGreen,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: '/hari',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: const Color(0xFF2D342F),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                  child: RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: item.price,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.ownerPrimaryGreen,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                    ],
+                        TextSpan(
+                          text: '/hari',
+                          style: AppTextStyles.caption.copyWith(
+                            color: const Color(0xFF496171),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+                _OwnerActionButton(
+                  icon: Icons.edit_rounded,
+                  color: const Color(0xFFE9E9E5),
+                  iconColor: const Color(0xFF202321),
+                  onTap: onEdit,
+                ),
+                const SizedBox(width: 8),
+                _OwnerActionButton(
+                  icon: Icons.delete_outline_rounded,
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  iconColor: AppColors.error,
+                  onTap: onDelete,
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Icon(item.stockIcon, color: item.stockColor, size: 15),
-                const SizedBox(width: 7),
-                Text(
-                  item.stockText,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: item.stockColor,
-                    fontSize: 13,
-                    fontWeight: item.status == _EquipmentStatus.available
-                        ? FontWeight.w500
-                        : FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: ElevatedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(
-                  Icons.edit_rounded,
-                  color: Color(0xFF222523),
-                  size: 18,
-                ),
-                label: Text(
-                  'Edit',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: const Color(0xFF222523),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE9E9E5),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-              ),
             ),
           ),
         ],
@@ -1072,49 +1109,49 @@ class _EquipmentVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 4 / 5,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
-              Image.network(
-                item.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _EquipmentImageFallback(item: item);
-                },
-              )
-            else
-              _EquipmentImageFallback(item: item),
-            Positioned(
-              top: 15,
-              left: 15,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: item.badgeColor,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  item.badgeLabel,
-                  style: AppTextStyles.caption.copyWith(
-                    color: item.badgeTextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
-                ),
+    return Stack(
+      children: [
+        Container(
+          height: 172,
+          width: double.infinity,
+          color: Colors.white,
+          alignment: Alignment.center,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                ? Image.network(
+                    item.imageUrl!,
+                    width: double.infinity,
+                    height: 152,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _EquipmentImageFallback(item: item);
+                    },
+                  )
+                : _EquipmentImageFallback(item: item),
+          ),
+        ),
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: item.badgeColor,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              item.badgeLabel,
+              style: AppTextStyles.caption.copyWith(
+                color: item.badgeTextColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -1142,12 +1179,73 @@ class _EquipmentImageFallback extends StatelessWidget {
   }
 }
 
+class _OwnerSpecChip extends StatelessWidget {
+  final String label;
+
+  const _OwnerSpecChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 130),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.ownerSoftGreen,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.ownerPrimaryGreen,
+          fontSize: 8.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _OwnerActionButton({
+    required this.icon,
+    required this.color,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor, size: 18),
+      ),
+    );
+  }
+}
+
 enum _EquipmentStatus { available, low, empty }
 
 class _OwnerEquipmentItem {
   final Equipment? equipment;
   final String? imageUrl;
   final String name;
+  final String categoryLabel;
   final String price;
   final int stock;
   final _EquipmentStatus status;
@@ -1160,6 +1258,7 @@ class _OwnerEquipmentItem {
     this.equipment,
     this.imageUrl,
     required this.name,
+    required this.categoryLabel,
     required this.price,
     required this.stock,
     required this.status,
@@ -1179,6 +1278,7 @@ class _OwnerEquipmentItem {
       equipment: equipment,
       imageUrl: equipment.gambarprimaryUrl,
       name: equipment.nama,
+      categoryLabel: equipment.namaKategori ?? 'Kategori',
       price: _formatCompactRupiah(equipment.hargaPerHari),
       stock: equipment.stock,
       status: status,
@@ -1192,19 +1292,19 @@ class _OwnerEquipmentItem {
 
   String get badgeLabel => switch (status) {
     _EquipmentStatus.available => 'TERSEDIA',
-    _EquipmentStatus.low => 'HAMPIR HABIS',
-    _EquipmentStatus.empty => 'HABIS',
+    _EquipmentStatus.low => 'TERSEDIA',
+    _EquipmentStatus.empty => 'STOK HABIS',
   };
 
   Color get badgeColor => switch (status) {
     _EquipmentStatus.available => AppColors.ownerSoftGreen,
-    _EquipmentStatus.low => const Color(0xFFC65787),
+    _EquipmentStatus.low => AppColors.ownerSoftGreen,
     _EquipmentStatus.empty => const Color(0xFFFFE0E0),
   };
 
   Color get badgeTextColor => switch (status) {
     _EquipmentStatus.available => AppColors.ownerPrimaryGreen,
-    _EquipmentStatus.low => Colors.white,
+    _EquipmentStatus.low => AppColors.ownerPrimaryGreen,
     _EquipmentStatus.empty => const Color(0xFFD65B66),
   };
 
@@ -1258,10 +1358,7 @@ Color _visualColorForStatus(_EquipmentStatus status) => switch (status) {
 class OwnerNearbyDestinationsPage extends StatelessWidget {
   final List<DestinationInfo> destinations;
 
-  const OwnerNearbyDestinationsPage({
-    super.key,
-    required this.destinations,
-  });
+  const OwnerNearbyDestinationsPage({super.key, required this.destinations});
 
   @override
   Widget build(BuildContext context) {
