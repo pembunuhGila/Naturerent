@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:naturerent/core/models/equipment.dart';
@@ -375,16 +376,45 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
 
       final newImages = <_PickedEquipmentImage>[];
       for (final picked in pickedFiles) {
-        final bytes = await picked.readAsBytes();
-        final extension = _extensionForPath(picked.path);
+        final cropped = await ImageCropper().cropImage(
+          sourcePath: picked.path,
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          compressQuality: 86,
+          compressFormat: ImageCompressFormat.jpg,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Pangkas Foto Alat',
+              toolbarColor: AppColors.ownerPrimaryGreen,
+              toolbarWidgetColor: Colors.white,
+              // ignore: deprecated_member_use
+              statusBarColor: AppColors.ownerPrimaryGreen,
+              backgroundColor: Colors.black,
+              activeControlsWidgetColor: AppColors.ownerPrimaryGreen,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true,
+              hideBottomControls: false,
+              showCropGrid: true,
+            ),
+            IOSUiSettings(
+              title: 'Pangkas Foto Alat',
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+            ),
+          ],
+        );
+        if (cropped == null) continue;
+
+        final bytes = await cropped.readAsBytes();
         newImages.add(
           _PickedEquipmentImage(
             bytes: bytes,
-            extension: extension,
-            contentType: _contentTypeForExtension(extension),
+            extension: 'jpg',
+            contentType: 'image/jpeg',
           ),
         );
       }
+
+      if (newImages.isEmpty) return;
 
       if (!mounted) return;
       setState(() {
@@ -402,23 +432,6 @@ class _OwnerEquipmentFormPageState extends State<OwnerEquipmentFormPage> {
         type: NrToastType.error,
       );
     }
-  }
-
-  String _extensionForPath(String path) {
-    final normalized = path.trim().toLowerCase();
-    if (normalized.endsWith('.png')) return 'png';
-    if (normalized.endsWith('.webp')) return 'webp';
-    if (normalized.endsWith('.jpeg')) return 'jpeg';
-    return 'jpg';
-  }
-
-  String _contentTypeForExtension(String extension) {
-    return switch (extension.toLowerCase()) {
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      'jpeg' => 'image/jpeg',
-      _ => 'image/jpeg',
-    };
   }
 
   void _selectImage(int index) {
@@ -786,7 +799,7 @@ class _ImagePickerCard extends StatelessWidget {
         GestureDetector(
           onTap: onTapAdd,
           child: AspectRatio(
-            aspectRatio: 4 / 5,
+            aspectRatio: 1,
             child: Container(
               decoration: BoxDecoration(
                 color: AppColors.ownerCardBackground,
@@ -802,7 +815,9 @@ class _ImagePickerCard extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: hasImage
                   ? _buildImage(
-                      previews[selectedIndex.clamp(0, previews.length - 1).toInt()],
+                      previews[selectedIndex
+                          .clamp(0, previews.length - 1)
+                          .toInt()],
                     )
                   : _buildEmptyState(context),
             ),
@@ -857,7 +872,9 @@ class _ImagePickerCard extends StatelessWidget {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.08),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.08,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
