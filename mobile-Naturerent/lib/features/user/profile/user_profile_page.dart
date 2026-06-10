@@ -851,7 +851,7 @@ class _ProfilPageState extends State<ProfilPage> {
               _buildMitraAppBar(),
               const SizedBox(height: 18),
               _buildMitraHero(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               _buildMitraStats(),
               const SizedBox(height: 24),
               _buildMitraInfoList(),
@@ -898,165 +898,223 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   Widget _buildMitraHero() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 246,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 166,
-                    child:
-                        _rentalProfile?.fotoBanner != null &&
-                            _rentalProfile!.fotoBanner!.isNotEmpty
-                        ? Image.network(
-                            _rentalProfile!.fotoBanner!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) =>
-                                _buildMitraCoverPlaceholder(),
-                          )
-                        : _buildMitraCoverPlaceholder(),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 14,
-                top: 122,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.34),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'FOTO SAMPUL',
-                    style: AppTextStyles.caption.copyWith(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 12,
-                top: 126,
-                child: GestureDetector(
-                  onTap: _bukaEditProfil,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 78,
-                        height: 78,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDEFEA),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 12,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(11),
-                          child:
-                              _fotoProfilToko != null &&
-                                  _fotoProfilToko!.isNotEmpty
-                              ? Image.network(
-                                  _fotoProfilToko!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) =>
-                                      _buildInitialAvatar(),
-                                )
-                              : _buildInitialAvatar(),
-                        ),
-                      ),
-                      Positioned(
-                        right: -8,
-                        bottom: -3,
-                        child: _TinyEditButton(onTap: _bukaEditProfil),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 108,
-                right: 8,
-                top: 182,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _namaToko,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.headlineLarge.copyWith(
-                        color: const Color(0xFF202321),
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        height: 1.08,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _statusMitraColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _statusMitraLabel,
-                        style: AppTextStyles.caption.copyWith(
-                          color: _statusMitraColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    final coverUrl = _rentalProfile?.fotoBanner;
+    final hasCover = coverUrl != null && coverUrl.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.ownerBorderColor,
+          width: AppColors.ownerBorderWidth,
         ),
-        const Divider(color: AppColors.ownerBorderColor, height: 1),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 230,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(23),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 178,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (hasCover)
+                            Image.network(
+                              coverUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  _buildMitraCoverFallback(),
+                            )
+                          else
+                            _buildMitraCoverFallback(),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.06),
+                                  AppColors.ownerPrimaryGreen.withValues(
+                                    alpha: 0.42,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 22,
+                  bottom: 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _bukaEditProfil,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 116,
+                          height: 116,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.16),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child:
+                                _fotoProfilToko != null &&
+                                    _fotoProfilToko!.isNotEmpty
+                                ? Image.network(
+                                    _fotoProfilToko!,
+                                    width: 116,
+                                    height: 116,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        _buildInitialAvatar(),
+                                  )
+                                : _buildInitialAvatar(),
+                          ),
+                        ),
+                        Positioned(
+                          right: 2,
+                          bottom: 4,
+                          child: _buildMitraCameraButton(
+                            icon: Icons.camera_alt_rounded,
+                            onTap: _bukaEditProfil,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _namaToko,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.headlineLarge.copyWith(
+                    fontSize: 22,
+                    color: const Color(0xFF202321),
+                    fontWeight: FontWeight.w900,
+                    height: 1.12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: const Color(0xFF69746A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildMitraCoverPlaceholder() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset('assets/images/loading_background.png', fit: BoxFit.cover),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.38),
+  Widget _buildMitraCoverFallback() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.ownerPrimaryGreen, Color(0xFF0F2D1D)],
+        ),
+      ),
+      child: Align(
+        alignment: Alignment.bottomRight,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Icon(
+            Icons.landscape_outlined,
+            color: Colors.white.withValues(alpha: 0.22),
+            size: 54,
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildMitraCameraButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: 'Edit profil toko',
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F4F2),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.ownerBorderColor,
+                width: AppColors.ownerBorderWidth,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 17, color: AppColors.ownerPrimaryGreen),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1077,9 +1135,13 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildMitraStats() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: const BoxDecoration(
         border: Border(
+          top: BorderSide(
+            color: AppColors.ownerBorderColor,
+            width: AppColors.ownerBorderWidth,
+          ),
           bottom: BorderSide(
             color: AppColors.ownerBorderColor,
             width: AppColors.ownerBorderWidth,
@@ -1291,36 +1353,6 @@ class _MitraMenuTile extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TinyEditButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _TinyEditButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 23,
-        height: 23,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.ownerBorderColor,
-            width: AppColors.ownerBorderWidth,
-          ),
-        ),
-        child: const Icon(
-          Icons.edit_rounded,
-          color: AppColors.ownerPrimaryGreen,
-          size: 13,
         ),
       ),
     );
