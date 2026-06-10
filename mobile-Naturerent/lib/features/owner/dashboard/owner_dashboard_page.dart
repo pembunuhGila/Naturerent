@@ -16,7 +16,7 @@ class OwnerDashboardPage extends StatefulWidget {
 }
 
 class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
-  late final Future<_DashboardData> _dashboardFuture;
+  late Future<_DashboardData> _dashboardFuture;
   late final List<DateTime> _monthOptions;
   late DateTime _selectedMonth;
   bool _showAllTransactions = false;
@@ -83,6 +83,15 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     return _DashboardData(incomeOrders: orders, allOrders: recentOrders);
   }
 
+  Future<void> _refreshDashboard() async {
+    final future = _loadDashboardData();
+    setState(() {
+      _dashboardFuture = future;
+      _showAllTransactions = false;
+    });
+    await future;
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -101,87 +110,92 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           children: [
             const OwnerHeaderWidget(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-                children: [
-                  FutureBuilder<_DashboardData>(
-                    future: _dashboardFuture,
-                    builder: (context, snapshot) {
-                      final data = snapshot.data ?? _DashboardData.empty();
-                      final monthlyView = _buildMonthlyView(
-                        data,
-                        _selectedMonth,
-                      );
-                      final visibleOrders = _showAllTransactions
-                          ? monthlyView.allOrders
-                          : monthlyView.recentOrders;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _IncomeHighlightCard(
-                            label: monthlyView.label,
-                            amount: monthlyView.incomeSummary.amount,
-                            subtext: monthlyView.incomeSummary.subtext,
-                          ),
-                          const SizedBox(height: 14),
-                          _MonthSelector(
-                            months: _monthOptions,
-                            selectedMonth: _selectedMonth,
-                            onSelected: (month) {
-                              setState(() {
-                                _selectedMonth = month;
-                                _showAllTransactions = false;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _showAllTransactions
-                                    ? 'Semua Transaksi'
-                                    : 'Transaksi Terakhir',
-                                style: AppTextStyles.headlineLarge.copyWith(
-                                  color: const Color(0xFF202321),
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              if (!_showAllTransactions)
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _showAllTransactions = true;
-                                    });
-                                  },
-                                  child: Text(
-                                    'LIHAT SEMUA',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.ownerPrimaryGreen,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.3,
-                                    ),
+              child: RefreshIndicator(
+                color: AppColors.ownerPrimaryGreen,
+                onRefresh: _refreshDashboard,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                  children: [
+                    FutureBuilder<_DashboardData>(
+                      future: _dashboardFuture,
+                      builder: (context, snapshot) {
+                        final data = snapshot.data ?? _DashboardData.empty();
+                        final monthlyView = _buildMonthlyView(
+                          data,
+                          _selectedMonth,
+                        );
+                        final visibleOrders = _showAllTransactions
+                            ? monthlyView.allOrders
+                            : monthlyView.recentOrders;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _IncomeHighlightCard(
+                              label: monthlyView.label,
+                              amount: monthlyView.incomeSummary.amount,
+                              subtext: monthlyView.incomeSummary.subtext,
+                            ),
+                            const SizedBox(height: 14),
+                            _MonthSelector(
+                              months: _monthOptions,
+                              selectedMonth: _selectedMonth,
+                              onSelected: (month) {
+                                setState(() {
+                                  _selectedMonth = month;
+                                  _showAllTransactions = false;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _showAllTransactions
+                                      ? 'Semua Transaksi'
+                                      : 'Transaksi Terakhir',
+                                  style: AppTextStyles.headlineLarge.copyWith(
+                                    color: const Color(0xFF202321),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          if (visibleOrders.isEmpty)
-                            const _EmptyTransactionsCard()
-                          else
-                            ...visibleOrders.map(
-                              (order) => Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: _TransactionCard(order: order),
-                              ),
+                                if (!_showAllTransactions)
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _showAllTransactions = true;
+                                      });
+                                    },
+                                    child: Text(
+                                      'LIHAT SEMUA',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.ownerPrimaryGreen,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                            const SizedBox(height: 16),
+                            if (visibleOrders.isEmpty)
+                              const _EmptyTransactionsCard()
+                            else
+                              ...visibleOrders.map(
+                                (order) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _TransactionCard(order: order),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
