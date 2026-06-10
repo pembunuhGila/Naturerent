@@ -16,9 +16,11 @@ class _OwnerShellState extends State<OwnerShell> {
   int _currentIndex = 0;
   int _inventoryInitialTab = 0;
   int _profileRefreshToken = 0;
+  int _dashboardResetToken = 0;
 
   void _setTab(int index, {int? inventoryTab}) {
     setState(() {
+      if (_currentIndex == 0 && index != 0) _dashboardResetToken++;
       _currentIndex = index;
       if (inventoryTab != null) _inventoryInitialTab = inventoryTab;
       if (index == 3) _profileRefreshToken++;
@@ -28,7 +30,7 @@ class _OwnerShellState extends State<OwnerShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const OwnerDashboardPage(),
+      OwnerDashboardPage(resetToken: _dashboardResetToken),
       const OwnerOrdersPage(),
       OwnerInventoryPage(initialTabIndex: _inventoryInitialTab),
       ProfilPage(
