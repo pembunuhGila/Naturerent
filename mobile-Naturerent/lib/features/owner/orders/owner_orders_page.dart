@@ -97,19 +97,23 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
 
   List<AdminOrder> _activeOrders(List<AdminOrder> orders) {
     return orders
-        .where((order) =>
-            order.status == 'confirmed' ||
-            order.status == 'processing' ||
-            order.status == 'rented')
+        .where(
+          (order) =>
+              order.status == 'confirmed' ||
+              order.status == 'processing' ||
+              order.status == 'rented',
+        )
         .toList(growable: false);
   }
 
   List<AdminOrder> _historyOrders(List<AdminOrder> orders) {
     return orders
-        .where((order) =>
-            order.status == 'returned' ||
-            order.status == 'completed' ||
-            order.status == 'cancelled')
+        .where(
+          (order) =>
+              order.status == 'returned' ||
+              order.status == 'completed' ||
+              order.status == 'cancelled',
+        )
         .toList(growable: false);
   }
 
@@ -177,7 +181,9 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     try {
       await _rentalService.konfirmasiPengembalianPesananPemilik(order.id);
       if (!mounted) return;
-      _showMessage('Pengembalian berhasil dikonfirmasi. Pesanan kini dikembalikan.');
+      _showMessage(
+        'Pengembalian berhasil dikonfirmasi. Pesanan kini dikembalikan.',
+      );
       _reload();
     } catch (e) {
       if (!mounted) return;
@@ -231,7 +237,9 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? AppColors.error : AppColors.ownerPrimaryGreen,
+        backgroundColor: isError
+            ? AppColors.error
+            : AppColors.ownerPrimaryGreen,
       ),
     );
   }
@@ -280,7 +288,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
                     return ListView(
                       padding: const EdgeInsets.fromLTRB(16, 24, 16, 110),
                       children: [
-                        _TitleRow(onReload: _reload),
+                        const _TitleRow(),
                         const SizedBox(height: 18),
                         _StateBox(
                           icon: Icons.error_outline_rounded,
@@ -302,7 +310,7 @@ class _OwnerOrdersPageState extends State<OwnerOrdersPage> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-                          child: _TitleRow(onReload: _reload),
+                          child: const _TitleRow(),
                         ),
                         const SizedBox(height: 12),
                         const _OwnerOrdersTabBar(),
@@ -371,7 +379,6 @@ class _OwnerOrdersTabBar extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _OrdersTab extends StatelessWidget {
@@ -476,13 +483,15 @@ class _IncomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final incomeOrders =
-        orders.where(_isRecognizedIncomeOrder).toList(growable: false);
+    final incomeOrders = orders
+        .where(_isRecognizedIncomeOrder)
+        .toList(growable: false);
     final weekOrders =
         incomeOrders.where(_isCurrentWeek).toList(growable: false)
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    final previousWeekOrders =
-        incomeOrders.where(_isPreviousWeek).toList(growable: false);
+    final previousWeekOrders = incomeOrders
+        .where(_isPreviousWeek)
+        .toList(growable: false);
     final weekNet = _sumOwnerIncome(weekOrders);
     final previousWeekNet = _sumOwnerIncome(previousWeekOrders);
     final growthText = _growthText(
@@ -528,7 +537,8 @@ class _IncomeTab extends StatelessWidget {
             const _StateBox(
               icon: Icons.payments_outlined,
               title: 'Belum ada pendapatan minggu ini',
-              message: 'Transaksi selesai minggu berjalan akan dihitung di sini.',
+              message:
+                  'Transaksi selesai minggu berjalan akan dihitung di sini.',
             )
           else
             ...weekOrders.map(
@@ -544,9 +554,7 @@ class _IncomeTab extends StatelessWidget {
 }
 
 class _TitleRow extends StatelessWidget {
-  final VoidCallback onReload;
-
-  const _TitleRow({required this.onReload});
+  const _TitleRow();
 
   @override
   Widget build(BuildContext context) {
@@ -567,24 +575,6 @@ class _TitleRow extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-        IconButton(
-          onPressed: onReload,
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white,
-            side: const BorderSide(
-              color: AppColors.ownerBorderColor,
-              width: AppColors.ownerBorderWidth,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          icon: const Icon(
-            Icons.refresh_rounded,
-            color: AppColors.textPrimary,
-            size: 18,
           ),
         ),
       ],
@@ -642,128 +632,130 @@ class _OwnerOrderCard extends StatelessWidget {
           ],
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDDE8),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  status,
-                  style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF9D2850),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 9,
-                    letterSpacing: 0.4,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDDE8),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    status,
+                    style: AppTextStyles.caption.copyWith(
+                      color: const Color(0xFF9D2850),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 9,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                'ID: ${_shortCode(order)}',
-                style: AppTextStyles.caption.copyWith(
-                  color: const Color(0xFF626A60),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+                const Spacer(),
+                Text(
+                  'ID: ${_shortCode(order)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF626A60),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _EquipmentThumb(imageUrl: item?.imageUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.person_outline_rounded,
-                          color: Color(0xFF202321),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            order.namaUser,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: const Color(0xFF202321),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _EquipmentThumb(imageUrl: item?.imageUrl),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.person_outline_rounded,
+                            color: Color(0xFF202321),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              order.namaUser,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: const Color(0xFF202321),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item?.namaEquipment ?? order.ringkasanAlat,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: const Color(0xFF202321),
-                        fontWeight: FontWeight.w600,
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(
-                Icons.calendar_month_outlined,
-                color: Color(0xFF626A60),
-                size: 15,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
-                style: AppTextStyles.caption.copyWith(
-                  color: const Color(0xFF626A60),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (processing)
-            const LinearProgressIndicator(color: AppColors.ownerPrimaryGreen)
-          else if (onAction != null)
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.ownerPrimaryGreen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7),
+                      const SizedBox(height: 3),
+                      Text(
+                        item?.namaEquipment ?? order.ringkasanAlat,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: const Color(0xFF202321),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                onPressed: onAction,
-                child: Text(
-                  action,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
+              ],
             ),
-        ],
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Icon(
+                  Icons.calendar_month_outlined,
+                  color: Color(0xFF626A60),
+                  size: 15,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF626A60),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (processing)
+              const LinearProgressIndicator(color: AppColors.ownerPrimaryGreen)
+            else if (onAction != null)
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.ownerPrimaryGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  onPressed: onAction,
+                  child: Text(
+                    action,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -796,118 +788,118 @@ class _HistoryOrderCard extends StatelessWidget {
           ),
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _shortCode(order),
-                      style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF626A60),
-                        fontWeight: FontWeight.w900,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _shortCode(order),
+                        style: AppTextStyles.caption.copyWith(
+                          color: const Color(0xFF626A60),
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      order.namaUser,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: const Color(0xFF202321),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
+                      const SizedBox(height: 3),
+                      Text(
+                        order.namaUser,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: const Color(0xFF202321),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              cancelled
-                  ? _DangerBadge(label: order.statusLabel.toUpperCase())
-                  : const _SuccessBadge(label: 'SELESAI'),
-            ],
-          ),
-          const Divider(height: 24, color: AppColors.ownerBorderColor),
-          if (order.adaInfoPembatalan) ...[
-            _OwnerCancellationInfoBox(order: order),
-            const Divider(height: 24, color: AppColors.ownerBorderColor),
-          ],
-          Row(
-            children: [
-              _EquipmentThumb(imageUrl: item?.imageUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item?.namaEquipment ?? order.ringkasanAlat,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: const Color(0xFF202321),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      'Qty: ${item?.jumlah ?? 1} Unit',
-                      style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF626A60),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 24, color: AppColors.ownerBorderColor),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Icon(
-                Icons.calendar_month_outlined,
-                color: Color(0xFF626A60),
-                size: 16,
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: const Color(0xFF626A60),
-                    fontWeight: FontWeight.w700,
+                    ],
                   ),
                 ),
-              ),
-              if (!cancelled)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Pendapatan Bersih',
-                      style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF626A60),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _formatCurrency(net),
-                      style: AppTextStyles.headlineMedium.copyWith(
-                        color: AppColors.ownerPrimaryGreen,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
+                cancelled
+                    ? _DangerBadge(label: order.statusLabel.toUpperCase())
+                    : const _SuccessBadge(label: 'SELESAI'),
+              ],
+            ),
+            const Divider(height: 24, color: AppColors.ownerBorderColor),
+            if (order.adaInfoPembatalan) ...[
+              _OwnerCancellationInfoBox(order: order),
+              const Divider(height: 24, color: AppColors.ownerBorderColor),
             ],
-          ),
-        ],
+            Row(
+              children: [
+                _EquipmentThumb(imageUrl: item?.imageUrl),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item?.namaEquipment ?? order.ringkasanAlat,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: const Color(0xFF202321),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Qty: ${item?.jumlah ?? 1} Unit',
+                        style: AppTextStyles.caption.copyWith(
+                          color: const Color(0xFF626A60),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24, color: AppColors.ownerBorderColor),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Icon(
+                  Icons.calendar_month_outlined,
+                  color: Color(0xFF626A60),
+                  size: 16,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    '${_formatDate(order.tanggalMulai)} - ${_formatDate(order.tanggalSelesai)}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: const Color(0xFF626A60),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (!cancelled)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Pendapatan Bersih',
+                        style: AppTextStyles.caption.copyWith(
+                          color: const Color(0xFF626A60),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _formatCurrency(net),
+                        style: AppTextStyles.headlineMedium.copyWith(
+                          color: AppColors.ownerPrimaryGreen,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -1125,38 +1117,46 @@ class _OwnerCancellationDetailPageState
     final bytes = _selectedBytes;
     final extension = _selectedExtension;
     if (bytes == null || extension == null) {
-      _showMessage('Pilih gambar bukti transfer terlebih dahulu.', isError: true);
+      _showMessage(
+        'Pilih gambar bukti transfer terlebih dahulu.',
+        isError: true,
+      );
       return;
     }
 
     setState(() => _uploading = true);
     try {
       final userId = AuthService().penggunaSaatIni?.id ?? 'owner';
-      final fileName =
-          '${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
       final path = '$userId/${order.id}/$fileName';
       final contentType = extension == 'png' ? 'image/png' : 'image/jpeg';
 
       String publicUrl;
       try {
-        await AuthService.client.storage.from('refund-proofs').uploadBinary(
+        await AuthService.client.storage
+            .from('refund-proofs')
+            .uploadBinary(
               path,
               bytes,
               fileOptions: FileOptions(contentType: contentType, upsert: true),
             );
-        publicUrl =
-            AuthService.client.storage.from('refund-proofs').getPublicUrl(path);
+        publicUrl = AuthService.client.storage
+            .from('refund-proofs')
+            .getPublicUrl(path);
       } catch (_) {
         publicUrl = 'data:$contentType;base64,${base64Encode(bytes)}';
       }
       final uploadedAt = DateTime.now();
 
-      await AuthService.client.from('bookings').update({
-        'refund_proof_url': publicUrl,
-        'refund_uploaded_at': uploadedAt.toIso8601String(),
-        'refund_status': 'Sudah Ditransfer',
-        'updated_at': uploadedAt.toIso8601String(),
-      }).eq('id', order.id);
+      await AuthService.client
+          .from('bookings')
+          .update({
+            'refund_proof_url': publicUrl,
+            'refund_uploaded_at': uploadedAt.toIso8601String(),
+            'refund_status': 'Sudah Ditransfer',
+            'updated_at': uploadedAt.toIso8601String(),
+          })
+          .eq('id', order.id);
 
       if (!mounted) return;
       setState(() {
@@ -1182,7 +1182,9 @@ class _OwnerCancellationDetailPageState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? AppColors.error : AppColors.ownerPrimaryGreen,
+        backgroundColor: isError
+            ? AppColors.error
+            : AppColors.ownerPrimaryGreen,
       ),
     );
   }
@@ -1241,7 +1243,8 @@ class _OwnerCancellationDetailPageState
                 const SizedBox(height: 10),
                 _DetailInfoRow(
                   icon: Icons.payments_outlined,
-                  label: 'Total pembayaran: ${_formatCurrency(order.totalBayar)}',
+                  label:
+                      'Total pembayaran: ${_formatCurrency(order.totalBayar)}',
                 ),
                 const SizedBox(height: 12),
                 _DangerBadge(label: 'DIBATALKAN PENYEWA'),
@@ -1260,7 +1263,10 @@ class _OwnerCancellationDetailPageState
                 const SizedBox(height: 10),
                 _DetailInfoRow(
                   icon: Icons.phone_outlined,
-                  label: _fallback(order.phoneUser, 'Nomor telepon belum tersedia'),
+                  label: _fallback(
+                    order.phoneUser,
+                    'Nomor telepon belum tersedia',
+                  ),
                 ),
                 const SizedBox(height: 10),
                 _DetailInfoRow(
@@ -1376,9 +1382,7 @@ class _OwnerCancellationDetailPageState
 
   Widget _buildRefundProofPreview() {
     if (_loadingRefundProof) {
-      return const _RefundProofPlaceholder(
-        message: 'Memuat bukti transfer...',
-      );
+      return const _RefundProofPlaceholder(message: 'Memuat bukti transfer...');
     }
     if (_selectedBytes != null) {
       return _RefundProofImage(
@@ -1467,11 +1471,7 @@ class _RefundProofImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: SizedBox(
-        width: double.infinity,
-        height: 210,
-        child: child,
-      ),
+      child: SizedBox(width: double.infinity, height: 210, child: child),
     );
   }
 }
@@ -1585,7 +1585,10 @@ class _OwnerTimelineItem extends StatelessWidget {
             Container(
               width: 30,
               height: 30,
-              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
               child: Icon(
                 step.icon,
                 size: 14,
@@ -2156,8 +2159,9 @@ DateTime _startOfWeek(DateTime value) {
 
 double _sumOwnerIncome(Iterable<AdminOrder> orders) {
   return orders.fold<double>(0, (sum, order) {
-    final net =
-        order.netToOwner > 0 ? order.netToOwner : _netIncome(order.totalBayar);
+    final net = order.netToOwner > 0
+        ? order.netToOwner
+        : _netIncome(order.totalBayar);
     return sum + net;
   });
 }
@@ -2195,14 +2199,18 @@ List<_OwnerTimelineStep> _timelineSteps(AdminOrder order) {
     _OwnerTimelineStep(
       icon: Icons.schedule_rounded,
       title: 'Pesanan telah diambil',
-      time: rank >= 2 ? _formatDate(order.tanggalMulai) : 'Estimasi: ${_formatDate(order.tanggalMulai)}',
+      time: rank >= 2
+          ? _formatDate(order.tanggalMulai)
+          : 'Estimasi: ${_formatDate(order.tanggalMulai)}',
       description: 'Perlengkapan sudah berada di tangan penyewa.',
       isDone: rank >= 2,
     ),
     _OwnerTimelineStep(
       icon: Icons.inventory_2_outlined,
       title: 'Selesai',
-      time: rank >= 3 ? _formatDate(order.tanggalSelesai) : _formatDate(order.tanggalSelesai),
+      time: rank >= 3
+          ? _formatDate(order.tanggalSelesai)
+          : _formatDate(order.tanggalSelesai),
       description: 'Peralatan dikembalikan dan diperiksa.',
       isDone: rank >= 3,
     ),
