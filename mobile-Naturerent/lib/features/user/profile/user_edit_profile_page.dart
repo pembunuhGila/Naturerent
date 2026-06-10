@@ -835,7 +835,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 34),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            18,
+            24,
+            MediaQuery.of(context).padding.bottom + 120,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1109,46 +1114,50 @@ class _EditProfilPageState extends State<EditProfilPage> {
           ),
         ),
         const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.ownerCardBackground,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: AppColors.ownerBorderColor,
-              width: AppColors.ownerBorderWidth,
-            ),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          minLines: minLines,
+          maxLines: maxLines,
+          readOnly: readOnly,
+          textAlignVertical: TextAlignVertical.center,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: readOnly ? const Color(0xFF626A60) : const Color(0xFF202321),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            height: 1.45,
           ),
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            minLines: minLines,
-            maxLines: maxLines,
-            readOnly: readOnly,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: readOnly
-                  ? const Color(0xFF626A60)
-                  : const Color(0xFF202321),
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 1.45,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.ownerCardBackground,
+            hintText: hint,
+            hintStyle: AppTextStyles.bodyMedium.copyWith(
+              color: const Color(0xFF9BA19A),
+              fontWeight: FontWeight.w500,
             ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: AppTextStyles.bodyMedium.copyWith(
-                color: const Color(0xFF9BA19A),
-                fontWeight: FontWeight.w500,
-              ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: minLines > 1 ? 18 : 17,
-              ),
+            border: _mitraFieldBorder(),
+            enabledBorder: _mitraFieldBorder(),
+            focusedBorder: _mitraFieldBorder(
+              color: AppColors.ownerPrimaryGreen,
+            ),
+            disabledBorder: _mitraFieldBorder(),
+            constraints: BoxConstraints(minHeight: minLines > 1 ? 0 : 62),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: minLines > 1 ? 18 : 17,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  OutlineInputBorder _mitraFieldBorder({
+    Color color = AppColors.ownerBorderColor,
+  }) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(color: color, width: AppColors.ownerBorderWidth),
     );
   }
 
