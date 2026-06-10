@@ -228,52 +228,6 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
     if (changed == true) _muatAlat();
   }
 
-  Future<void> _hapusAlat(Equipment? equipment) async {
-    if (equipment == null) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Peralatan'),
-        content: Text('Hapus ${equipment.nama} dari inventaris?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text(
-              'Hapus',
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    try {
-      await _equipmentService.hapusAlat(equipment.id);
-      if (!mounted) return;
-      NrToast.show(
-        context,
-        'Peralatan berhasil dihapus.',
-        type: NrToastType.success,
-      );
-      _muatAlat();
-    } catch (e) {
-      if (!mounted) return;
-      NrToast.show(
-        context,
-        'Gagal menghapus peralatan: ${e.toString()}',
-        type: NrToastType.error,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -346,7 +300,6 @@ class _OwnerInventoryPageState extends State<OwnerInventoryPage>
                         alat: _alat,
                         categories: _categories,
                         onEdit: _bukaEditAlat,
-                        onDelete: _hapusAlat,
                         onAdd: _preparingAdd ? null : _bukaTambahAlat,
                         preparingAdd: _preparingAdd,
                       ),
@@ -699,7 +652,6 @@ class _EquipmentManageTab extends StatefulWidget {
   final List<Equipment> alat;
   final List<Map<String, dynamic>> categories;
   final ValueChanged<Equipment?> onEdit;
-  final ValueChanged<Equipment?> onDelete;
   final VoidCallback? onAdd;
   final bool preparingAdd;
 
@@ -709,7 +661,6 @@ class _EquipmentManageTab extends StatefulWidget {
     required this.alat,
     required this.categories,
     required this.onEdit,
-    required this.onDelete,
     required this.onAdd,
     required this.preparingAdd,
   });
@@ -796,16 +747,26 @@ class _EquipmentManageTabState extends State<_EquipmentManageTab> {
                 : 'Pilih kategori lain atau tambahkan alat baru.',
           )
         else
-          ...displayItems.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: _EquipmentProductCard(
-                item: item,
-                onEdit: () => widget.onEdit(item.equipment),
-                onDelete: () => widget.onDelete(item.equipment),
-              ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 18,
+              crossAxisSpacing: 14,
+              mainAxisExtent: 280,
             ),
+            itemCount: displayItems.length,
+            itemBuilder: (context, index) {
+              final item = displayItems[index];
+              return _EquipmentProductCard(
+                item: item,
+                onTap: () => widget.onEdit(item.equipment),
+              );
+            },
           ),
+        const SizedBox(height: 18),
       ],
     );
   }
@@ -994,109 +955,94 @@ class _EquipmentEmptyState extends StatelessWidget {
 
 class _EquipmentProductCard extends StatelessWidget {
   final _OwnerEquipmentItem item;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onTap;
 
-  const _EquipmentProductCard({
-    required this.item,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _EquipmentProductCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.ownerBorderColor.withValues(alpha: 0.8),
-          width: AppColors.ownerBorderWidth,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _EquipmentVisual(item: item),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                _OwnerSpecChip(label: item.categoryLabel),
-                const SizedBox(width: 8),
-                _OwnerSpecChip(label: '${item.stock} unit'),
-              ],
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppColors.ownerBorderColor.withValues(alpha: 0.8),
+              width: AppColors.ownerBorderWidth,
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-            child: Text(
-              item.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: const Color(0xFF202321),
-                fontWeight: FontWeight.w900,
-                height: 1.2,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: RichText(
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: item.price,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.ownerPrimaryGreen,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '/hari',
-                          style: AppTextStyles.caption.copyWith(
-                            color: const Color(0xFF496171),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _EquipmentVisual(item: item),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 24),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _OwnerSpecChip(label: item.categoryLabel),
+                      _OwnerSpecChip(label: '${item.stock} unit'),
+                    ],
                   ),
                 ),
-                _OwnerActionButton(
-                  icon: Icons.edit_rounded,
-                  color: const Color(0xFFE9E9E5),
-                  iconColor: const Color(0xFF202321),
-                  onTap: onEdit,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Text(
+                  item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: const Color(0xFF202321),
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _OwnerActionButton(
-                  icon: Icons.delete_outline_rounded,
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  iconColor: AppColors.error,
-                  onTap: onDelete,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                child: RichText(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: item.price,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.ownerPrimaryGreen,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '/hari',
+                        style: AppTextStyles.caption.copyWith(
+                          color: const Color(0xFF496171),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1112,24 +1058,21 @@ class _EquipmentVisual extends StatelessWidget {
     return Stack(
       children: [
         Container(
-          height: 172,
+          height: 162,
           width: double.infinity,
           color: Colors.white,
           alignment: Alignment.center,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                ? Image.network(
-                    item.imageUrl!,
-                    width: double.infinity,
-                    height: 152,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _EquipmentImageFallback(item: item);
-                    },
-                  )
-                : _EquipmentImageFallback(item: item),
-          ),
+          child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+              ? Image.network(
+                  item.imageUrl!,
+                  width: double.infinity,
+                  height: 162,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _EquipmentImageFallback(item: item);
+                  },
+                )
+              : _EquipmentImageFallback(item: item),
         ),
         Positioned(
           top: 10,
@@ -1187,7 +1130,7 @@ class _OwnerSpecChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 130),
+      constraints: const BoxConstraints(maxWidth: 76),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.ownerSoftGreen,
@@ -1203,37 +1146,6 @@ class _OwnerSpecChip extends StatelessWidget {
           fontWeight: FontWeight.w800,
           letterSpacing: 0,
         ),
-      ),
-    );
-  }
-}
-
-class _OwnerActionButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final Color iconColor;
-  final VoidCallback onTap;
-
-  const _OwnerActionButton({
-    required this.icon,
-    required this.color,
-    required this.iconColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: iconColor, size: 18),
       ),
     );
   }
