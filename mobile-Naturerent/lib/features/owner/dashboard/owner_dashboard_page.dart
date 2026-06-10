@@ -7,7 +7,9 @@ import 'package:naturerent/core/theme/app_theme.dart';
 import 'package:naturerent/features/owner/widgets/owner_header_widget.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
-  const OwnerDashboardPage({super.key});
+  final int resetToken;
+
+  const OwnerDashboardPage({super.key, this.resetToken = 0});
 
   @override
   State<OwnerDashboardPage> createState() => _OwnerDashboardPageState();
@@ -17,6 +19,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   late final Future<_DashboardData> _dashboardFuture;
   late final List<DateTime> _monthOptions;
   late DateTime _selectedMonth;
+  bool _showAllTransactions = false;
 
   @override
   void initState() {
@@ -24,6 +27,14 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     _selectedMonth = _monthStart(DateTime.now());
     _monthOptions = _buildMonthOptions(DateTime.now());
     _dashboardFuture = _loadDashboardData();
+  }
+
+  @override
+  void didUpdateWidget(covariant OwnerDashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.resetToken != widget.resetToken && _showAllTransactions) {
+      _showAllTransactions = false;
+    }
   }
 
   Future<_DashboardData> _loadDashboardData() async {
@@ -54,13 +65,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           )
         ''')
         .eq('rental_id', rental.id)
-        .inFilter('status', [
-          'confirmed',
-          'processing',
-          'rented',
-          'returned',
-          'completed',
-        ])
         .order('created_at', ascending: false);
 
     final allOrders =
@@ -108,6 +112,9 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                         data,
                         _selectedMonth,
                       );
+                      final visibleOrders = _showAllTransactions
+                          ? monthlyView.allOrders
+                          : monthlyView.recentOrders;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -121,7 +128,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                             months: _monthOptions,
                             selectedMonth: _selectedMonth,
                             onSelected: (month) {
-                              setState(() => _selectedMonth = month);
+                              setState(() {
+                                _selectedMonth = month;
+                                _showAllTransactions = false;
+                              });
                             },
                           ),
                           const SizedBox(height: 20),
@@ -129,29 +139,39 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Transaksi Terakhir',
+                                _showAllTransactions
+                                    ? 'Semua Transaksi'
+                                    : 'Transaksi Terakhir',
                                 style: AppTextStyles.headlineLarge.copyWith(
                                   color: const Color(0xFF202321),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              Text(
-                                'LIHAT SEMUA',
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.ownerPrimaryGreen,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.3,
+                              if (!_showAllTransactions)
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _showAllTransactions = true;
+                                    });
+                                  },
+                                  child: Text(
+                                    'LIHAT SEMUA',
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.ownerPrimaryGreen,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.3,
+                                    ),
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          if (monthlyView.recentOrders.isEmpty)
+                          if (visibleOrders.isEmpty)
                             const _EmptyTransactionsCard()
                           else
-                            ...monthlyView.recentOrders.map(
+                            ...visibleOrders.map(
                               (order) => Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: _TransactionCard(order: order),
@@ -193,11 +213,13 @@ class _MonthlyDashboardView {
   final String label;
   final _MonthlyIncomeSummary incomeSummary;
   final List<AdminOrder> recentOrders;
+  final List<AdminOrder> allOrders;
 
   const _MonthlyDashboardView({
     required this.label,
     required this.incomeSummary,
     required this.recentOrders,
+    required this.allOrders,
   });
 }
 
@@ -227,6 +249,8 @@ _MonthlyDashboardView _buildMonthlyView(
   final previousTotal = _sumNetIncome(previousIncomeOrders);
   final selectedRecentOrders = data.allOrders
       .where((order) => _isSameMonth(order.createdAt, selectedMonth))
+      .toList(growable: false);
+  final latestSelectedOrders = selectedRecentOrders
       .take(5)
       .toList(growable: false);
 
@@ -240,7 +264,8 @@ _MonthlyDashboardView _buildMonthlyView(
         periodLabel: _monthLabel(previousMonth),
       ),
     ),
-    recentOrders: selectedRecentOrders,
+    recentOrders: latestSelectedOrders,
+    allOrders: selectedRecentOrders,
   );
 }
 
