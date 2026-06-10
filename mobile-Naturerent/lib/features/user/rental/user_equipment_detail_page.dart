@@ -222,7 +222,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                           if (alat.weightKg != null && alat.weightKg! > 0)
                             _SpecChip(
                               icon: Icons.fitness_center_rounded,
-                              label: 'Berat: ${alat.weightKg!.toStringAsFixed(alat.weightKg! == alat.weightKg!.roundToDouble() ? 0 : 1)} kg',
+                              label:
+                                  'Berat: ${alat.weightKg!.toStringAsFixed(alat.weightKg! == alat.weightKg!.roundToDouble() ? 0 : 1)} kg',
                             ),
                           if (alat.isAvailable)
                             _SpecChip(
@@ -358,30 +359,34 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
               ),
             ),
           ),
-          GestureDetector(
-            onHorizontalDragEnd: (details) {
-              if (gambar.length <= 1) return;
-              if (details.primaryVelocity! < 0) {
-                setState(() => _fotoIndex = (_fotoIndex + 1) % gambar.length);
-              } else {
-                setState(
-                  () => _fotoIndex =
-                      (_fotoIndex - 1 + gambar.length) % gambar.length,
-                );
-              }
-            },
-            child: Container(
-              width: double.infinity,
-              height: 300,
-              color: Colors.white,
-              alignment: Alignment.center,
-              child: NrImage(
-                imageUrl: gambar.isNotEmpty ? gambar[_fotoIndex] : null,
-                width: double.infinity,
-                height: 300,
-                fit: BoxFit.contain,
-                placeholderColor: AppColors.primaryDark,
-                placeholderIcon: Icons.inventory_2_outlined,
+          SizedBox(
+            width: double.infinity,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: GestureDetector(
+                onHorizontalDragEnd: (details) {
+                  if (gambar.length <= 1) return;
+                  if (details.primaryVelocity! < 0) {
+                    setState(
+                      () => _fotoIndex = (_fotoIndex + 1) % gambar.length,
+                    );
+                  } else {
+                    setState(
+                      () => _fotoIndex =
+                          (_fotoIndex - 1 + gambar.length) % gambar.length,
+                    );
+                  }
+                },
+                child: ClipRect(
+                  child: NrImage(
+                    imageUrl: gambar.isNotEmpty ? gambar[_fotoIndex] : null,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholderColor: AppColors.primaryDark,
+                    placeholderIcon: Icons.inventory_2_outlined,
+                  ),
+                ),
               ),
             ),
           ),
@@ -486,15 +491,15 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                   color: !isAvailable
                       ? AppColors.surface.withValues(alpha: 0.5)
                       : isSelected
-                          ? AppColors.primary
-                          : AppColors.surface,
+                      ? AppColors.primary
+                      : AppColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: !isAvailable
                         ? AppColors.border.withValues(alpha: 0.5)
                         : isSelected
-                            ? AppColors.primary
-                            : AppColors.border,
+                        ? AppColors.primary
+                        : AppColors.border,
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: isSelected
@@ -516,8 +521,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                         color: !isAvailable
                             ? AppColors.textHint
                             : isSelected
-                                ? Colors.white
-                                : AppColors.textPrimary,
+                            ? Colors.white
+                            : AppColors.textPrimary,
                         fontWeight: isSelected
                             ? FontWeight.w800
                             : FontWeight.w600,
@@ -530,8 +535,8 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                         color: !isAvailable
                             ? AppColors.textHint
                             : isSelected
-                                ? Colors.white.withValues(alpha: 0.8)
-                                : AppColors.textSecondary,
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : AppColors.textSecondary,
                         fontSize: 9,
                         fontWeight: FontWeight.w600,
                       ),
@@ -562,12 +567,14 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: alat.sortedSizeEntries.map((entry) {
-            return _SpecChip(
-              icon: Icons.straighten_rounded,
-              label: '${entry.key} (${entry.value} unit)',
-            );
-          }).toList(growable: false),
+          children: alat.sortedSizeEntries
+              .map((entry) {
+                return _SpecChip(
+                  icon: Icons.straighten_rounded,
+                  label: '${entry.key} (${entry.value} unit)',
+                );
+              })
+              .toList(growable: false),
         ),
       ],
     );
@@ -734,7 +741,11 @@ class _EquipmentDetailPageState extends State<EquipmentDetailPage> {
                         : (sizeEntries.length == 1
                               ? sizeEntries.first.key
                               : null);
-                    CartService().tambah(alat, widget.rental, selectedSize: sizeToSend);
+                    CartService().tambah(
+                      alat,
+                      widget.rental,
+                      selectedSize: sizeToSend,
+                    );
                     NrToast.show(
                       context,
                       '${alat.nama} ditambahkan ke keranjang',
