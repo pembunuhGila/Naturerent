@@ -107,14 +107,18 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
     final lower = nama?.toLowerCase() ?? '';
     if (lower.contains('tenda')) return Icons.cabin_rounded;
     if (lower.contains('sleeping')) return Icons.airline_seat_flat_rounded;
-    if (lower.contains('carrier') || lower.contains('tas')) return Icons.backpack_rounded;
+    if (lower.contains('carrier') || lower.contains('tas'))
+      return Icons.backpack_rounded;
     if (lower.contains('matras')) return Icons.horizontal_rule_rounded;
     if (lower.contains('masak')) return Icons.outdoor_grill_rounded;
-    if (lower.contains('lampu') || lower.contains('senter')) return Icons.flashlight_on_rounded;
-    if (lower.contains('pakaian') || lower.contains('alas kaki')) return Icons.checkroom_rounded;
+    if (lower.contains('lampu') || lower.contains('senter'))
+      return Icons.flashlight_on_rounded;
+    if (lower.contains('pakaian') || lower.contains('alas kaki'))
+      return Icons.checkroom_rounded;
     if (lower.contains('p3k')) return Icons.medical_services_rounded;
     if (lower.contains('hiking')) return Icons.hiking_rounded;
-    if (lower.contains('meja') || lower.contains('kursi')) return Icons.chair_rounded;
+    if (lower.contains('meja') || lower.contains('kursi'))
+      return Icons.chair_rounded;
     if (lower.contains('lainnya')) return Icons.more_horiz_rounded;
     return Icons.category_rounded;
   }
@@ -675,16 +679,13 @@ class _AlatShowcaseCard extends StatelessWidget {
                     width: double.infinity,
                     color: Colors.white,
                     alignment: Alignment.center,
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: NrImage(
-                        imageUrl: alat.gambarprimaryUrl,
-                        width: double.infinity,
-                        height: 142,
-                        fit: BoxFit.contain,
-                        placeholderColor: const Color(0xFF2D4A2D),
-                        placeholderIcon: Icons.inventory_2_outlined,
-                      ),
+                    child: NrImage(
+                      imageUrl: alat.gambarprimaryUrl,
+                      width: double.infinity,
+                      height: 162,
+                      fit: BoxFit.cover,
+                      placeholderColor: const Color(0xFF2D4A2D),
+                      placeholderIcon: Icons.inventory_2_outlined,
                     ),
                   ),
                   Positioned(
