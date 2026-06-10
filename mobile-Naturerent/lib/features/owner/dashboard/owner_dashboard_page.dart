@@ -95,9 +95,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const OwnerHeaderWidget(
-              padding: EdgeInsets.fromLTRB(32, 16, 24, 0),
-            ),
+            const OwnerHeaderWidget(),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
