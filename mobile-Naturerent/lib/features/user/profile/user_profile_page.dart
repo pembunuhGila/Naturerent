@@ -45,6 +45,7 @@ class _ProfilPageState extends State<ProfilPage> {
   String? _bankName;
   String? _accountNumber;
   RentalProfile? _rentalProfile;
+  int _totalSewaMitra = 0;
 
   User? get _user => _client.auth.currentUser;
 
@@ -147,9 +148,26 @@ class _ProfilPageState extends State<ProfilPage> {
         final rental = await _rentalService.ambilRentalSaya();
         if (!mounted) return;
         setState(() => _rentalProfile = rental);
+        await _muatTotalSewaMitra(rental?.id);
       } catch (_) {
         // Biarkan fallback UI tampil jika data rental belum bisa dimuat.
       }
+    }
+  }
+
+  Future<void> _muatTotalSewaMitra(String? rentalId) async {
+    if (rentalId == null || rentalId.isEmpty) return;
+    try {
+      final data = await _client
+          .from('bookings')
+          .select('id')
+          .eq('rental_id', rentalId)
+          .inFilter('status', ['returned', 'completed']);
+      if (!mounted) return;
+      setState(() => _totalSewaMitra = (data as List).length);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _totalSewaMitra = 0);
     }
   }
 
@@ -383,9 +401,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     label: 'Pusat Bantuan',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const HelpCenterPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const HelpCenterPage()),
                     ),
                   ),
                   _MenuItem(
@@ -516,9 +532,7 @@ class _ProfilPageState extends State<ProfilPage> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Colors.white.withValues(alpha: 0.10),
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.22),
-                ),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -830,18 +844,18 @@ class _ProfilPageState extends State<ProfilPage> {
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 132),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 132),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildMitraAppBar(),
-              const SizedBox(height: 26),
+              const SizedBox(height: 18),
               _buildMitraHero(),
-              const SizedBox(height: 26),
+              const SizedBox(height: 20),
               _buildMitraStats(),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               _buildMitraInfoList(),
-              const SizedBox(height: 34),
+              const SizedBox(height: 28),
               Text(
                 'Lainnya',
                 style: AppTextStyles.headlineMedium.copyWith(
@@ -850,7 +864,7 @@ class _ProfilPageState extends State<ProfilPage> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -870,7 +884,7 @@ class _ProfilPageState extends State<ProfilPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 54),
+              const SizedBox(height: 32),
               _buildLogoutButton(),
             ],
           ),
@@ -888,7 +902,7 @@ class _ProfilPageState extends State<ProfilPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 260,
+          height: 246,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -900,7 +914,7 @@ class _ProfilPageState extends State<ProfilPage> {
                   borderRadius: BorderRadius.circular(18),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 176,
+                    height: 166,
                     child:
                         _rentalProfile?.fotoBanner != null &&
                             _rentalProfile!.fotoBanner!.isNotEmpty
@@ -916,7 +930,7 @@ class _ProfilPageState extends State<ProfilPage> {
               ),
               Positioned(
                 right: 14,
-                top: 132,
+                top: 122,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -939,7 +953,7 @@ class _ProfilPageState extends State<ProfilPage> {
               ),
               Positioned(
                 left: 12,
-                top: 136,
+                top: 126,
                 child: GestureDetector(
                   onTap: _bukaEditProfil,
                   child: Stack(
@@ -986,7 +1000,7 @@ class _ProfilPageState extends State<ProfilPage> {
               Positioned(
                 left: 108,
                 right: 8,
-                top: 188,
+                top: 182,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1001,14 +1015,24 @@ class _ProfilPageState extends State<ProfilPage> {
                         height: 1.08,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'PARTNER TERVERIFIKASI',
-                      style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF9BA19A),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusMitraColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _statusMitraLabel,
+                        style: AppTextStyles.caption.copyWith(
+                          color: _statusMitraColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                        ),
                       ),
                     ),
                   ],
@@ -1053,7 +1077,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _buildMitraStats() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -1063,16 +1087,19 @@ class _ProfilPageState extends State<ProfilPage> {
         ),
       ),
       child: Row(
-        children: const [
+        children: [
           Expanded(
-            child: _MitraStatItem(label: 'TOTAL SEWA', value: '124'),
+            child: _MitraStatItem(
+              label: 'TOTAL SEWA',
+              value: '$_totalSewaMitra',
+            ),
           ),
-          _VerticalSoftDivider(),
+          const _VerticalSoftDivider(),
           Expanded(
             child: _MitraStatItem(
               label: 'STATUS',
-              value: 'AKTIF',
-              valueColor: AppColors.ownerPrimaryGreen,
+              value: _statusMitraLabel,
+              valueColor: _statusMitraColor,
             ),
           ),
         ],
@@ -1088,13 +1115,13 @@ class _ProfilPageState extends State<ProfilPage> {
           label: 'PEMILIK TOKO',
           value: _namaLengkap,
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 22),
         _MitraInfoItem(
           icon: Icons.mail_outline_rounded,
           label: 'EMAIL',
           value: _email,
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 22),
         _MitraInfoItem(
           icon: Icons.access_time_rounded,
           label: 'JAM OPERASIONAL',
@@ -1102,6 +1129,18 @@ class _ProfilPageState extends State<ProfilPage> {
         ),
       ],
     );
+  }
+
+  String get _statusMitraLabel {
+    final rental = _rentalProfile;
+    if (rental == null) return 'NONAKTIF';
+    return rental.isActive ? 'AKTIF' : 'NONAKTIF';
+  }
+
+  Color get _statusMitraColor {
+    final rental = _rentalProfile;
+    if (rental != null && rental.isActive) return AppColors.ownerPrimaryGreen;
+    return AppColors.error;
   }
 }
 
@@ -1287,8 +1326,6 @@ class _TinyEditButton extends StatelessWidget {
     );
   }
 }
-
-
 
 class _MenuItem {
   final IconData icon;
