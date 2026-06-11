@@ -28,7 +28,7 @@ function formatStatValue(value) {
   }
   return 'Rp ' + Number(value).toLocaleString('id-ID')
 }
-
+// Logika pengambilan data pada dashboard
 export default function DashboardPage() {
   const [userEmail, setUserEmail] = useState('')
   const [stats, setStats] = useState({ 
