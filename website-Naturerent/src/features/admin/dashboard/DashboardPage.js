@@ -117,7 +117,7 @@ export default function DashboardPage() {
       })
 
       const activities = []
-
+      // Logika Aktivitas terbaru
       if (bookRes.data && bookRes.data.length > 0) {
         const userIds = [...new Set(bookRes.data.map(d => d.customer_id).filter(Boolean))]
         const userMap = {}
